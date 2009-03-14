@@ -1,4 +1,5 @@
 from PyDy import ReferenceFrame, dot, cross
+from sympy import symbols
 import numpy as N
 e1 = N.array([1.0,0.0,0.0])
 e2 = N.array([0.0,1.0,0.0])
@@ -35,4 +36,9 @@ def test_UnitVector():
         assert vec_eq(cross(A[3], A[2]), e1n)
         assert vec_eq(cross(A[3], A[3]), zero)
 
-        
+def test_expressions():        
+	x, y = symbols("x y")
+	A = ReferenceFrame('A')
+	e = x+x*A[1]+y+A[2]
+	assert e == x+x*A[1]+y+A[2]
+	assert e != x+x*A[1]+x+A[2]

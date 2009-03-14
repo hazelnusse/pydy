@@ -9,7 +9,7 @@ e3n = N.array([0.0,0.0,-1.0])
 zero = N.array([0.0,0.0,0.0])
 
 
-class UnitVector:
+class UnitVector(Basic):
     """A standard unit vector  with a symbolic and a numeric representation"""    
     def __init__(self,s,i=0): #=-1,num=None):
         self.name = s
@@ -49,7 +49,7 @@ class UnitVector:
         if isinstance(other, UnitVector):
             return N.dot(self.v['num'],other.v['num'])
         elif isinstance(other,Basic):
-            return other
+            return NotImplemeted
     
     #  Cross product
     def cross(self,other):
