@@ -12,7 +12,7 @@ zero = N.array([0.0,0.0,0.0])
 class UnitVector(Basic):
     """A standard unit vector  with a symbolic and a numeric representation"""    
     def __init__(self,s,i=0): #=-1,num=None):
-        self.name = s
+        self.name = s    # Parent reference frame
         self.i = i
         self.v = {}
         if i == 1:
@@ -44,13 +44,6 @@ class UnitVector(Basic):
     def __repr__(self):
         return self.v['sym'].__repr__()
 
-    #  Dot product
-    def __mul__(self,other):
-        if isinstance(other, UnitVector):
-            return N.dot(self.v['num'],other.v['num'])
-        elif isinstance(other,Basic):
-            return NotImplemeted
-    
     #  Cross product
     def cross(self,other):
         if isinstance(other, UnitVector):
@@ -70,9 +63,8 @@ class UnitVector(Basic):
                 return -UnitVector(self.name,3)
             elif (v1xv2 == zero).all():
                 return UnitVector(self.name,0)
-
-
-
+        else:
+            return NotImplemented
 
 
 class ReferenceFrame:
@@ -85,10 +77,13 @@ class ReferenceFrame:
         return self.triad[i-1]
     
     
-    
-        
 def dot(v1,v2):
-    return v1*v2
+    if isinstance(v1, UnitVector) and isinstance(v2, UnitVector):
+        return N.dot(v1.v['num'],v2.v['num'])
+    elif isinstance(other,Basic):
+#            vec_expr = expand(other * Basic)
+        return NotImplemeted
+    
 
 def cross(v1,v2):
     return v1.cross(v2)
