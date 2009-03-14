@@ -42,3 +42,12 @@ def test_expressions():
 	e = x+x*A[1]+y+A[2]
 	assert e == x+x*A[1]+y+A[2]
 	assert e != x+x*A[1]+x+A[2]
+
+def test_coeff():
+    x, y = symbols('x y')
+    A=ReferenceFrame('A')
+    e = y+x*A[1]+x+A[2]
+    assert e.coeff(x) == 1+A[1]
+    assert e.coeff(y) == 1
+    assert e.coeff(A[1]) == x
+    assert e.coeff(A[2]) == 1
