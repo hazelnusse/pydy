@@ -54,3 +54,12 @@ def test_coeff():
     assert e.coeff(y) == 1
     assert e.coeff(A[1]) == x
     assert e.coeff(A[2]) == 1
+
+def test_vector_init():
+    x, y = symbols('x y')
+    A=ReferenceFrame('A')
+    e = y+x*A[1]+x+A[2]
+    f = y+x*A[1]-A[2]
+    a = UnitVector(e)
+    b = UnitVector(f)
+    dot(a, b)

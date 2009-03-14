@@ -24,22 +24,22 @@ class UnitVector(Basic):
         elif i == 3:
             self.v['sym'] = Symbol(s.lower()+str(i))
             self.v['num'] = e3
-        elif i == -1:
-            self.v['sym'] = Symbol('-'+s.lower()+str(abs(i)))
-            self.v['num'] = e1n
-        elif i == -2:
-            self.v['sym'] = Symbol('-'+s.lower()+str(abs(i)))
-            self.v['num'] = e2n
-        elif i == -3:
-            self.v['sym'] = Symbol('-'+s.lower()+str(abs(i)))
-            self.v['num'] = e3n
+#        elif i == -1:
+#            self.v['sym'] = Symbol('-'+s.lower()+str(abs(i)))
+#            self.v['num'] = e1n
+#        elif i == -2:
+#            self.v['sym'] = Symbol('-'+s.lower()+str(abs(i)))
+#            self.v['num'] = e2n
+#        elif i == -3:
+#            self.v['sym'] = Symbol('-'+s.lower()+str(abs(i)))
+#            self.v['num'] = e3n
         elif i == 0:
             self.v['sym'] = Symbol(s.lower()+str(0))
             self.v['num'] = zero
             
 
-    def __neg__(self):
-        return UnitVector(self.name,-self.i)
+#    def __neg__(self):
+#        return NotImplemented #-UnitVector(self.name,self.i)
 
     def __repr__(self):
         return self.v['sym'].__repr__()
@@ -88,7 +88,9 @@ class ReferenceFrame:
     
         
 def dot(v1,v2):
+    #if isinstance(v1, UnitVector) and isinstance(v2, UnitVector):
     return v1*v2
+
 
 def cross(v1,v2):
     return v1.cross(v2)
