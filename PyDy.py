@@ -1,5 +1,5 @@
 import numpy as N
-from sympy import Symbol, Basic
+from sympy import Symbol, Basic, Mul, Pow
 e1 = N.array([1.0,0.0,0.0])
 e2 = N.array([0.0,1.0,0.0])
 e3 = N.array([0.0,0.0,1.0])
@@ -36,10 +36,10 @@ class UnitVector(Basic):
         elif i == 0:
             self.v['sym'] = Symbol(s.lower()+str(0))
             self.v['num'] = zero
-            
 
-    def __neg__(self):
-        return UnitVector(self.name,-self.i)
+
+#    def __neg__(self):
+#        return UnitVector(self.name,-self.i)
 
     def __repr__(self):
         return self.v['sym'].__repr__()
@@ -75,15 +75,42 @@ class ReferenceFrame:
 
     def __getitem__(self, i):
         return self.triad[i-1]
-    
-    
+
+
 def dot(v1,v2):
     if isinstance(v1, UnitVector) and isinstance(v2, UnitVector):
         return N.dot(v1.v['num'],v2.v['num'])
-    elif isinstance(other,Basic):
-#            vec_expr = expand(other * Basic)
-        return NotImplemeted
-    
+    else:
+        v1v2 = (v1*v2).expand()
+        #print v1v2.args
+        e = 0
+        for a in v1v2.args:
+            c, v1, v2 = identify(a)
+            #print c, v1, v2
+            if v1 is None or v2 is None:
+                pass
+            else:
+                e += c*dot(v1, v2)
+        return e
+
+
+def identify(a):
+    if isinstance(a, Mul):
+        unit_vectors = []
+        for b in a.args:
+            if isinstance(b, UnitVector):
+                unit_vectors.append(b)
+            if isinstance(b, Pow):
+                if isinstance(b.args[0], UnitVector):
+                    unit_vectors.append(b.args[0])
+                    unit_vectors.append(b.args[0])
+        if len(unit_vectors) == 2:
+            v1 = unit_vectors[0]
+            v2 = unit_vectors[1]
+            c = a.coeff(v1*v2)
+            return c, v1, v2
+
+    return a, None, None
 
 def cross(v1,v2):
     return v1.cross(v2)

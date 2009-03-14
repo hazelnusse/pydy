@@ -1,13 +1,10 @@
-from PyDy import ReferenceFrame, dot, cross, UnitVector
-from sympy import symbols
+from PyDy import ReferenceFrame, dot, cross, UnitVector, identify
+from sympy import symbols, S
 import numpy as N
-e1 = N.array([1.0,0.0,0.0])
-e2 = N.array([0.0,1.0,0.0])
-e3 = N.array([0.0,0.0,1.0])
-e1n = N.array([-1.0,0.0,0.0])
-e2n = N.array([0.0,-1.0,0.0])
-e3n = N.array([0.0,0.0,-1.0])
-zero = N.array([0.0,0.0,0.0])
+e1 = UnitVector('A', 1)
+e2 = UnitVector('A', 2)
+e3 = UnitVector('A', 3)
+zero = UnitVector("A", 0)
 
 def eq(a, b, eps=1e-8):
     return abs(a-b) < eps
@@ -29,17 +26,17 @@ def test_dot_cross():
     assert eq(dot(A[3], A[1]), 0.0)
     assert eq(dot(A[3], A[2]), 0.0)
     assert eq(dot(A[3], A[3]), 1.0)
-    assert vec_eq(cross(A[1], A[1]), zero)
-    assert vec_eq(cross(A[1], A[2]), e3)
-    assert vec_eq(cross(A[1], A[3]), e2n)
-    assert vec_eq(cross(A[2], A[1]), e3n)
-    assert vec_eq(cross(A[2], A[2]), zero)
-    assert vec_eq(cross(A[2], A[3]), e1)
-    assert vec_eq(cross(A[3], A[1]), e2)
-    assert vec_eq(cross(A[3], A[2]), e1n)
-    assert vec_eq(cross(A[3], A[3]), zero)
+    assert cross(A[1], A[1]) == zero
+    assert cross(A[1], A[2]) == e3
+    assert cross(A[1], A[3]) == -e2
+    assert cross(A[2], A[1]) == -e3
+    assert cross(A[2], A[2]) == zero
+    assert cross(A[2], A[3]) == e1
+    assert cross(A[3], A[1]) == e2
+    assert cross(A[3], A[2]) == -e1
+    assert cross(A[3], A[3]) == zero
 
-def test_expressions():        
+def test_expressions():
 	x, y = symbols("x y")
 	A = ReferenceFrame('A')
 	e = x+x*A[1]+y+A[2]
@@ -54,3 +51,10 @@ def test_coeff():
     assert e.coeff(y) == 1
     assert e.coeff(A[1]) == x
     assert e.coeff(A[2]) == 1
+
+def test_identify():
+    A = ReferenceFrame('A')
+    x = symbols("x")
+    assert set(identify(A[1]*A[2])) == set((S(1), A[1], A[2]))
+    assert set(identify(x*A[1]*A[2])) == set((x, A[1], A[2]))
+    assert set(identify(x*A[1]*A[1])) == set((x, A[1], A[1]))
