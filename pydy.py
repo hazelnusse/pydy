@@ -50,29 +50,6 @@ class UnitVector(Basic):
     def _sympystr_(self):
         return str(self.v['sym']) + ">"
 
-    #  Cross product
-    def cross(self,other):
-        if isinstance(other, UnitVector):
-            v1xv2 = N.cross(self.v['num'],other.v['num'])
-
-            if (v1xv2 == e1).all():
-                return UnitVector(self.frame, 1)
-            elif (v1xv2 == e2).all():
-                return UnitVector(self.frame, 2)
-            elif (v1xv2 == e3).all():
-                return UnitVector(self.frame, 3)
-            elif (v1xv2 == e1n).all():
-                return -UnitVector(self.frame, 1)
-            elif (v1xv2 == e2n).all():
-                return -UnitVector(self.frame, 2)
-            elif (v1xv2 == e3n).all():
-                return -UnitVector(self.frame, 3)
-            elif (v1xv2 == zero).all():
-                return UnitVector(self.frame, 0)
-        else:
-            raise NotImplementedError()
-
-
 class ReferenceFrame:
     """A standard reference frame with 3 dextral orthonormal vectors"""
 
@@ -270,7 +247,7 @@ def express(v, frame):
         #XXX: Not sure why reversed is necessary
         for m in reversed(matrices):
             u = m*u
-        return u[0]*frame[1] + u[1]*frame[2] + u[2]*frame[3]
+        return vector2expression(u, frame)
     elif isinstance(v, Add):
         e = 0
         for a in v.args:
@@ -280,10 +257,12 @@ def express(v, frame):
                 pass
             else:
                 e += c*express(v1, frame)
+        e = e.expand()
+        print e
         return e
     elif isinstance(v, Mul):
         c, v1 = identify_v1(v)
-        return c*express(v1, frame)
+        return (c*express(v1, frame)).expand()
     elif v == 0:
         return v
     else:
@@ -311,9 +290,7 @@ def cross(v1, v2):
     if isinstance(v1, UnitVector) and isinstance(v2, UnitVector):
         B = v2.frame
         u = express(v1, B)
-        u1 = coeff(u, B[1])
-        u2 = coeff(u, B[2])
-        u3 = coeff(u, B[3])
+        u1, u2, u3 = expression2vector(u, B)
         # second vector:
         v = Matrix(v2.v['num'])
         c1, c2, c3 = cross_vectors((u1, u2, u3), v)
@@ -328,3 +305,18 @@ def cross(v1, v2):
             else:
                 e += c*cross(v1, v2)
         return e
+
+def expression2vector(e, frame):
+    """
+    Converts a sympy expression "e" to a coefficients vector in the frame "frame".
+    """
+    u1 = coeff(e, frame[1])
+    u2 = coeff(e, frame[2])
+    u3 = coeff(e, frame[3])
+    return u1, u2, u3
+
+def vector2expression(u, frame):
+    """
+    Converts a coefficients vector to a sympy expression in the frame "frame".
+    """
+    return u[0]*frame[1] + u[1]*frame[2] + u[2]*frame[3]
