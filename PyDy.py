@@ -229,9 +229,9 @@ def express(v, frame):
         matrices = v.frame.get_rot_matrices(frame)
         #print matrices
         u = Matrix(v.v['num'])
-        for m in reversed(matrices):   # Not sure why reversed is necessary
+        #XXX: Not sure why reversed is necessary
+        for m in reversed(matrices):
             u = m*u
-        #return u
         return u[0]*frame[1] + u[1]*frame[2] + u[2]*frame[3]
     else:
         raise NotImplementedError()
@@ -266,11 +266,9 @@ def cross(v1, v2):
         return c1*B[1] + c2*B[2] + c3*B[3]
     else:
         v1v2 = (v1*v2).expand()
-        #print v1v2.args
         e = 0
         for a in v1v2.args:
             c, v1, v2 = identify(a)
-            #print c, v1, v2
             if v1 is None or v2 is None:
                 pass
             else:
