@@ -64,3 +64,7 @@ def test_ReferenceFrame():
     phi = Symbol("phi")
     B = A.rotate("B", 1, phi)
     assert B.matrix is not None
+    B = A.rotate("B", 2, phi)
+    assert B.matrix is not None
+    B = A.rotate("B", 3, phi)
+    assert B.matrix is not None

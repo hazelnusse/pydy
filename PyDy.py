@@ -85,6 +85,20 @@ class ReferenceFrame:
                 [0, cos(angle), -sin(angle)],
                 [0, sin(angle), cos(angle)],
                 ])
+        elif axis == 2:
+            matrix = Matrix([
+                [cos(angle), 0, sin(angle)],
+                [0, 1, 0],
+                [-sin(angle), 0, cos(angle)],
+                ])
+        elif axis == 3:
+            matrix = Matrix([
+                [cos(angle), -sin(angle), 0],
+                [sin(angle), cos(angle), 0],
+                [0, 0, 1],
+                ])
+        else:
+            raise ValueError("wrong axis")
         return ReferenceFrame(name, matrix)
 
 
