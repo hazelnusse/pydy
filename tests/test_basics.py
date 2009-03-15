@@ -1,4 +1,4 @@
-from PyDy import ReferenceFrame, dot, cross, UnitVector, identify
+from PyDy import ReferenceFrame, dot, cross, UnitVector, identify, express
 from sympy import symbols, S, Symbol, sin, cos, Matrix, eye, pprint
 import numpy as N
 A = ReferenceFrame('A')
@@ -80,6 +80,17 @@ def test_cross_different_frames1():
     assert cross(N[3], A[2]) == -A[1]
     assert cross(N[3], A[3]) == 0
 
+def test_express1():
+    q1, q2, q3 = symbols('q1 q2 q3')
+    N = ReferenceFrame('N')
+    A = N.rotate('A', 3, q1)
+    B = A.rotate('B', 1, q2)
+    C = B.rotate('C', 2, q3)
+    assert express(A[1], N) == cos(q1)*N[1] + sin(q1)*N[2]
+    assert express(A[2], N) == -sin(q1)*N[1] + cos(q1)*N[2]
+    assert express(A[3], N) == N[3]
+
+
 def test_cross_different_frames2():
     q1, q2, q3 = symbols('q1 q2 q3')
     N = ReferenceFrame('N')
@@ -87,6 +98,7 @@ def test_cross_different_frames2():
     assert cross(N[1], A[1]) == sin(q1)*A[3]
     assert cross(N[1], A[2]) == cos(q1)*A[3]
     assert cross(N[1], A[1] + A[2]) == sin(q1)*A[3] + cos(q1)*A[3]
+    #assert cross(A[1] + A[2], N[1]) == -sin(q1)*A[3] - cos(q1)*A[3]
 
 def test_get_frames_list1():
     q1, q2, q3 = symbols('q1 q2 q3')

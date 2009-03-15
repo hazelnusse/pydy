@@ -221,6 +221,19 @@ def identify(a):
 
     return a, None, None
 
+def express(v, frame):
+    """
+    Express "v" in the reference frame "frame".
+    """
+    if isinstance(v, UnitVector):
+        matrices = v.frame.get_rot_matrices(frame)
+        u = Matrix(v.v['num'])
+        for m in matrices:
+            u = m*u
+        return u[0]*frame[1] + u[1]*frame[2] + u[2]*frame[3]
+    else:
+        raise NotImplementedError()
+
 def cross(v1, v2):
     if isinstance(v1, UnitVector) and isinstance(v2, UnitVector):
         A = v1.frame
