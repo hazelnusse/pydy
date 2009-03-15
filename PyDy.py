@@ -71,13 +71,29 @@ class UnitVector(Basic):
 
 class ReferenceFrame:
     """A standard reference frame with 3 dextral orthonormal vectors"""
-    def __init__(self, s, matrix=None):
+
+    def __init__(self, s, matrix=None, frame=None):
+        """
+        ReferenceFrame('B', matrix, A)
+
+        The matrix represents A_B, e.g. how to transform a vector from B to A.
+        """
         self.name = s
         self.triad = [UnitVector(self, i) for i in (1,2,3)]
-        self.matrix = matrix
+        self.transforms = {}
+        if frame is not None:
+            self.append_transform(frame, matrix)
+            frame.append_transform(self, matrix.T)
 
     def __getitem__(self, i):
         return self.triad[i-1]
+
+    def append_transform(self, frame, matrix):
+        """
+        Gives us a transform to the frame "frame".
+        """
+        # We just append it to our "transforms" dict.
+        self.transforms[frame] = matrix
 
     def rotate(self, name, axis, angle):
         if axis == 1:
@@ -100,7 +116,17 @@ class ReferenceFrame:
                 ])
         else:
             raise ValueError("wrong axis")
-        return ReferenceFrame(name, matrix)
+        return ReferenceFrame(name, matrix, self)
+
+    def get_rot_matrices(self, frame):
+        """
+        Returns a list of matrices to get from self to frame.
+        """
+        if self.transforms.has_key(frame):
+            return [self.transforms[frame]]
+        else:
+            raise NotImplementedError()
+
 
 
 def dot(v1,v2):
@@ -139,10 +165,10 @@ def identify(a):
     return a, None, None
 
 def cross(v1,v2):
-    return v1.cross(v2)
+    #return v1.cross(v2)
     A = v1.frame
     B = v2.frame
-    matrices = get_rot_matrices(A, B)
+    matrices = A.get_rot_matrices(B)
     # first vector as a list of 3 numbers in the "v2" inertial frame:
     u = Matrix(v1.v['num'])
     for m in matrices:
