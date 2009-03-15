@@ -10,7 +10,8 @@ zero = N.array([0.0,0.0,0.0])
 
 
 class UnitVector(Basic):
-    """A standard unit vector  with a symbolic and a numeric representation"""    
+    """A standard unit vector  with a symbolic and a numeric representation"""
+
     def __init__(self,s,i=0): #=-1,num=None):
         self.name = s    # Parent reference frame
         self.i = i
@@ -41,8 +42,8 @@ class UnitVector(Basic):
 #    def __neg__(self):
 #        return UnitVector(self.name,-self.i)
 
-    def __repr__(self):
-        return self.v['sym'].__repr__()
+    def _sympystr_(self):
+        return str(self.v['sym']) + ">"
 
     #  Cross product
     def cross(self,other):
