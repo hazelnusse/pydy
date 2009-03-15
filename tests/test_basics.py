@@ -268,3 +268,20 @@ def test_cross2():
             a = cross(N[i], B[j])
             b = express(cross(B[j], N[i]), B)
             assert a == -b
+
+def test_dot2():
+    q1, q2, q3 = symbols('q1 q2 q3')
+    N = ReferenceFrame('N')
+    A = N.rotate('A', 3, q1)
+    B = A.rotate('A', 1, q2)
+    for i in range(1, 4):
+        for j in range(1, 4):
+            a = dot(N[i], A[j])
+            b = dot(A[j], N[i])
+            assert a == b
+
+    for i in range(1, 4):
+        for j in range(1, 4):
+            a = dot(N[i], B[j])
+            b = dot(B[j], N[i])
+            assert a == b
