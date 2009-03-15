@@ -125,45 +125,53 @@ class ReferenceFrame:
     def get_frames_list(self, frame):
         """
         Returns a list of frames from "self" to "frame", including both.
+
+        Example:
+
+        N - A - D - E - F
+            |
+            B
+            |
+            C
+
+        Then:
+
+        C.get_frames_list(F) == [C, B, A, D, E, F]
+        F.get_frames_list(C) == [F, E, D, A, B, C]
         """
         if self == frame:
             return [self]
         elif self.transforms.has_key(frame):
             return [self, frame]
         else:
-            # Let's explain this algorithm on the following example:
-            #
-            # N - A - D - E - F
-            #     |
-            #     B
-            #     |
-            #     C
-            #
-            # let self = C, frame = F
-            # then:
-            # candidates = [C, B, A, N]
-            # r2 = [E, D, A]
-            candidates = [self]
+            # r1, r2 contains all the frames up to the top
+            r1 = [self]
             a = self.parent
             while a is not None:
-                candidates.append(a)
+                r1.append(a)
                 a = a.parent
-            r2 = []
+            r2 = [frame]
             a = frame.parent
             while a is not None:
-                if a in candidates:
-                    #print candidates
-                    r1 = candidates[:candidates.index(a)+1]
-                    #print r1
-                    # now r1 == [C, B, A] and r2 == [E, D, A]
-                    #print "r2", r2
-                    frames = r1 + list(reversed(r2)) + [frame]
-                    return frames
-                else:
-                    r2.append(a)
-                    a = a.parent
+                r2.append(a)
+                a = a.parent
 
-            raise Exception("The get_frames_list algorithm failed.")
+            # we strip the common right end of both lists:
+            i = 1
+            while not (len(r1) == i-1 or len(r2) == i-1) and r1[-i] == r2[-i]:
+                i += 1
+            i -= 1
+
+            #print "r1, r2, i:", r1, r2, i
+            middle = r1[-i+1]
+            #print middle
+            r1 = r1[:-(i-1)]
+            r2 = r2[:-i]
+            #print "stripped r1, r2:", r1, r2
+            # e.g.: r1 == [C, B]
+            # r2 == [F, E, D]
+            # middle == A
+            return r1 + list(reversed(r2))
 
     def get_rot_matrices(self, frame):
         """

@@ -90,6 +90,8 @@ def test_get_frames_list1():
     assert B.get_frames_list(A) == [B, A]
     assert A.get_frames_list(B) == [A, B]
     assert A.get_frames_list(C) == [A, B, C]
+    assert A.get_frames_list(C) == [A, B, C]
+    assert C.get_frames_list(A) == [C, B, A]
 
 def test_get_frames_list2():
     q1, q2, q3 = symbols('q1 q2 q3')
@@ -99,6 +101,7 @@ def test_get_frames_list2():
     C = A.rotate('C', 2, q3)
 
     assert B.get_frames_list(C) == [B, A, C]
+    assert C.get_frames_list(B) == [C, A, B]
 
 def test_get_frames_list3():
     q1, q2, q3 = symbols('q1 q2 q3')
@@ -111,8 +114,9 @@ def test_get_frames_list3():
     F = E.rotate('F', 2, q3)
 
     assert C.get_frames_list(F) == [C, B, A, D, E, F]
+    assert F.get_frames_list(C) == [F, E, D, A, B, C]
 
-def test_get_rot_matrices():
+def _test_get_rot_matrices():
     q1, q2, q3 = symbols('q1 q2 q3')
     N = ReferenceFrame('N')
     A = N.rotate('A', 3, q1)
