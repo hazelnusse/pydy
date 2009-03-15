@@ -1,5 +1,6 @@
 import numpy as N
-from sympy import Symbol, Basic, Mul, Pow, Matrix, sin, cos, S, eye, Add
+from sympy import Symbol, Basic, Mul, Pow, Matrix, sin, cos, S, eye, Add, \
+        trigsimp
 e1 = Matrix([1, 0, 0])
 e2 = Matrix([0, 1, 0])
 e3 = Matrix([0, 0, 1])
@@ -258,8 +259,9 @@ def express(v, frame):
             else:
                 e += c*express(v1, frame)
         e = e.expand()
-        print e
-        return e
+        u = expression2vector(e, frame)
+        u = [trigsimp(x) for x in u]
+        return vector2expression(u, frame)
     elif isinstance(v, Mul):
         c, v1 = identify_v1(v)
         return (c*express(v1, frame)).expand()

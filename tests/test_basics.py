@@ -251,3 +251,13 @@ def test_get_rot_matrices2():
 
     assert C.get_rot_matrices(F) == [F_E, E_D, D_A, A_B, B_C]
     assert F.get_rot_matrices(C) == [C_B, B_A, A_D, D_E, E_F]
+
+def test_cross2():
+    q1, q2, q3 = symbols('q1 q2 q3')
+    N = ReferenceFrame('N')
+    A = N.rotate('A', 3, q1)
+    for i in range(1, 4):
+        for j in range(1, 4):
+            a = cross(N[i], A[j])
+            b = express(cross(A[j], N[i]), A)
+            assert a == -b
