@@ -1,5 +1,5 @@
 from PyDy import ReferenceFrame, dot, cross, UnitVector, identify
-from sympy import symbols, S, Symbol, sin, cos
+from sympy import symbols, S, Symbol, sin, cos, Matrix
 import numpy as N
 A = ReferenceFrame('A')
 e1 = UnitVector(A, 1)
@@ -79,3 +79,35 @@ def test_cross_different_frames():
     assert cross(N[3], A[1]) == A[2]
     assert cross(N[3], A[2]) == -A[1]
     assert cross(N[3], A[3]) == 0
+
+def test_get_rot_matrices():
+    q1, q2, q3 = symbols('q1 q2 q3')
+    N = ReferenceFrame('N')
+    A = N.rotate('A', 3, q1)
+    B = A.rotate('B', 1, q2)
+    C = B.rotate('C', 2, q3)
+
+    B_A = Matrix([
+        [1, 0, 0],
+        [0, cos(q2), sin(q2)],
+        [0, -sin(q2), cos(q2)]
+        ])
+    A_B = Matrix([
+        [1, 0, 0],
+        [0, cos(q2), -sin(q2)],
+        [0, sin(q2), cos(q2)]
+        ])
+    B_C = Matrix([
+        [cos(q3), 0, sin(q3)],
+        [0, 1, 0],
+        [-sin(q3), 0, cos(q3)]
+        ])
+    #B_C = Matrix([
+    #    [cos(q3), 0, -sin(q3)],
+    #    [0, 1, 0],
+    #    [sin(q3), 0, cos(q3)]
+    #    ])
+
+    assert B.get_rot_matrices(A) == [B_A]
+    assert A.get_rot_matrices(B) == [A_B]
+    assert A.get_rot_matrices(C) == [A_B, B_C]

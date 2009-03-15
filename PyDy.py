@@ -81,6 +81,7 @@ class ReferenceFrame:
         self.name = s
         self.triad = [UnitVector(self, i) for i in (1,2,3)]
         self.transforms = {}
+        self.parent = frame
         if frame is not None:
             self.append_transform(frame, matrix)
             frame.append_transform(self, matrix.T)
@@ -118,6 +119,9 @@ class ReferenceFrame:
             raise ValueError("wrong axis")
         return ReferenceFrame(name, matrix, self)
 
+    def __repr__(self):
+        return "<Frame %s>" % self.name
+
     def get_rot_matrices(self, frame):
         """
         Returns a list of matrices to get from self to frame.
@@ -125,9 +129,44 @@ class ReferenceFrame:
         if self == frame:
             return [eye(3)]
         elif self.transforms.has_key(frame):
-            return [self.transforms[frame]]
+            return [self.transforms[frame].T]
         else:
-            raise NotImplementedError()
+            # Let's explain this algorithm on the following example:
+            #
+            # N - A - D - E - F
+            #     |
+            #     B
+            #     |
+            #     C
+            #
+            # let self = C, frame = F
+            # then:
+            # candidates = [C, B, A, N]
+            # r2 = [E, D, A]
+            candidates = [self]
+            a = self.parent
+            while a is not None:
+                candidates.append(a)
+                a = a.parent
+            r2 = []
+            a = frame.parent
+            while a is not None:
+                if a in candidates:
+                    #print candidates
+                    r1 = candidates[:candidates.index(a)+1]
+                    #print r1
+                    # now r1 == [C, B, A] and r2 == [E, D, A]
+                    #print "r2", r2
+                    frames = r1 + list(reversed(r2)) + [frame]
+                    result = []
+                    for i, f in enumerate(frames[:-1]):
+                        result.append(f.transforms[frames[i+1]].T)
+                    return result
+                else:
+                    r2.append(a)
+                    a = a.parent
+
+            raise Exception("The get_rot_matrices algorithm failed.")
 
 
 
@@ -166,7 +205,7 @@ def identify(a):
 
     return a, None, None
 
-def cross(v1,v2):
+def cross(v1, v2):
     #return v1.cross(v2)
     A = v1.frame
     B = v2.frame
@@ -176,7 +215,7 @@ def cross(v1,v2):
     #print u
     for m in matrices:
         #print m
-        u *= m.T
+        u *= m
     #print u
     # second vector:
     v = Matrix(v2.v['num'])
