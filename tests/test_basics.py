@@ -1,11 +1,12 @@
 from PyDy import ReferenceFrame, dot, cross, UnitVector, identify
-from sympy import symbols, S, Symbol
+from sympy import symbols, S, Symbol, sin, cos
 import numpy as N
 A = ReferenceFrame('A')
 e1 = UnitVector(A, 1)
 e2 = UnitVector(A, 2)
 e3 = UnitVector(A, 3)
-zero = UnitVector(A, 0)
+#zero = UnitVector(A, 0)
+zero = 0
 
 def eq(a, b, eps=1e-8):
     return abs(a-b) < eps
@@ -59,8 +60,22 @@ def test_identify():
 def test_ReferenceFrame():
     phi = Symbol("phi")
     B = A.rotate("B", 1, phi)
-    assert B.matrix is not None
+    assert B.transforms[A] is not None
     B = A.rotate("B", 2, phi)
-    assert B.matrix is not None
+    assert B.transforms[A] is not None
     B = A.rotate("B", 3, phi)
-    assert B.matrix is not None
+    assert B.transforms[A] is not None
+
+def test_cross_different_frames():
+    q1, q2, q3 = symbols('q1 q2 q3')
+    N = ReferenceFrame('N')
+    A = N.rotate('A', 3, q1)
+    assert cross(N[1], A[1]) == sin(q1)*A[3]
+    assert cross(N[1], A[2]) == cos(q1)*A[3]
+    assert cross(N[1], A[3]) == -sin(q1)*A[1]-cos(q1)*A[2]
+    assert cross(N[2], A[1]) == -cos(q1)*A[3]
+    assert cross(N[2], A[2]) == sin(q1)*A[3]
+    assert cross(N[2], A[3]) == cos(q1)*A[1]-sin(q1)*A[2]
+    assert cross(N[3], A[1]) == A[2]
+    assert cross(N[3], A[2]) == -A[1]
+    assert cross(N[3], A[3]) == 0

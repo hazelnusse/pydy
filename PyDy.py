@@ -1,12 +1,12 @@
 import numpy as N
-from sympy import Symbol, Basic, Mul, Pow, Matrix, sin, cos
-e1 = N.array([1.0,0.0,0.0])
-e2 = N.array([0.0,1.0,0.0])
-e3 = N.array([0.0,0.0,1.0])
-e1n = N.array([-1.0,0.0,0.0])
-e2n = N.array([0.0,-1.0,0.0])
-e3n = N.array([0.0,0.0,-1.0])
-zero = N.array([0.0,0.0,0.0])
+from sympy import Symbol, Basic, Mul, Pow, Matrix, sin, cos, S, eye
+e1 = Matrix([1, 0, 0])
+e2 = Matrix([0, 1, 0])
+e3 = Matrix([0, 0, 1])
+e1n = Matrix([-1, 0, 0])
+e2n = Matrix([0, -1, 0])
+e3n = Matrix([0, 0, -1])
+zero = Matrix([0, 0, 0])
 
 
 class UnitVector(Basic):
@@ -122,7 +122,9 @@ class ReferenceFrame:
         """
         Returns a list of matrices to get from self to frame.
         """
-        if self.transforms.has_key(frame):
+        if self == frame:
+            return [eye(3)]
+        elif self.transforms.has_key(frame):
             return [self.transforms[frame]]
         else:
             raise NotImplementedError()
@@ -131,7 +133,7 @@ class ReferenceFrame:
 
 def dot(v1,v2):
     if isinstance(v1, UnitVector) and isinstance(v2, UnitVector):
-        return N.dot(v1.v['num'],v2.v['num'])
+        return (v1.v['num'].T*v2.v['num'])[0]
     else:
         v1v2 = (v1*v2).expand()
         #print v1v2.args
@@ -170,12 +172,14 @@ def cross(v1,v2):
     B = v2.frame
     matrices = A.get_rot_matrices(B)
     # first vector as a list of 3 numbers in the "v2" inertial frame:
-    u = Matrix(v1.v['num'])
+    u = Matrix(v1.v['num']).T
+    #print u
     for m in matrices:
-        u *= m
-
+        #print m
+        u *= m.T
+    #print u
     # second vector:
-    v = v2.v['num']
+    v = Matrix(v2.v['num'])
     c1 = u[1]*v[2] - u[2]*v[1]
     c2 = -(u[0]*v[2] - u[2]*v[0])
     c3 = u[0]*v[1] - u[1]*v[0]
