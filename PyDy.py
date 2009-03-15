@@ -12,10 +12,11 @@ zero = N.array([0.0,0.0,0.0])
 class UnitVector(Basic):
     """A standard unit vector  with a symbolic and a numeric representation"""
 
-    def __init__(self,s,i=0): #=-1,num=None):
-        self.name = s    # Parent reference frame
+    def __init__(self, frame, i=0): #=-1,num=None):
+        self.frame = frame    # Parent reference frame
         self.i = i
         self.v = {}
+        s = frame.name
         if i == 1:
             self.v['sym'] = Symbol(s.lower()+str(i))
             self.v['num'] = e1
@@ -51,28 +52,28 @@ class UnitVector(Basic):
             v1xv2 = N.cross(self.v['num'],other.v['num'])
 
             if (v1xv2 == e1).all():
-                return UnitVector(self.name,1)
+                return UnitVector(self.frame, 1)
             elif (v1xv2 == e2).all():
-                return UnitVector(self.name,2)
+                return UnitVector(self.frame, 2)
             elif (v1xv2 == e3).all():
-                return UnitVector(self.name,3)
+                return UnitVector(self.frame, 3)
             elif (v1xv2 == e1n).all():
-                return -UnitVector(self.name,1)
+                return -UnitVector(self.frame, 1)
             elif (v1xv2 == e2n).all():
-                return -UnitVector(self.name,2)
+                return -UnitVector(self.frame, 2)
             elif (v1xv2 == e3n).all():
-                return -UnitVector(self.name,3)
+                return -UnitVector(self.frame, 3)
             elif (v1xv2 == zero).all():
-                return UnitVector(self.name,0)
+                return UnitVector(self.frame, 0)
         else:
-            return NotImplemented
+            raise NotImplementedError()
 
 
 class ReferenceFrame:
     """A standard reference frame with 3 dextral orthonormal vectors"""
     def __init__(self, s, matrix=None):
         self.name = s
-        self.triad = [UnitVector(s,i) for i in (1,2,3)]
+        self.triad = [UnitVector(self, i) for i in (1,2,3)]
         self.matrix = matrix
 
     def __getitem__(self, i):
@@ -138,24 +139,18 @@ def identify(a):
     return a, None, None
 
 def cross(v1,v2):
-    print v1
-    print v2
     return v1.cross(v2)
+    A = v1.frame
+    B = v2.frame
+    matrices = get_rot_matrices(A, B)
+    # first vector as a list of 3 numbers in the "v2" inertial frame:
+    u = Matrix(v1.v['num'])
+    for m in matrices:
+        u *= m
 
-
-#        self.name = s
-#        self.i = i
-#        self.v = {}
-#        if i == 1:
-#            self.v['sym'] = Symbol(s.lower()+str(i))
-#            self.v['num'] = e1
-#        elif i == 2:
-#            self.v['sym'] = Symbol(s.lower()+str(i))
-#            self.v['num'] = e2
-#        elif i == 3:
-#            self.v['sym'] = Symbol(s.lower()+str(i))
-#            self.v['num'] = e3
-#        if num is not None:
-#            self.v['sym'] = s
-#            self.v['num'] = num
-            
+    # second vector:
+    v = v2.v['num']
+    c1 = u[1]*v[2] - u[2]*v[1]
+    c2 = -(u[0]*v[2] - u[2]*v[0])
+    c3 = u[0]*v[1] - u[1]*v[0]
+    return c1*B[1] + c2*B[2] + c3*B[3]
