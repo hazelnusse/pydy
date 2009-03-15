@@ -1,5 +1,5 @@
 from PyDy import ReferenceFrame, dot, cross, UnitVector, identify
-from sympy import symbols, S, Symbol, sin, cos, Matrix
+from sympy import symbols, S, Symbol, sin, cos, Matrix, eye
 import numpy as N
 A = ReferenceFrame('A')
 e1 = UnitVector(A, 1)
@@ -144,6 +144,7 @@ def test_get_rot_matrices():
         [sin(q3), 0, cos(q3)]
         ])
 
+    assert B.get_rot_matrices(B) == [eye(3)]
     assert B.get_rot_matrices(A) == [B_A]
     assert A.get_rot_matrices(B) == [A_B]
     assert A.get_rot_matrices(C) == [A_B, B_C]
