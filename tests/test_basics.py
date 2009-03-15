@@ -1,5 +1,5 @@
 from PyDy import ReferenceFrame, dot, cross, UnitVector, identify
-from sympy import symbols, S, Symbol, sin, cos, Matrix, eye
+from sympy import symbols, S, Symbol, sin, cos, Matrix, eye, pprint
 import numpy as N
 A = ReferenceFrame('A')
 e1 = UnitVector(A, 1)
@@ -116,7 +116,7 @@ def test_get_frames_list3():
     assert C.get_frames_list(F) == [C, B, A, D, E, F]
     assert F.get_frames_list(C) == [F, E, D, A, B, C]
 
-def test_get_rot_matrices():
+def test_get_rot_matrices1():
     q1, q2, q3 = symbols('q1 q2 q3')
     N = ReferenceFrame('N')
     A = N.rotate('A', 3, q1)
@@ -149,3 +149,51 @@ def test_get_rot_matrices():
     assert A.get_rot_matrices(B) == [B_A]
     assert A.get_rot_matrices(C) == [C_B, B_A]
     assert C.get_rot_matrices(A) == [A_B, B_C]
+
+def test_get_rot_matrices2():
+    q1, q2, q3, q4, q5, q6 = symbols('q1 q2 q3 q4 q5 q6')
+    N = ReferenceFrame('N')
+    A = N.rotate('A', 3, q1)
+    B = A.rotate('B', 1, q2)
+    C = B.rotate('C', 2, q3)
+    D = A.rotate('D', 2, q4)
+    E = D.rotate('E', 1, q5)
+    F = E.rotate('F', 3, q6)
+
+    A_B = Matrix([
+        [1, 0, 0],
+        [0, cos(q2), -sin(q2)],
+        [0, sin(q2), cos(q2)],
+        ])
+    B_A = A_B.T
+
+    B_C = Matrix([
+        [cos(q3), 0, sin(q3)],
+        [0, 1, 0],
+        [-sin(q3), 0, cos(q3)],
+        ])
+    C_B = B_C.T
+
+    A_D = Matrix([
+        [cos(q4), 0, sin(q4)],
+        [0, 1, 0],
+        [-sin(q4), 0, cos(q4)],
+        ])
+    D_A = A_D.T
+
+    D_E = Matrix([
+        [1, 0, 0],
+        [0, cos(q5), -sin(q5)],
+        [0, sin(q5), cos(q5)],
+        ])
+    E_D = D_E.T
+
+    E_F = Matrix([
+        [cos(q6), -sin(q6), 0],
+        [sin(q6), cos(q6), 0],
+        [0, 0, 1],
+        ])
+    F_E = E_F.T
+
+    assert C.get_rot_matrices(F) == [F_E, E_D, D_A, A_B, B_C]
+    assert F.get_rot_matrices(C) == [C_B, B_A, A_D, D_E, E_F]
