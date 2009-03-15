@@ -227,12 +227,27 @@ def express(v, frame):
     """
     if isinstance(v, UnitVector):
         matrices = v.frame.get_rot_matrices(frame)
+        #print matrices
         u = Matrix(v.v['num'])
-        for m in matrices:
+        for m in reversed(matrices):   # Not sure why reversed is necessary
             u = m*u
+        #return u
         return u[0]*frame[1] + u[1]*frame[2] + u[2]*frame[3]
     else:
         raise NotImplementedError()
+
+def cross_vectors(u, v):
+    c1 = u[1]*v[2] - u[2]*v[1]
+    c2 = -(u[0]*v[2] - u[2]*v[0])
+    c3 = u[0]*v[1] - u[1]*v[0]
+    return c1, c2, c3
+
+def coeff(e, x):
+    r = e.coeff(x)
+    if r is None:
+        return S(0)
+    else:
+        return r
 
 def cross(v1, v2):
     if isinstance(v1, UnitVector) and isinstance(v2, UnitVector):
@@ -245,11 +260,14 @@ def cross(v1, v2):
             #print m
             u = m*u
         #print u
+        #print express(v1, B)
+        u = express(v1, B)
+        u1 = coeff(u, B[1])
+        u2 = coeff(u, B[2])
+        u3 = coeff(u, B[3])
         # second vector:
         v = Matrix(v2.v['num'])
-        c1 = u[1]*v[2] - u[2]*v[1]
-        c2 = -(u[0]*v[2] - u[2]*v[0])
-        c3 = u[0]*v[1] - u[1]*v[0]
+        c1, c2, c3 = cross_vectors((u1, u2, u3), v)
         return c1*B[1] + c2*B[2] + c3*B[3]
     else:
         v1v2 = (v1*v2).expand()

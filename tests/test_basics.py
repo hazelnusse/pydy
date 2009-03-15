@@ -80,15 +80,25 @@ def test_cross_different_frames1():
     assert cross(N[3], A[2]) == -A[1]
     assert cross(N[3], A[3]) == 0
 
-def test_express1():
+def test_cross_different_frames3():
     q1, q2, q3 = symbols('q1 q2 q3')
     N = ReferenceFrame('N')
     A = N.rotate('A', 3, q1)
     B = A.rotate('B', 1, q2)
     C = B.rotate('C', 2, q3)
-    assert express(A[1], N) == cos(q1)*N[1] + sin(q1)*N[2]
-    assert express(A[2], N) == -sin(q1)*N[1] + cos(q1)*N[2]
-    assert express(A[3], N) == N[3]
+    assert cross(A[1], C[1]) == sin(q3)*C[2]
+    assert cross(A[1], C[2]) == -sin(q3)*C[1]+cos(q3)*C[3]
+    assert cross(A[1], C[3]) == -cos(q3)*C[2]
+
+def _test_express1():
+    q1, q2, q3 = symbols('q1 q2 q3')
+    N = ReferenceFrame('N')
+    A = N.rotate('A', 3, q1)
+    B = A.rotate('B', 1, q2)
+    C = B.rotate('C', 2, q3)
+    assert express(A[1], C) == cos(q1)*N[1] + sin(q1)*N[2]
+    assert express(A[2], C) == -sin(q1)*N[1] + cos(q1)*N[2]
+    assert express(A[3], C) == N[3]
 
 
 def test_cross_different_frames2():
