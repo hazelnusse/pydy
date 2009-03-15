@@ -177,16 +177,13 @@ class ReferenceFrame:
         """
         Returns a list of matrices to get from self to frame.
         """
-        if self == frame:
+        frames = self.get_frames_list(frame)
+        if frames == [self]:
             return [eye(3)]
-        elif self.transforms.has_key(frame):
-            return [self.transforms[frame].T]
-        else:
-            frames = self.get_frames_list(frame)
-            result = []
-            for i, f in enumerate(frames[:-1]):
-                result.append(f.transforms[frames[i+1]].T)
-            return result
+        result = []
+        for i, f in enumerate(frames[:-1]):
+            result.append(f.transforms[frames[i+1]].T)
+        return result
 
 def dot(v1,v2):
     if isinstance(v1, UnitVector) and isinstance(v2, UnitVector):
@@ -230,7 +227,6 @@ def cross(v1, v2):
     matrices = A.get_rot_matrices(B)
     # first vector as a list of 3 numbers in the "v2" inertial frame:
     u = Matrix(v1.v['num']).T
-    #print u
     for m in matrices:
         #print m
         u *= m
