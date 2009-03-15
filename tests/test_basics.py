@@ -1,4 +1,4 @@
-from PyDy import ReferenceFrame, dot, cross, UnitVector, identify, express
+from pydy import ReferenceFrame, dot, cross, UnitVector, identify, express
 from sympy import symbols, S, Symbol, sin, cos, Matrix, eye, pprint
 import numpy as N
 A = ReferenceFrame('A')

@@ -1,4 +1,4 @@
-from PyDy import ReferenceFrame, cross
+from pydy import ReferenceFrame, cross
 from sympy import symbols, Function
 
 g, r1, r2, t = symbols("g r1 r2 t")
