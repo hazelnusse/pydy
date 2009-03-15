@@ -8,6 +8,13 @@ e3 = UnitVector(A, 3)
 #zero = UnitVector(A, 0)
 zero = 0
 
+def test_Mul_order():
+    assert e1*e2 == e1*e2
+    assert e1*e2 != e2*e1
+
+    assert e2*e1*e3 == e2*e1*e3
+    assert e2*e1*e3 != e3*e2*e1
+
 def eq(a, b, eps=1e-8):
     return abs(a-b) < eps
 

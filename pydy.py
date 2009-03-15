@@ -1,5 +1,5 @@
 import numpy as N
-from sympy import Symbol, Basic, Mul, Pow, Matrix, sin, cos, S, eye
+from sympy import Symbol, Basic, Mul, Pow, Matrix, sin, cos, S, eye, Add
 e1 = Matrix([1, 0, 0])
 e2 = Matrix([0, 1, 0])
 e3 = Matrix([0, 0, 1])
@@ -12,6 +12,10 @@ zero = Matrix([0, 0, 0])
 class UnitVector(Basic):
     """A standard unit vector  with a symbolic and a numeric representation"""
 
+    # XXX: UnitVector should be noncommutative in Mul, but currently it is
+    # probably commutative. However, we haven't found any case, where this
+    # actually fails, so until we find some, let's leave it as is and keep this
+    # in mind.
     def __init__(self, frame, i=0): #=-1,num=None):
         self.frame = frame    # Parent reference frame
         self.i = i
@@ -205,6 +209,13 @@ def dot(v1,v2):
 
 
 def identify(a):
+    """
+    Takes a Mul instance and parses it as
+
+    a = c * UnitVector() * UnitVector()
+
+    and returns c, v1, v2, where v1 and v2 are the UnitVectors.
+    """
     if isinstance(a, Mul):
         unit_vectors = []
         for b in a.args:
@@ -222,6 +233,32 @@ def identify(a):
 
     return a, None, None
 
+def identify_v1(a):
+    """
+    Takes a Mul instance and parses it as
+
+    a = c * UnitVector()
+
+    and returns c, v1 where v1 is the UnitVector.
+    """
+    if isinstance(a, UnitVector):
+        return S(1), a
+    elif isinstance(a, Mul):
+        unit_vectors = []
+        for b in a.args:
+            if isinstance(b, UnitVector):
+                unit_vectors.append(b)
+            if isinstance(b, Pow):
+                if isinstance(b.args[0], UnitVector):
+                    unit_vectors.append(b.args[0])
+                    unit_vectors.append(b.args[0])
+        if len(unit_vectors) == 1:
+            v1 = unit_vectors[0]
+            c = a.coeff(v1)
+            return c, v1
+
+    return a, None
+
 def express(v, frame):
     """
     Express "v" in the reference frame "frame".
@@ -234,7 +271,23 @@ def express(v, frame):
         for m in reversed(matrices):
             u = m*u
         return u[0]*frame[1] + u[1]*frame[2] + u[2]*frame[3]
+    elif isinstance(v, Add):
+        e = 0
+        for a in v.args:
+            c, v1 = identify_v1(a)
+            #print c, v1
+            if v1 is None:
+                pass
+            else:
+                e += c*express(v1, frame)
+        return e
+    elif isinstance(v, Mul):
+        c, v1 = identify_v1(v)
+        return c*express(v1, frame)
+    elif v == 0:
+        return v
     else:
+        #print "XXX", v
         raise NotImplementedError()
 
 def cross_vectors(u, v):
