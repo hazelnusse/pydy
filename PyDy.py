@@ -243,24 +243,19 @@ def cross_vectors(u, v):
     return c1, c2, c3
 
 def coeff(e, x):
+    """
+    Workaround the bug in sympy.
+    """
     r = e.coeff(x)
     if r is None:
+        #XXX this should never happen
         return S(0)
     else:
         return r
 
 def cross(v1, v2):
     if isinstance(v1, UnitVector) and isinstance(v2, UnitVector):
-        A = v1.frame
         B = v2.frame
-        matrices = A.get_rot_matrices(B)
-        # first vector as a list of 3 numbers in the "v2" inertial frame:
-        u = Matrix(v1.v['num'])
-        for m in matrices:
-            #print m
-            u = m*u
-        #print u
-        #print express(v1, B)
         u = express(v1, B)
         u1 = coeff(u, B[1])
         u2 = coeff(u, B[2])
