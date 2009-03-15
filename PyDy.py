@@ -182,7 +182,7 @@ class ReferenceFrame:
             return [eye(3)]
         result = []
         for i, f in enumerate(frames[:-1]):
-            result.append(f.transforms[frames[i+1]].T)
+            result.append(f.transforms[frames[i+1]])
         return result
 
 def dot(v1,v2):
@@ -226,10 +226,10 @@ def cross(v1, v2):
     B = v2.frame
     matrices = A.get_rot_matrices(B)
     # first vector as a list of 3 numbers in the "v2" inertial frame:
-    u = Matrix(v1.v['num']).T
-    for m in matrices:
+    u = Matrix(v1.v['num'])
+    for m in reversed(matrices):
         #print m
-        u *= m
+        u = m*u
     #print u
     # second vector:
     v = Matrix(v2.v['num'])
