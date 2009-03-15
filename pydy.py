@@ -163,12 +163,13 @@ class ReferenceFrame:
             i -= 1
 
             #print "r1, r2, i:", r1, r2, i
-            middle = r1[-i+1]
-            #print middle
-            r1 = r1[:-(i-1)]
+            if i - 1 == 0:
+                pass
+            else:
+                r1 = r1[:-(i-1)]
             r2 = r2[:-i]
             #print "stripped r1, r2:", r1, r2
-            # e.g.: r1 == [C, B]
+            # e.g.: r1 == [C, B, A]
             # r2 == [F, E, D]
             # middle == A
             return r1 + list(reversed(r2))
