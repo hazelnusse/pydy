@@ -66,7 +66,7 @@ def test_ReferenceFrame():
     B = A.rotate("B", 3, phi)
     assert B.transforms[A] is not None
 
-def test_cross_different_frames():
+def test_cross_different_frames1():
     q1, q2, q3 = symbols('q1 q2 q3')
     N = ReferenceFrame('N')
     A = N.rotate('A', 3, q1)
@@ -79,6 +79,14 @@ def test_cross_different_frames():
     assert cross(N[3], A[1]) == A[2]
     assert cross(N[3], A[2]) == -A[1]
     assert cross(N[3], A[3]) == 0
+
+def test_cross_different_frames2():
+    q1, q2, q3 = symbols('q1 q2 q3')
+    N = ReferenceFrame('N')
+    A = N.rotate('A', 3, q1)
+    assert cross(N[1], A[1]) == sin(q1)*A[3]
+    assert cross(N[1], A[2]) == cos(q1)*A[3]
+    assert cross(N[1], A[1] + A[2]) == sin(q1)*A[3] + cos(q1)*A[3]
 
 def test_get_frames_list1():
     q1, q2, q3 = symbols('q1 q2 q3')

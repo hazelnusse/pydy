@@ -222,19 +222,31 @@ def identify(a):
     return a, None, None
 
 def cross(v1, v2):
-    #return v1.cross(v2)
-    A = v1.frame
-    B = v2.frame
-    matrices = A.get_rot_matrices(B)
-    # first vector as a list of 3 numbers in the "v2" inertial frame:
-    u = Matrix(v1.v['num'])
-    for m in matrices:
-        #print m
-        u = m*u
-    #print u
-    # second vector:
-    v = Matrix(v2.v['num'])
-    c1 = u[1]*v[2] - u[2]*v[1]
-    c2 = -(u[0]*v[2] - u[2]*v[0])
-    c3 = u[0]*v[1] - u[1]*v[0]
-    return c1*B[1] + c2*B[2] + c3*B[3]
+    if isinstance(v1, UnitVector) and isinstance(v2, UnitVector):
+        A = v1.frame
+        B = v2.frame
+        matrices = A.get_rot_matrices(B)
+        # first vector as a list of 3 numbers in the "v2" inertial frame:
+        u = Matrix(v1.v['num'])
+        for m in matrices:
+            #print m
+            u = m*u
+        #print u
+        # second vector:
+        v = Matrix(v2.v['num'])
+        c1 = u[1]*v[2] - u[2]*v[1]
+        c2 = -(u[0]*v[2] - u[2]*v[0])
+        c3 = u[0]*v[1] - u[1]*v[0]
+        return c1*B[1] + c2*B[2] + c3*B[3]
+    else:
+        v1v2 = (v1*v2).expand()
+        #print v1v2.args
+        e = 0
+        for a in v1v2.args:
+            c, v1, v2 = identify(a)
+            #print c, v1, v2
+            if v1 is None or v2 is None:
+                pass
+            else:
+                e += c*cross(v1, v2)
+        return e
