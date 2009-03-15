@@ -1,17 +1,17 @@
 from PyDy import ReferenceFrame, cross
 from sympy import symbols, Function
 
-N = ReferenceFrame('N')
-A = ReferenceFrame('A')
-B = ReferenceFrame('B')
-C = ReferenceFrame('C')
-
 g, r1, r2, t = symbols("g r1 r2 t")
 q1 = Function("q1")(t)
 q2 = Function("q2")(t)
 q3 = Function("q3")(t)
 q4 = Function("q4")(t)
 q5 = Function("q5")(t)
+
+N = ReferenceFrame('N')
+A = N.rotate("A", 3, q3)
+B = A.rotate("B", 1, q4)
+C = B.rotate("C", 2, q5)
 
 #u3 = q3.diff(t)
 u3 = Function("u3")(t)
