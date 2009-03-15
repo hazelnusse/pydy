@@ -1,5 +1,5 @@
 from PyDy import ReferenceFrame, dot, cross, UnitVector, identify
-from sympy import symbols, S
+from sympy import symbols, S, Symbol
 import numpy as N
 e1 = UnitVector('A', 1)
 e2 = UnitVector('A', 2)
@@ -58,3 +58,9 @@ def test_identify():
     assert set(identify(A[1]*A[2])) == set((S(1), A[1], A[2]))
     assert set(identify(x*A[1]*A[2])) == set((x, A[1], A[2]))
     assert set(identify(x*A[1]*A[1])) == set((x, A[1], A[1]))
+
+def test_ReferenceFrame():
+    A = ReferenceFrame("A")
+    phi = Symbol("phi")
+    B = A.rotate("B", 1, phi)
+    assert B.matrix is not None

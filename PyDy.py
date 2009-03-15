@@ -1,5 +1,5 @@
 import numpy as N
-from sympy import Symbol, Basic, Mul, Pow
+from sympy import Symbol, Basic, Mul, Pow, Matrix, sin, cos
 e1 = N.array([1.0,0.0,0.0])
 e2 = N.array([0.0,1.0,0.0])
 e3 = N.array([0.0,0.0,1.0])
@@ -70,12 +70,22 @@ class UnitVector(Basic):
 
 class ReferenceFrame:
     """A standard reference frame with 3 dextral orthonormal vectors"""
-    def __init__(self,s):
+    def __init__(self, s, matrix=None):
         self.name = s
         self.triad = [UnitVector(s,i) for i in (1,2,3)]
+        self.matrix = matrix
 
     def __getitem__(self, i):
         return self.triad[i-1]
+
+    def rotate(self, name, axis, angle):
+        if axis == 1:
+            matrix = Matrix([
+                [1, 0, 0],
+                [0, cos(angle), -sin(angle)],
+                [0, sin(angle), cos(angle)],
+                ])
+        return ReferenceFrame(name, matrix)
 
 
 def dot(v1,v2):
@@ -114,6 +124,8 @@ def identify(a):
     return a, None, None
 
 def cross(v1,v2):
+    print v1
+    print v2
     return v1.cross(v2)
 
 
