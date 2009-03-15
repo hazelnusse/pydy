@@ -147,5 +147,5 @@ def test_get_rot_matrices():
     assert B.get_rot_matrices(B) == [eye(3)]
     assert B.get_rot_matrices(A) == [A_B]
     assert A.get_rot_matrices(B) == [B_A]
-    assert A.get_rot_matrices(C) == [B_A, C_B]
-    assert C.get_rot_matrices(A) == [B_C, A_B]
+    assert A.get_rot_matrices(C) == [C_B, B_A]
+    assert C.get_rot_matrices(A) == [A_B, B_C]
