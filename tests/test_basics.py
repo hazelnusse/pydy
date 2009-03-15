@@ -116,7 +116,7 @@ def test_get_frames_list3():
     assert C.get_frames_list(F) == [C, B, A, D, E, F]
     assert F.get_frames_list(C) == [F, E, D, A, B, C]
 
-def _test_get_rot_matrices():
+def test_get_rot_matrices():
     q1, q2, q3 = symbols('q1 q2 q3')
     N = ReferenceFrame('N')
     A = N.rotate('A', 3, q1)
@@ -147,4 +147,4 @@ def _test_get_rot_matrices():
     assert B.get_rot_matrices(A) == [B_A]
     assert A.get_rot_matrices(B) == [A_B]
     assert A.get_rot_matrices(C) == [A_B, B_C]
-    #assert C.get_rot_matrices(A) == [C_B, B_A]
+    assert C.get_rot_matrices(A) == [C_B, B_A]
