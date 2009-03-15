@@ -122,14 +122,14 @@ class ReferenceFrame:
     def __repr__(self):
         return "<Frame %s>" % self.name
 
-    def get_rot_matrices(self, frame):
+    def get_frames_list(self, frame):
         """
-        Returns a list of matrices to get from self to frame.
+        Returns a list of frames from "self" to "frame", including both.
         """
         if self == frame:
-            return [eye(3)]
+            return [self]
         elif self.transforms.has_key(frame):
-            return [self.transforms[frame].T]
+            return [self, frame]
         else:
             # Let's explain this algorithm on the following example:
             #
@@ -158,17 +158,27 @@ class ReferenceFrame:
                     # now r1 == [C, B, A] and r2 == [E, D, A]
                     #print "r2", r2
                     frames = r1 + list(reversed(r2)) + [frame]
-                    result = []
-                    for i, f in enumerate(frames[:-1]):
-                        result.append(f.transforms[frames[i+1]].T)
-                    return result
+                    return frames
                 else:
                     r2.append(a)
                     a = a.parent
 
-            raise Exception("The get_rot_matrices algorithm failed.")
+            raise Exception("The get_frames_list algorithm failed.")
 
-
+    def get_rot_matrices(self, frame):
+        """
+        Returns a list of matrices to get from self to frame.
+        """
+        if self == frame:
+            return [eye(3)]
+        elif self.transforms.has_key(frame):
+            return [self.transforms[frame].T]
+        else:
+            frames = self.get_frames_list(frame)
+            result = []
+            for i, f in enumerate(frames[:-1]):
+                result.append(f.transforms[frames[i+1]].T)
+            return result
 
 def dot(v1,v2):
     if isinstance(v1, UnitVector) and isinstance(v2, UnitVector):

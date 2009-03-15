@@ -80,6 +80,38 @@ def test_cross_different_frames():
     assert cross(N[3], A[2]) == -A[1]
     assert cross(N[3], A[3]) == 0
 
+def test_get_frames_list1():
+    q1, q2, q3 = symbols('q1 q2 q3')
+    N = ReferenceFrame('N')
+    A = N.rotate('A', 3, q1)
+    B = A.rotate('B', 1, q2)
+    C = B.rotate('C', 2, q3)
+
+    assert B.get_frames_list(A) == [B, A]
+    assert A.get_frames_list(B) == [A, B]
+    assert A.get_frames_list(C) == [A, B, C]
+
+def test_get_frames_list2():
+    q1, q2, q3 = symbols('q1 q2 q3')
+    N = ReferenceFrame('N')
+    A = N.rotate('A', 3, q1)
+    B = A.rotate('B', 1, q2)
+    C = A.rotate('C', 2, q3)
+
+    assert B.get_frames_list(C) == [B, A, C]
+
+def test_get_frames_list3():
+    q1, q2, q3 = symbols('q1 q2 q3')
+    N = ReferenceFrame('N')
+    A = N.rotate('A', 3, q1)
+    B = A.rotate('B', 1, q2)
+    C = B.rotate('C', 2, q3)
+    D = A.rotate('D', 2, q3)
+    E = D.rotate('E', 2, q3)
+    F = E.rotate('F', 2, q3)
+
+    assert C.get_frames_list(F) == [C, B, A, D, E, F]
+
 def test_get_rot_matrices():
     q1, q2, q3 = symbols('q1 q2 q3')
     N = ReferenceFrame('N')
@@ -102,12 +134,13 @@ def test_get_rot_matrices():
         [0, 1, 0],
         [-sin(q3), 0, cos(q3)]
         ])
-    #B_C = Matrix([
-    #    [cos(q3), 0, -sin(q3)],
-    #    [0, 1, 0],
-    #    [sin(q3), 0, cos(q3)]
-    #    ])
+    C_B = Matrix([
+        [cos(q3), 0, -sin(q3)],
+        [0, 1, 0],
+        [sin(q3), 0, cos(q3)]
+        ])
 
     assert B.get_rot_matrices(A) == [B_A]
     assert A.get_rot_matrices(B) == [A_B]
     assert A.get_rot_matrices(C) == [A_B, B_C]
+    #assert C.get_rot_matrices(A) == [C_B, B_A]
