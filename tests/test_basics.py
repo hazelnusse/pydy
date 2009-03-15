@@ -256,8 +256,15 @@ def test_cross2():
     q1, q2, q3 = symbols('q1 q2 q3')
     N = ReferenceFrame('N')
     A = N.rotate('A', 3, q1)
+    B = A.rotate('A', 1, q2)
     for i in range(1, 4):
         for j in range(1, 4):
             a = cross(N[i], A[j])
             b = express(cross(A[j], N[i]), A)
+            assert a == -b
+
+    for i in range(1, 4):
+        for j in range(1, 4):
+            a = cross(N[i], B[j])
+            b = express(cross(B[j], N[i]), B)
             assert a == -b
