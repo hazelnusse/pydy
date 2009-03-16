@@ -243,20 +243,19 @@ ZERO = FR + FRSTAR
 
 print "-"*80
 subs_dict = {
-    r1:1,
-    r2:0,
-    m:1,
-    g:1,
-    I:1,
-    J:1,
-    q4:pi/6,
-    g:1,
-    u3:1,
-    u4:0,
-    u5:2,
+    r1:1.0,
+    r2:0.1,
+    m:2.,
+    g:1.0,
+    I:8.0,
+    J:4.0,
+    q4:pi/6.,
+    u3:0.5,
+    u4:0.1,
+    u5:10.0,
     }
 
-#E = ZERO.subs(subs_dict)
+E = ZERO.subs(subs_dict)
 #print E
 #stop
 
