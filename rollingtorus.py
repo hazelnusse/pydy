@@ -276,3 +276,78 @@ print r
 print "u3p = ", r[u3p]
 print "u4p = ", r[u4p]
 print "u5p = ", r[u5p]
+u3p, u4p, u5p = symbols("u3p u4p u5p")
+subs_dict = {
+    u3.diff(t): u3p,
+    u4.diff(t): u4p,
+    u5.diff(t): u5p,
+    r1:1,
+    r2:0,
+    m:1,
+    g:1,
+    I:1,
+    J:1,
+    }
+e1 = EOM1.subs(subs_dict)
+e2 = EOM2.subs(subs_dict)
+e3 = EOM3.subs(subs_dict)
+print "-"*80
+print e1
+print e2
+print e3
+
+r = solve([e1, e2, e3], [u3p, u4p, u5p])
+print "Solution:"
+print r
+print "_"*80
+print "Integrating the equations of motion"
+def eval_sol(sol, y):
+    r = sol.subs({
+        q3: y[2],
+        q4: y[3],
+        q5: y[4],
+        u3: y[5],
+        u4: y[6],
+        u5: y[7],
+        })
+    return lambdify(y, r)
+
+y = symbols("q1 q2 q3 q4 q5 u3 u4 u5")
+u3p = eval_sol(r[u3p], y)
+u4p = eval_sol(r[u4p], y)
+u5p = eval_sol(r[u5p], y)
+
+from solver import rk4int
+def derivs(y, x):
+    q1, q2, q3, q4, q5, u3, u4, u5 = y
+    r1 = 1.0
+    r2 = 0.
+    return array([
+        -cos(q3)*(r1-r2*cos(q4))*u5, #q1'
+        -sin(q3)*(r1-r2*cos(q4))*u5, #q2'
+        u3, #q3'
+        u4, #q4'
+        u5, #q5'
+        u3p(*y), #u3'
+        u4p(*y), #u4'
+        u5p(*y), #u5'
+        ])
+
+y0 = (0, 0, 0, pi/10, 0, 1.0, -0.1, 3.)
+#y0 = (0., 0., 0., 0., 0., 0., 0., 3.)
+#y0 = (0., 0., 0., 0., 0., 0., 0.2, 3.)
+t = arange(0., 10, 0.01)
+print "start"
+sol = rk4int(derivs, y0, t, h=0.01)
+print "finished"
+from pylab import plot, show, legend
+plot(t, sol[:, 0], "-", lw=2, label="q1 (x)")
+plot(t, sol[:, 1], "-", lw=2, label="q2 (y)")
+plot(t, sol[:, 2], "-", label="q3")
+plot(t, sol[:, 3], "-", label="q4")
+plot(t, sol[:, 4], "-", label="q5")
+plot(t, sol[:, 5], "--", label="u3")
+plot(t, sol[:, 6], "--", label="u4")
+plot(t, sol[:, 7], "--", label="u5")
+legend()
+show()
