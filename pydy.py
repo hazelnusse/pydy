@@ -66,7 +66,8 @@ class ReferenceFrame:
         self.parent = frame
         self.W = {}
         if omega != None:
-            self.set_omega(omega,self.parent)
+            self.set_omega(omega, self.parent)
+            self.parent.set_omega(-omega, self, force=True)
 
         if frame is not None:
             self.append_transform(frame, matrix)
@@ -194,11 +195,26 @@ class ReferenceFrame:
 
         E.g. it returns W_A_N, where A=self, N=frame
         """
+        
         if self.W.has_key(frame):
             return self.W[frame]
         else:
             #print self.W
+            return sum(self.get_omega_list(frame))
             raise NotImplementedError()
+
+    def get_omega_list(self, frame):
+        """
+        Returns a list of simple angular velocities from self to frame.
+        """
+        frames = self.get_frames_list(frame)
+        if frames == [self]:
+            return [S(0)]
+        result = []
+        for i, f in enumerate(frames[:-1]):
+            result.append(f.W[frames[i+1]])
+        return result
+
 
 def dot(v1,v2):
     if isinstance(v1, UnitVector) and isinstance(v2, UnitVector):
