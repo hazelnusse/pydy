@@ -68,35 +68,13 @@ qdots = [q3.diff(t), q4.diff(t), q5.diff(t), au1, au2, au3]
 us = [u3, u4, u5, au1, au2, au3]
 
 gen_speeds = dict(zip(qdots, us))
-#gen_speeds = {q3.diff(t): u3, q4.diff(t): u4, q5.diff(t): u5, au1: au1, \
-#        au2: au2, au3: au3}
 C.set_omega(C.get_omega(N).subs(gen_speeds), N, force = True)
-
-#print C.get_omega(N)
-#stop
 
 WC = coeff(C.get_omega(N), us)
 
 print WC
 stop
 
-W3C = coeff(C.get_omega(N), u3)
-#print "W3C> = ", W3C
-
-W4C = coeff(C.get_omega(N), u4)
-#print "W4C> = ", W4C
-
-W5C = coeff(C.get_omega(N), u5)
-#print "W5C> = ", W5C
-
-WAU1C = coeff(C.get_omega(N), au1)
-#print "WAU1C> = ", WAU1C
-
-WAU2C = coeff(C.get_omega(N), au2)
-#print "WAU2C> = ", WAU2C
-
-WAU3C = coeff(C.get_omega(N), au3)
-#print "WAU3C> = ", WAU3C
 
 V3CO = coeff(V_CO_N, u3)
 #print "V3CO> = ", V3CO

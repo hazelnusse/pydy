@@ -51,6 +51,20 @@ class UnitVector(Basic):
     def _sympystr_(self):
         return str(self.v['sym']) + ">"
 
+
+class Particle:
+    def __init__(self, s, m):
+        self.mass = m
+        self.name = s
+
+
+class RigidBody(ReferenceFrame, Particle):
+    def __init__(self, s, matrix=None, frame=None, omega=None, m, I):
+        ReferenceFrame.__init__(self, s, Matrix=None, frame=None, omega=None)
+        Particle.__init__(self,s+'O', m)
+        self.inertia = I
+
+
 class ReferenceFrame:
     """A standard reference frame with 3 dextral orthonormal vectors"""
 
