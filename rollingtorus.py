@@ -1,6 +1,7 @@
 from pydy import ReferenceFrame, cross, dot, dt, express, expression2vector, \
     coeff
-from sympy import symbols, Function, S, solve, simplify, collect, sin, cos, pi
+from sympy import symbols, Function, S, solve, simplify, \
+        collect, sin, cos, pi, Matrix
 
 m, g, r1, r2, t = symbols("m, g r1 r2 t")
 au1, au2, au3 = symbols("au1 au2 au3")
@@ -46,17 +47,13 @@ u3 = Function("u3")(t)
 u4 = Function("u4")(t)
 u5 = Function("u5")(t)
 
+u3p = Function("u3p")(t)
+u4p = Function("u4p")(t)
+u5p = Function("u5p")(t)
+
 P_NC_CO = r2*A[3] - r1*B[3]
 #print "P_NC_CO> = ", P_NC_CO
 P_NO_CO = q1*N[1] + q2*N[2] + P_NC_CO
-#print "P_NO_CO> = ", P_NO_CO
-#A.set_omega(u3*A[3], N)
-#print "W_A_N> = ", A.get_omega(N)
-#B.set_omega(A.get_omega(N) + u4*A[1], N)
-#print "W_B_N> = ", B.get_omega(N)
-
-#C.set_omega(B.get_omega(N) + u5*B[2], N)
-#print "W_C_N> = ", C.get_omega(N)
 
 V_CN_N = au1*A[1] + au2*A[2] + au3*A[3]
 #print "V_CN_N> = ", V_CN_N
@@ -64,82 +61,48 @@ V_CN_N = au1*A[1] + au2*A[2] + au3*A[3]
 V_CO_N = V_CN_N + cross(C.get_omega(N), P_NC_CO)
 #print "V_CO_N> = ", V_CO_N
 
-qdots = [q3.diff(t), q4.diff(t), q5.diff(t), au1, au2, au3]
-us = [u3, u4, u5, au1, au2, au3]
+qdots = [q3.diff(t), q4.diff(t), q5.diff(t), au1, au2, au3, u3.diff(t), \
+        u4.diff(t), u5.diff(t)]
+us = [u3, u4, u5, au1, au2, au3, u3p, u4p, u5p]
 
 gen_speeds = dict(zip(qdots, us))
 C.set_omega(C.get_omega(N).subs(gen_speeds), N, force = True)
 
-WC = coeff(C.get_omega(N), us)
-
-print WC
-stop
+V_CO_N = V_CO_N.subs(gen_speeds)
+V_CN_N = V_CN_N.subs(gen_speeds)
 
 
-V3CO = coeff(V_CO_N, u3)
-#print "V3CO> = ", V3CO
+WC = coeff(C.get_omega(N), us[:-3])
+VC = coeff(V_CO_N, us[:-3])
+VCN = coeff(V_CN_N, us[:-3])
 
-V4CO = coeff(V_CO_N, u4)
-#print "V4CO> = ", V4CO
-
-V5CO = coeff(V_CO_N, u5)
-#print "V5CO> = ", V5CO
-
-VAU1CO = coeff(V_CO_N, au1)
-#print "VAU1CO> = ", VAU1CO
-
-VAU2CO = coeff(V_CO_N, au2)
-#print "VAU2CO> = ", VAU2CO
-
-VAU3CO = coeff(V_CO_N, au3)
-#print "VAU3CO> = ", VAU3CO
-
-V3CN = coeff(V_CN_N, u3)
-#print "V3CN> = ", V3CN
-
-V4CN = coeff(V_CN_N, u4)
-#print "V4CN> = ", V4CN
-
-V5CN = coeff(V_CN_N, u5)
-#print "V5CN> = ", V5CN
-
-VAU1CN = coeff(V_CN_N, au1)
-#print "VAU1CN> = ", VAU1CN
-
-VAU2CN = coeff(V_CN_N, au2)
-#print "VAU2CN> = ", VAU2CN
-
-VAU3CN = coeff(V_CN_N, au3)
-#print "VAU3CN> = ", VAU3CN
+#print WC
+#print VC
+#print VCN
+#stop
 
 FORCE_CO = g*m*A[3]
 #print "FORCE_CO> = ", FORCE_CO
 
 FORCE_CN = cf1*A[1] + cf2*A[2] + cf3*A[3]
-#print "FORCE_CN> = ", FORCE_CN
 
-#print "Need to implement a dt() function to form acceleration of CO and \
-        #        angular acceleration of C"
-
+# Set the auxilliary generalized speeds to zero before forming the 
+# acceleration of CO in N  and angular acceleration of C in N.
 V_CO_N = V_CO_N.subs({au1: 0, au2: 0, au3: 0})
 C.set_omega(C.get_omega(N).subs({au1: 0, au2: 0, au3: 0}), N, force=True)
 
 A_CO_N = dt(V_CO_N, N, t)
-A_CO_N = A_CO_N.subs({q3.diff(t): u3, q4.diff(t): u4, q5.diff(t): u5, \
-        u3.diff(t): u3p, u4.diff(t): u4p, u5.diff(t): u5p})
-#A_CO_N = express(A_CO_N, B)
-#e = expression2vector(A_CO_N, B)
-#print "b1> ", e[0]
-#print "b2> ", e[1]
-#print "b3> ", e[2]
-#stop
-#print "A_CO_N> = ", A_CO_N
-#stop
+A_CO_N = A_CO_N.subs(gen_speeds)
+A_CO_N = express(A_CO_N,B)
+
 ALF_C_N = dt(C.get_omega(N), N, t)
-ALF_C_N = ALF_C_N.subs({q3.diff(t): u3, q4.diff(t): u4, q5.diff(t): u5, \
-        u3.diff(t): u3p, u4.diff(t): u4p, u5.diff(t): u5p})
-#ALF_C_N = express(ALF_C_N, B)
-A_CO_N = A_CO_N.subs({q3.diff(t): u3, q4.diff(t): u4, q5.diff(t): u5})
+ALF_C_N = ALF_C_N.subs(gen_speeds)
+ALF_C_N = express(ALF_C_N,B)
+
+#print "A_CO_N> * B[1]= ", dot(A_CO_N,B[1])
+#print "A_CO_N> * B[2]= ", dot(A_CO_N,B[3])
+#print "A_CO_N> * B[3]= ", dot(A_CO_N,B[3])
+
 #print "ALF_C_N> = ", ALF_C_N
 #stop
 
@@ -152,55 +115,90 @@ A_CO_N = A_CO_N.subs({q3.diff(t): u3, q4.diff(t): u4, q5.diff(t): u5})
 
 RSTAR_C = -m*A_CO_N
 #print "RSTAR_C> = ", RSTAR_C
+#print "RSTAR_C> * B[1]= ", dot(RSTAR_C,B[1])
+#print "RSTAR_C> * B[2]= ", dot(RSTAR_C,B[2])
+#print "RSTAR_C> * B[3]= ", dot(RSTAR_C,B[3])
 
+#stop
 I_C_CO = S(0)
 I_alfa = dot(ALF_C_N, J*B[1])*B[1] + dot(ALF_C_N, I*B[2])*B[2] + \
         dot(ALF_C_N, J*B[3])*B[3]
 #print "I_alfa", I_alfa
+#print "I_alfa * B[1]", dot(I_alfa, B[1])
+#print "I_alfa * B[2]", dot(I_alfa, B[2])
+#print "I_alfa * B[3]", dot(I_alfa, B[3])
+# above matches autolev results
 #stop
 
 W_C_N = C.get_omega(N)
+#print "W_C_N = ", W_C_N
+#stop
 I_omega = dot(J*B[1], W_C_N)*B[1] + dot(I*B[2], W_C_N)*B[2] + \
         dot(J*B[3], W_C_N)*B[3]
+
+#print "I_omega * B[1]: ", dot(I_omega,B[1])
+#print "I_omega * B[2]: ", dot(I_omega,B[2])
+#print "I_omega * B[3]: ", dot(I_omega,B[3])
+# Above matches autlev code
+#stop
+
+
+
 #TSTAR_C = -dot(ALF_C_N, I_C_CO) - cross(W_C_N, dot(I_C_CO, W_C_N))
 #print "cross(W_C_N, I_omega)*B[1]", dot(cross(W_C_N, I_omega),B[1])
 #print "cross(W_C_N, I_omega)*B[2]", dot(cross(W_C_N, I_omega),B[2])
 #print "cross(W_C_N, I_omega)*B[3]", dot(cross(W_C_N, I_omega),B[3])
 
 #stop
+#print "w x (I * w) * B[1]: ", dot(cross(W_C_N, I_omega), B[1])
+#print "w x (I * w) * B[2]: ", dot(cross(W_C_N, I_omega), B[2])
+#print "w x (I * w) * B[3]: ", dot(cross(W_C_N, I_omega), B[3])
+# above code matches with Autolev
+#stop
+
 TSTAR_C = -I_alfa - cross(W_C_N, I_omega)
 #print "TSTAR_C> = ", TSTAR_C
 #stop
 
-F3 = dot(V3CO, FORCE_CO) + dot(V3CN, FORCE_CN)
-F4 = dot(V4CO, FORCE_CO) + dot(V4CN, FORCE_CN)
-F5 = dot(V5CO, FORCE_CO) + dot(V5CN, FORCE_CN)
-F6 = dot(VAU1CO, FORCE_CO) + dot(VAU1CN, FORCE_CN)
-F7 = dot(VAU2CO, FORCE_CO) + dot(VAU2CN, FORCE_CN)
-F8 = dot(VAU3CO, FORCE_CO) + dot(VAU3CN, FORCE_CN)
-#print "VAU3CO", VAU3CO
-#print FORCE_CO
-#print dot(VAU3CO, FORCE_CO)
+#print "VC = ", VC
+#print "VCN = ", VCN
 #stop
 
-#print "F3 = ", F3
-#print "F4 = ", F4
-#print "F5 = ", F5
-#print "F6 = ", F6
-#print "F7 = ", F7
-#print "F8 = ", F8
-
-#print "1", V3CO
-#print "2", RSTAR_C
-#print dot(V3CO, RSTAR_C)
+FR = Matrix([dot(ViCO, FORCE_CO) for ViCO in VC]) + \
+        Matrix([dot(ViCN, FORCE_CN) for ViCN in VCN])
+#print "FR_CO = ", FR_CO
+#print "FR_CN = ", FR_CN
+#print "FR = \n", FR
+# above code matches autolev
 #stop
-RSTAR_C = RSTAR_C.expand()
-F3S = dot(W3C, TSTAR_C) + dot(V3CO, RSTAR_C)
-F4S = dot(W4C, TSTAR_C) + dot(V4CO, RSTAR_C)
-F5S = dot(W5C, TSTAR_C) + dot(V5CO, RSTAR_C)
-F6S = dot(WAU1C, TSTAR_C) + dot(VAU1CO, RSTAR_C)
-F7S = dot(WAU2C, TSTAR_C) + dot(VAU2CO, RSTAR_C)
-F8S = dot(WAU3C, TSTAR_C) + dot(VAU3CO, RSTAR_C)
+
+
+#RSTAR_C = RSTAR_C.expand()
+
+#print "dot(WC3>, TSTAR_C) = ",dot(WC[0],TSTAR_C)
+#stop
+#print dot(VC[0],TSTAR_C)
+#stop
+
+FRSTAR = Matrix([dot(WiC, TSTAR_C) for WiC in WC]) + \
+        Matrix([dot(ViCO, RSTAR_C) for ViCO in VC])
+
+print "FRSTAR = \n", FRSTAR
+#stop
+#print "F3S = ", FRSTAR[0]
+#stop
+#print "F4S = ", FRSTAR[1]
+#print "F5S = ", FRSTAR[2]
+#print "F6S = ", FRSTAR[3]
+#print "F7S = ", FRSTAR[4]
+#print "F8S = ", FRSTAR[5]
+#stop
+#F3S = dot(W3C, TSTAR_C) + dot(V3CO, RSTAR_C)
+#F4S = dot(W4C, TSTAR_C) + dot(V4CO, RSTAR_C)
+#F5S = dot(W5C, TSTAR_C) + dot(V5CO, RSTAR_C)
+#F6S = dot(WAU1C, TSTAR_C) + dot(VAU1CO, RSTAR_C)
+#F7S = dot(WAU2C, TSTAR_C) + dot(VAU2CO, RSTAR_C)
+#F8S = dot(WAU3C, TSTAR_C) + dot(VAU3CO, RSTAR_C)
 
 #print "F3S = ", F3S
 #print "F4S = ", F4S
@@ -221,12 +219,14 @@ F8S = dot(WAU3C, TSTAR_C) + dot(VAU3CO, RSTAR_C)
 #print eval(F8S)
 #stop
 
-EOM1 = F3 + F3S
-EOM2 = F4 + F4S
-EOM3 = F5 + F5S
-EOM4 = F6 + F6S
-EOM5 = F7 + F7S
-EOM6 = F8 + F8S
+
+ZERO = FR + FRSTAR
+#EOM1 = F3 + F3S
+#EOM2 = F4 + F4S
+#EOM3 = F5 + F5S
+#EOM4 = F6 + F6S
+#EOM5 = F7 + F7S
+#EOM6 = F8 + F8S
 
 
 #print "-"*80
@@ -237,18 +237,25 @@ EOM6 = F8 + F8S
 #print "eom5 = ", EOM5
 #print "eom6 = ", EOM6
 
-#print "-"*80
-#subs_dict = {
-#    u3.diff(t): u3p,
-#    u4.diff(t): u4p,
-#    u5.diff(t): u5p,
-#    r1:1,
-#    r2:0,
-#    m:1,
-#    g:1,
-#    I:1,
-#    J:1,
-#    }
+print "-"*80
+subs_dict = {
+    r1:1,
+    r2:0,
+    m:1,
+    g:1,
+    I:1,
+    J:1,
+    q4:pi/6,
+    g:1,
+    u3:1,
+    u4:0,
+    u5:2,
+    }
+
+E = ZERO.subs(subs_dict)
+print E
+stop
+
 #e1 = EOM1.subs(subs_dict)
 #e2 = EOM2.subs(subs_dict)
 #e3 = EOM3.subs(subs_dict)

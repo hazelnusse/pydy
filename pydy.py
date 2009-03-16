@@ -58,11 +58,6 @@ class Particle:
         self.name = s
 
 
-class RigidBody(ReferenceFrame, Particle):
-    def __init__(self, s, matrix=None, frame=None, omega=None, m, I):
-        ReferenceFrame.__init__(self, s, Matrix=None, frame=None, omega=None)
-        Particle.__init__(self,s+'O', m)
-        self.inertia = I
 
 
 class ReferenceFrame:
@@ -228,6 +223,13 @@ class ReferenceFrame:
         for i, f in enumerate(frames[:-1]):
             result.append(f.W[frames[i+1]])
         return result
+
+
+class RigidBody(ReferenceFrame, Particle):
+    def __init__(self, s, matrix=None, frame=None, omega=None, m=0, I=0):
+        ReferenceFrame.__init__(self, s, Matrix=None, frame=None, omega=None)
+        Particle.__init__(self,s+'O', m)
+        self.inertia = I
 
 
 def dot(v1,v2):
@@ -433,8 +435,13 @@ def dt(u, frame, t):
         r = 0
         for a in u.args:
             c, v = identify_v1(a)
+            #print "c = ", c, "type(c)", type(c), "v = ",v, "type(v)", type(v)
             dc_dt = c.diff(t)
             W = v.frame.get_omega(frame)
+            #print "W = ", W, "type(W):", type(W)
+            if W == 0:
+                r += dc_dt * v #print "W=0"
+                continue
             #print "dc_dt*v + W x v", dc_dt, v, W, v, cross(W, v)
             r += dc_dt * v + c*cross(W, v)
         r = r.expand()
