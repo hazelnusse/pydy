@@ -50,12 +50,12 @@ P_NC_CO = r2*A[3] - r1*B[3]
 #print "P_NC_CO> = ", P_NC_CO
 P_NO_CO = q1*N[1] + q2*N[2] + P_NC_CO
 #print "P_NO_CO> = ", P_NO_CO
-A.set_omega(u3*A[3], N)
+#A.set_omega(u3*A[3], N)
 #print "W_A_N> = ", A.get_omega(N)
-B.set_omega(A.get_omega(N) + u4*A[1], N)
+#B.set_omega(A.get_omega(N) + u4*A[1], N)
 #print "W_B_N> = ", B.get_omega(N)
 
-C.set_omega(B.get_omega(N) + u5*B[2], N)
+#C.set_omega(B.get_omega(N) + u5*B[2], N)
 #print "W_C_N> = ", C.get_omega(N)
 
 V_CN_N = au1*A[1] + au2*A[2] + au3*A[3]
@@ -63,6 +63,22 @@ V_CN_N = au1*A[1] + au2*A[2] + au3*A[3]
 
 V_CO_N = V_CN_N + cross(C.get_omega(N), P_NC_CO)
 #print "V_CO_N> = ", V_CO_N
+
+qdots = [q3.diff(t), q4.diff(t), q5.diff(t), au1, au2, au3]
+us = [u3, u4, u5, au1, au2, au3]
+
+gen_speeds = dict(zip(qdots, us))
+#gen_speeds = {q3.diff(t): u3, q4.diff(t): u4, q5.diff(t): u5, au1: au1, \
+#        au2: au2, au3: au3}
+C.set_omega(C.get_omega(N).subs(gen_speeds), N, force = True)
+
+#print C.get_omega(N)
+#stop
+
+WC = coeff(C.get_omega(N), us)
+
+print WC
+stop
 
 W3C = coeff(C.get_omega(N), u3)
 #print "W3C> = ", W3C

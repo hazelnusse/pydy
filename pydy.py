@@ -1,4 +1,4 @@
-import numpy as N
+#import numpy as N
 from sympy import Symbol, Basic, Mul, Pow, Matrix, sin, cos, S, eye, Add, \
         trigsimp
 e1 = Matrix([1, 0, 0])
@@ -195,7 +195,7 @@ class ReferenceFrame:
 
         E.g. it returns W_A_N, where A=self, N=frame
         """
-        
+
         if self.W.has_key(frame):
             return self.W[frame]
         else:
@@ -354,12 +354,21 @@ def coeff(e, x):
     """
     Workaround the bug in sympy.
     """
-    r = e.coeff(x)
-    if r is None:
-        #XXX this should never happen
-        return S(0)
-    else:
+    if isinstance(x, list):
+        r = []
+        for xi in x:
+            ri = e.coeff(xi)
+            if ri is None:
+                r.append(S(0))
+            else:
+                r.append(ri)
         return r
+    else:
+        r = e.coeff(x)
+        if r is None:
+            return S(0)
+        else:
+            return r
 
 def cross(v1, v2):
     if isinstance(v1, UnitVector) and isinstance(v2, UnitVector):

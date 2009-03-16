@@ -1,4 +1,4 @@
-from pydy import ReferenceFrame, dot, cross, UnitVector, identify, express
+from pydy import ReferenceFrame, dot, cross, UnitVector, identify, express, coeff
 from sympy import symbols, S, Symbol, sin, cos, Matrix, eye, pprint
 import numpy as N
 A = ReferenceFrame('A')
@@ -57,6 +57,7 @@ def test_coeff():
     assert e.coeff(y) == 1
     assert e.coeff(A[1]) == x
     assert e.coeff(A[2]) == 1
+    assert coeff(e,[x,y]) == [A[1]+1, 1]
 
 def test_identify():
     x = symbols("x")
