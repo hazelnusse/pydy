@@ -63,6 +63,7 @@ class ReferenceFrame:
         self.name = s
         self.triad = [UnitVector(self, i) for i in (1,2,3)]
         self.transforms = {}
+        self.W = {}
         self.parent = frame
         if frame is not None:
             self.append_transform(frame, matrix)
@@ -168,6 +169,27 @@ class ReferenceFrame:
             result.append(f.transforms[frames[i+1]])
         result.reverse()
         return result
+
+    def set_omega(self, W, frame, force=False):
+        """
+        Sets the angular velocity Omega with respect to the frame "frame".
+        """
+        if self.W == {} or force:
+            self.W[frame] = W
+        else:
+            raise ValueError("set_omaga has already been called.")
+
+    def get_omega(self, frame):
+        """
+        Returns the angular velocity Omega with respect to the frame "frame".
+
+        E.g. it returns W_A_N, where A=self, N=frame
+        """
+        if self.W.has_key(frame):
+            return self.W[frame]
+        else:
+            #print self.W
+            raise NotImplementedError()
 
 def dot(v1,v2):
     if isinstance(v1, UnitVector) and isinstance(v2, UnitVector):
@@ -299,14 +321,23 @@ def cross(v1, v2):
         return c1*B[1] + c2*B[2] + c3*B[3]
     else:
         v1v2 = (v1*v2).expand()
-        e = 0
-        for a in v1v2.args:
-            c, v1, v2 = identify(a)
+        if isinstance(v1v2, Add):
+            e = 0
+            for a in v1v2.args:
+                c, v1, v2 = identify(a)
+                if v1 is None or v2 is None:
+                    pass
+                else:
+                    e += c*cross(v1, v2)
+            return e
+        elif isinstance(v1v2, Mul):
+            c, v1, v2 = identify(v1v2)
             if v1 is None or v2 is None:
-                pass
+                raise NotImplementedError()
             else:
-                e += c*cross(v1, v2)
-        return e
+                e = c*cross(v1, v2)
+            return e
+        raise NotImplementedError()
 
 def expression2vector(e, frame):
     """
@@ -322,3 +353,25 @@ def vector2expression(u, frame):
     Converts a coefficients vector to a sympy expression in the frame "frame".
     """
     return u[0]*frame[1] + u[1]*frame[2] + u[2]*frame[3]
+
+def dt(u, frame, t):
+    if isinstance(u, Add):
+        r = 0
+        for a in u.args:
+            c, v = identify_v1(a)
+            dc_dt = c.diff(t)
+            W = v.frame.get_omega(frame)
+            #print "dc_dt*v + W x v", dc_dt, v, W, v, cross(W, v)
+            r += dc_dt * v + c*cross(W, v)
+        r = r.expand()
+        return r
+
+    elif isinstance(u, Mul):
+        c, v = identify_v1(u)
+        dc_dt = c.diff(t)
+        W = v.frame.get_omega(frame)
+        #print "W", W
+        r = dc_dt * v + c*cross(W, v)
+        return r
+    else:
+        raise NotImplementedError()

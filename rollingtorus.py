@@ -1,4 +1,4 @@
-from pydy import ReferenceFrame, cross, dot
+from pydy import ReferenceFrame, cross, dot, dt, express
 from sympy import symbols, Function, S
 
 m, g, r1, r2, t = symbols("m, g r1 r2 t")
@@ -26,27 +26,27 @@ P_NC_CO = r2*A[3] - r1*B[3]
 print "P_NC_CO> = ", P_NC_CO
 P_NO_CO = q1*N[1] + q2*N[2] + P_NC_CO
 print "P_NO_CO> = ", P_NO_CO
-W_A_N = u3*A[3]
-print "W_A_N> = ", W_A_N
-W_B_N = W_A_N + u4*A[1]
-print "W_B_N> = ", W_B_N
+A.set_omega(u3*A[3], N)
+print "W_A_N> = ", A.get_omega(N)
+B.set_omega(A.get_omega(N) + u4*A[1], N)
+print "W_B_N> = ", B.get_omega(N)
 
-W_C_N = W_B_N + u5*B[2]
-print "W_C_N> = ", W_C_N
+C.set_omega(B.get_omega(N) + u5*B[2], N)
+print "W_C_N> = ", C.get_omega(N)
 
 V_CN_N = au1*A[1] + au2*A[2] + au3*A[3]
 print "V_CN_N> = ", V_CN_N
 
-V_CO_N = V_CN_N + cross(W_C_N, P_NC_CO)
+V_CO_N = V_CN_N + cross(C.get_omega(N), P_NC_CO)
 print "V_CO_N> = ", V_CO_N
 
-W3C = W_C_N.coeff(u3)
+W3C = C.get_omega(N).coeff(u3)
 print "W3C> = ", W3C
 
-W4C = W_C_N.coeff(u4)
+W4C = C.get_omega(N).coeff(u4)
 print "W4C> = ", W4C
 
-W5C = W_C_N.coeff(u5)
+W5C = C.get_omega(N).coeff(u5)
 print "W5C> = ", W5C
 
 
@@ -77,10 +77,23 @@ print "FORCE_CN> = ", FORCE_CN
 
 print "Need to implement a dt() function to form acceleration of CO and \
         angular acceleration of C"
-A_CO_N = S(0)
+
+V_CO_N = V_CO_N.subs({au1: 0, au2: 0, au3: 0})
+C.set_omega(C.get_omega(N).subs({au1: 0, au2: 0, au3: 0}), N, force=True)
+
+A_CO_N = dt(V_CO_N, N, t)
+A_CO_N = A_CO_N.subs({q3.diff(t): u3, q4.diff(t): u4, q5.diff(t): u5})
 print "A_CO_N> = ", A_CO_N
-ALF_C_N = S(0)
+ALF_C_N = dt(C.get_omega(N), N, t)
+ALF_C_N = express(ALF_C_N, B)
+#A_CO_N = A_CO_N.subs({q3.diff(t): u3, q4.diff(t): u4, q5.diff(t): u5})
 print "ALF_C_N> = ", ALF_C_N
+#print A.get_omega(N)
+#print dt(A.get_omega(N), N, t)
+#print dt(B.get_omega(N), N, t)
+#print dt(C.get_omega(N), N, t)
+#print express(dt(C.get_omega(N), N, t), B)
+stop
 
 RSTAR_C = -m*A_CO_N
 print "RSTAR_C> = ", RSTAR_C
