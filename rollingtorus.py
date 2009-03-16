@@ -320,22 +320,24 @@ def derivs(y, x):
         u5p(*y), #u5'
         ])
 
+#y0 = (0, 0, 0, pi/10, 0, 1.0, -0.1, 3.)
 y0 = (0, 0, 0, pi/10, 0, 1.0, -0.1, 3.)
 #y0 = (0., 0., 0., 0., 0., 0., 0., 3.)
 #y0 = (0., 0., 0., 0., 0., 0., 0.2, 3.)
 h = 0.01
-t = arange(0., 10, h)
+t = arange(0., 40, h)
 print "start"
 sol = rk4int(derivs, y0, t, h)
 print "finished"
 from pylab import plot, show, legend
-plot(t, sol[:, 0], "-", lw=2, label="q1 (x)")
-plot(t, sol[:, 1], "-", lw=2, label="q2 (y)")
-plot(t, sol[:, 2], "-", label="q3")
-plot(t, sol[:, 3], "-", label="q4")
-plot(t, sol[:, 4], "-", label="q5")
-plot(t, sol[:, 5], "--", label="u3")
-plot(t, sol[:, 6], "--", label="u4")
-plot(t, sol[:, 7], "--", label="u5")
+plot(sol[:, 0], sol[:, 1], "-", lw=2, label="x-y")
+#plot(t, sol[:, 0], "-", lw=2, label="q1 (x)")
+#plot(t, sol[:, 1], "-", lw=2, label="q2 (y)")
+#plot(t, sol[:, 2], "-", label="q3")
+#plot(t, sol[:, 3], "-", label="q4")
+#plot(t, sol[:, 4], "-", label="q5")
+#plot(t, sol[:, 5], "--", label="u3")
+#plot(t, sol[:, 6], "--", label="u4")
+#plot(t, sol[:, 7], "--", label="u5")
 legend()
 show()

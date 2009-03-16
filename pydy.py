@@ -456,3 +456,45 @@ def dt(u, frame, t):
         return r
     else:
         raise NotImplementedError()
+
+from sympy.printing.pretty.pretty import PrettyPrinter, xsym
+# here is how to get a nice symbol for multiplication:
+# print xsym("*")
+from sympy.printing.str import StrPrinter
+
+class PyDyPrinter(StrPrinter):
+    printmethod = "_pydystr_"
+
+    #def _print_Symbol(self, e):
+    #    return "|%s|" % str(e)
+
+    def _print_UnitVector(self, e):
+        one = "\xe2\x82\x81"
+        two = "\xe2\x82\x82"
+        three = "\xe2\x82\x83"
+        bold = "\033[1m"
+        reset = "\033[0;0m"
+        s = str(e.v['sym'])
+        name = s[:-1]
+        index = s[-1]
+        r = "%s%s%s" % (bold, name, reset)
+        if index == "1":
+            r += one
+        elif index == "2":
+            r += two
+        elif index == "3":
+            r += three
+        return r
+
+    def _print_sin(self, e):
+        name = str(e.args[0])
+        if name[0] == "q":
+            index = name[1]
+            return "s_%s" % index
+        else:
+            return str(e)
+
+
+def print_pydy(e):
+    pp = PyDyPrinter()
+    print pp.doprint(e)
