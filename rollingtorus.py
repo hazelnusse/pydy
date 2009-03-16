@@ -1,7 +1,11 @@
+from math import sin, cos, pi
+
+from numpy import array, arange
+from sympy import symbols, Function, S, solve, simplify, \
+        collect, Matrix, lambdify
+
 from pydy import ReferenceFrame, cross, dot, dt, express, expression2vector, \
     coeff
-from sympy import symbols, Function, S, solve, simplify, \
-        collect, sin, cos, pi, Matrix
 
 m, g, r1, r2, t = symbols("m, g r1 r2 t")
 au1, au2, au3 = symbols("au1 au2 au3")
@@ -270,17 +274,7 @@ subs_dict = {
 #print ZERO[0]
 #print ZERO[1]
 #print ZERO[2]
-r = solve(ZERO[:3], [u3p, u4p, u5p])
-print r
-#stop
-print "u3p = ", r[u3p]
-print "u4p = ", r[u4p]
-print "u5p = ", r[u5p]
-u3p, u4p, u5p = symbols("u3p u4p u5p")
 subs_dict = {
-    u3.diff(t): u3p,
-    u4.diff(t): u4p,
-    u5.diff(t): u5p,
     r1:1,
     r2:0,
     m:1,
@@ -288,15 +282,8 @@ subs_dict = {
     I:1,
     J:1,
     }
-e1 = EOM1.subs(subs_dict)
-e2 = EOM2.subs(subs_dict)
-e3 = EOM3.subs(subs_dict)
-print "-"*80
-print e1
-print e2
-print e3
-
-r = solve([e1, e2, e3], [u3p, u4p, u5p])
+eqs = [x.subs(subs_dict) for x in ZERO[:3]]
+r = solve(eqs, [u3p, u4p, u5p])
 print "Solution:"
 print r
 print "_"*80
