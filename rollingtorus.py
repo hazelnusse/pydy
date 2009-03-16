@@ -47,9 +47,9 @@ u3 = Function("u3")(t)
 u4 = Function("u4")(t)
 u5 = Function("u5")(t)
 
-u3p = Function("u3p")(t)
-u4p = Function("u4p")(t)
-u5p = Function("u5p")(t)
+#u3p = Function("u3p")(t)
+#u4p = Function("u4p")(t)
+#u5p = Function("u5p")(t)
 
 P_NC_CO = r2*A[3] - r1*B[3]
 #print "P_NC_CO> = ", P_NC_CO
@@ -252,9 +252,9 @@ subs_dict = {
     u5:2,
     }
 
-E = ZERO.subs(subs_dict)
-print E
-stop
+#E = ZERO.subs(subs_dict)
+#print E
+#stop
 
 #e1 = EOM1.subs(subs_dict)
 #e2 = EOM2.subs(subs_dict)
@@ -264,11 +264,14 @@ stop
 #print eval(e2)
 #print eval(e3)
 
-print EOM1.coeff(u3p)
+#print EOM1.coeff(u3p)
 
-stop
-r = solve([EOM1, EOM2, EOM3], [u3p, u4p, u5p])
-#print r
+#stop
+#print ZERO[0]
+#print ZERO[1]
+#print ZERO[2]
+r = solve(ZERO[:3], [u3p, u4p, u5p])
+print r
 #stop
 print "u3p = ", r[u3p]
 print "u4p = ", r[u4p]
