@@ -193,19 +193,38 @@ class ReferenceFrame:
 
 def dot(v1,v2):
     if isinstance(v1, UnitVector) and isinstance(v2, UnitVector):
-        return (v1.v['num'].T*v2.v['num'])[0]
+        B = v2.frame
+        u = express(v1, B)
+        u1, u2, u3 = expression2vector(u, B)
+        # second vector:
+        v = Matrix(v2.v['num'])
+        return dot_vectors((u1, u2, u3), v)
     else:
         v1v2 = (v1*v2).expand()
-        #print v1v2.args
-        e = 0
-        for a in v1v2.args:
-            c, v1, v2 = identify(a)
-            #print c, v1, v2
+        if isinstance(v1v2, Add):
+            #print v1v2.args
+            e = 0
+            for a in v1v2.args:
+                c, v1, v2 = identify(a)
+                #print c, v1, v2
+                if v1 is None or v2 is None:
+                    pass
+                else:
+                    #print "c", c
+                    #print "dot", dot(v1, v2)
+                    e += c*dot(v1, v2)
+            return e
+        elif isinstance(v1v2, Mul):
+            c, v1, v2 = identify(v1v2)
             if v1 is None or v2 is None:
-                pass
+                raise NotImplementedError()
             else:
-                e += c*dot(v1, v2)
-        return e
+                e = c*dot(v1, v2)
+            return e
+        elif v1v2 == 0:
+            return v1v2
+        else:
+            raise NotImplementedError()
 
 
 def identify(a):
@@ -228,7 +247,7 @@ def identify(a):
         if len(unit_vectors) == 2:
             v1 = unit_vectors[0]
             v2 = unit_vectors[1]
-            c = a.coeff(v1*v2)
+            c = coeff(a, v1*v2)
             return c, v1, v2
 
     return a, None, None
@@ -298,6 +317,9 @@ def cross_vectors(u, v):
     c2 = -(u[0]*v[2] - u[2]*v[0])
     c3 = u[0]*v[1] - u[1]*v[0]
     return c1, c2, c3
+
+def dot_vectors(u, v):
+    return u[0]*v[0]+u[1]*v[1]+u[2]*v[2]
 
 def coeff(e, x):
     """
