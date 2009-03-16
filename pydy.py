@@ -8,7 +8,7 @@ e1n = Matrix([-1, 0, 0])
 e2n = Matrix([0, -1, 0])
 e3n = Matrix([0, 0, -1])
 zero = Matrix([0, 0, 0])
-
+t = Symbol("t")
 
 class UnitVector(Basic):
     """A standard unit vector  with a symbolic and a numeric representation"""
@@ -54,7 +54,7 @@ class UnitVector(Basic):
 class ReferenceFrame:
     """A standard reference frame with 3 dextral orthonormal vectors"""
 
-    def __init__(self, s, matrix=None, frame=None):
+    def __init__(self, s, matrix=None, frame=None, omega=None):
         """
         ReferenceFrame('B', matrix, A)
 
@@ -63,8 +63,11 @@ class ReferenceFrame:
         self.name = s
         self.triad = [UnitVector(self, i) for i in (1,2,3)]
         self.transforms = {}
-        self.W = {}
         self.parent = frame
+        self.W = {}
+        if omega != None:
+            self.set_omega(omega,self.parent)
+
         if frame is not None:
             self.append_transform(frame, matrix)
             frame.append_transform(self, matrix.T)
@@ -86,21 +89,27 @@ class ReferenceFrame:
                 [0, cos(angle), -sin(angle)],
                 [0, sin(angle), cos(angle)],
                 ])
+            omega = angle.diff(t)*self[axis]
+            #print "omega = ", omega
         elif axis == 2:
             matrix = Matrix([
                 [cos(angle), 0, sin(angle)],
                 [0, 1, 0],
                 [-sin(angle), 0, cos(angle)],
                 ])
+            omega = angle.diff(t)*self[axis]
+            #print "omega = ", omega
         elif axis == 3:
             matrix = Matrix([
                 [cos(angle), -sin(angle), 0],
                 [sin(angle), cos(angle), 0],
                 [0, 0, 1],
                 ])
+            omega = angle.diff(t)*self[axis]
+            #print "omega = ", omega
         else:
             raise ValueError("wrong axis")
-        return ReferenceFrame(name, matrix, self)
+        return ReferenceFrame(name, matrix, self, omega)
 
     def __repr__(self):
         return "<Frame %s>" % self.name
@@ -201,14 +210,15 @@ def dot(v1,v2):
         return dot_vectors((u1, u2, u3), v)
     else:
         v1v2 = (v1*v2).expand()
+        #print "DOT:", v1v2
         if isinstance(v1v2, Add):
             #print v1v2.args
             e = 0
             for a in v1v2.args:
                 c, v1, v2 = identify(a)
-                #print c, v1, v2
+                #print "IDENTIFY", c, v1, v2, a
                 if v1 is None or v2 is None:
-                    pass
+                    raise Exception("!")
                 else:
                     #print "c", c
                     #print "dot", dot(v1, v2)
@@ -248,6 +258,9 @@ def identify(a):
             v1 = unit_vectors[0]
             v2 = unit_vectors[1]
             c = coeff(a, v1*v2)
+            #XXX here is a bug, if a=B[1]*Derivative()*B[1] and we do coeff for
+            #B[1]**2
+            #print "identify, coeff", a, v1*v2, c
             return c, v1, v2
 
     return a, None, None
