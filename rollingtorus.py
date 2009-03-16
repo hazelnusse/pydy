@@ -1,6 +1,6 @@
 from pydy import ReferenceFrame, cross, dot, dt, express, expression2vector, \
     coeff
-from sympy import symbols, Function, S
+from sympy import symbols, Function, S, solve
 
 m, g, r1, r2, t = symbols("m, g r1 r2 t")
 au1, au2, au3 = symbols("au1 au2 au3")
@@ -189,3 +189,29 @@ print "eom3 = ", EOM3
 print "eom4 = ", EOM4
 print "eom5 = ", EOM5
 print "eom6 = ", EOM6
+
+print "-"*80
+u3p, u4p, u5p = symbols("u3p u4p u5p")
+subs_dict = {
+    u3.diff(t): u3p,
+    u4.diff(t): u4p,
+    u5.diff(t): u5p,
+    r1:1,
+    r2:0,
+    m:1,
+    g:1,
+    I:1,
+    J:1,
+    }
+e1 = EOM1.subs(subs_dict)
+e2 = EOM2.subs(subs_dict)
+e3 = EOM3.subs(subs_dict)
+print "-"*80
+print e1
+print e2
+print e3
+
+#r = solve([e1, e2, e3], [u3p, u4p, u5p])
+#print r[u3p]
+#print r[u4p]
+#print r[u5p]
