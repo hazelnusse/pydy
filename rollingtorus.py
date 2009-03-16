@@ -323,9 +323,10 @@ def derivs(y, x):
 y0 = (0, 0, 0, pi/10, 0, 1.0, -0.1, 3.)
 #y0 = (0., 0., 0., 0., 0., 0., 0., 3.)
 #y0 = (0., 0., 0., 0., 0., 0., 0.2, 3.)
-t = arange(0., 10, 0.01)
+h = 0.01
+t = arange(0., 10, h)
 print "start"
-sol = rk4int(derivs, y0, t, h=0.01)
+sol = rk4int(derivs, y0, t, h)
 print "finished"
 from pylab import plot, show, legend
 plot(t, sol[:, 0], "-", lw=2, label="q1 (x)")
