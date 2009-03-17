@@ -66,9 +66,16 @@ class ReferenceFrame:
     def __init__(self, s, matrix=None, frame=None, omega=None):
         """
         ReferenceFrame('B', matrix, A)
-
         The matrix represents A_B, e.g. how to transform a vector from B to A.
         """
+        
+
+        if frame == None:
+            self.ref_frame_list = [self]
+        else:
+            self.ref_frame_list = frame.ref_frame_list
+            self.ref_frame_list.append(self)
+
         self.name = s
         self.triad = [UnitVector(self, i) for i in (1,2,3)]
         self.transforms = {}
@@ -440,7 +447,9 @@ def dt(u, frame, t):
             W = v.frame.get_omega(frame)
             #print "W = ", W, "type(W):", type(W)
             if W == 0:
-                r += dc_dt * v #print "W=0"
+                print "W = 0"
+                print "r = ", r, "dc_dt = ", dc_dt, "v = ", v
+                r += dc_dt * v
                 continue
             #print "dc_dt*v + W x v", dc_dt, v, W, v, cross(W, v)
             r += dc_dt * v + c*cross(W, v)
@@ -449,9 +458,11 @@ def dt(u, frame, t):
 
     elif isinstance(u, Mul):
         c, v = identify_v1(u)
+        #print "c = ", c, "v = ", v
         dc_dt = c.diff(t)
         W = v.frame.get_omega(frame)
-        #print "W", W
+        #print "W = ", W
+        #print "W x v = ", cross(W,v)
         r = dc_dt * v + c*cross(W, v)
         return r
     else:

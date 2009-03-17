@@ -68,10 +68,8 @@ V_CO_N = V_CN_N + cross(C.get_omega(N), P_NC_CO)
 qdots = [q3.diff(t), q4.diff(t), q5.diff(t), au1, au2, au3, u3.diff(t), \
         u4.diff(t), u5.diff(t)]
 us = [u3, u4, u5, au1, au2, au3, u3p, u4p, u5p]
-print qdots
-print us
+
 gen_speeds = dict(zip(qdots, us))
-print gen_speeds
 C.set_omega(C.get_omega(N).subs(gen_speeds), N, force = True)
 
 V_CO_N = V_CO_N.subs(gen_speeds)
@@ -172,7 +170,8 @@ TSTAR_C = -I_alfa - cross(W_C_N, I_omega)
 
 FR = Matrix([dot(ViCO, FORCE_CO) for ViCO in VC]) + \
         Matrix([dot(ViCN, FORCE_CN) for ViCN in VCN])
-
+#print "FR_CO = ", FR_CO
+#print "FR_CN = ", FR_CN
 #print "FR = \n", FR
 # above code matches autolev
 #stop
@@ -188,7 +187,7 @@ FR = Matrix([dot(ViCO, FORCE_CO) for ViCO in VC]) + \
 FRSTAR = Matrix([dot(WiC, TSTAR_C) for WiC in WC]) + \
         Matrix([dot(ViCO, RSTAR_C) for ViCO in VC])
 
-#print "FRSTAR = \n", FRSTAR
+print "FRSTAR = \n", FRSTAR
 #stop
 #print "F3S = ", FRSTAR[0]
 #stop
@@ -321,24 +320,22 @@ def derivs(y, x):
         u5p(*y), #u5'
         ])
 
-#y0 = (0, 0, 0, pi/10, 0, 1.0, -0.1, 3.)
 y0 = (0, 0, 0, pi/10, 0, 1.0, -0.1, 3.)
 #y0 = (0., 0., 0., 0., 0., 0., 0., 3.)
 #y0 = (0., 0., 0., 0., 0., 0., 0.2, 3.)
 h = 0.01
-t = arange(0., 40, h)
+t = arange(0., 10, h)
 print "start"
 sol = rk4int(derivs, y0, t, h)
 print "finished"
 from pylab import plot, show, legend
-plot(sol[:, 0], sol[:, 1], "-", lw=2, label="x-y")
-#plot(t, sol[:, 0], "-", lw=2, label="q1 (x)")
-#plot(t, sol[:, 1], "-", lw=2, label="q2 (y)")
-#plot(t, sol[:, 2], "-", label="q3")
-#plot(t, sol[:, 3], "-", label="q4")
-#plot(t, sol[:, 4], "-", label="q5")
-#plot(t, sol[:, 5], "--", label="u3")
-#plot(t, sol[:, 6], "--", label="u4")
-#plot(t, sol[:, 7], "--", label="u5")
+plot(t, sol[:, 0], "-", lw=2, label="q1 (x)")
+plot(t, sol[:, 1], "-", lw=2, label="q2 (y)")
+plot(t, sol[:, 2], "-", label="q3")
+plot(t, sol[:, 3], "-", label="q4")
+plot(t, sol[:, 4], "-", label="q5")
+plot(t, sol[:, 5], "--", label="u3")
+plot(t, sol[:, 6], "--", label="u4")
+plot(t, sol[:, 7], "--", label="u5")
 legend()
 show()

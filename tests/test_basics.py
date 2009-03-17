@@ -1,5 +1,5 @@
 from pydy import ReferenceFrame, dot, cross, UnitVector, identify, express, coeff
-from sympy import symbols, S, Symbol, sin, cos, Matrix, eye, pprint
+from sympy import symbols, S, Symbol, Function, sin, cos, Matrix, eye, pprint
 import numpy as N
 A = ReferenceFrame('A')
 e1 = UnitVector(A, 1)
@@ -75,7 +75,8 @@ def test_ReferenceFrame():
     assert B.transforms[A] is not None
 
 def test_cross_different_frames1():
-    q1, q2, q3 = symbols('q1 q2 q3')
+    q1, q2, q3, t = symbols('q1 q2 q3 t')
+    u1 = Function("u1")(t)
     N = ReferenceFrame('N')
     A = N.rotate('A', 3, q1)
     assert cross(N[1], A[1]) == sin(q1)*A[3]
@@ -87,6 +88,7 @@ def test_cross_different_frames1():
     assert cross(N[3], A[1]) == A[2]
     assert cross(N[3], A[2]) == -A[1]
     assert cross(N[3], A[3]) == 0
+    assert cross(u1*N[1], A[1]) == sin(q1)*u1*A[3]
 
 def test_cross_different_frames3():
     q1, q2, q3 = symbols('q1 q2 q3')
