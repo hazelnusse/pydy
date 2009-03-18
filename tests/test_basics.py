@@ -154,8 +154,20 @@ def test_get_frames_list3():
     D = A.rotate('D', 2, q3)
     E = D.rotate('E', 2, q3)
     F = E.rotate('F', 2, q3)
-
+    assert N.get_frames_list(N) == [N]
+    assert N.get_frames_list(A) == [N, A]
+    assert A.get_frames_list(A) == [A]
+    assert A.get_frames_list(N) == [A, N]
+    assert B.get_frames_list(B) == [B]
+    assert B.get_frames_list(A) == [B, A]
+    assert B.get_frames_list(N) == [B, A, N]
+    assert A.get_frames_list(B) == [A, B]
+    assert N.get_frames_list(B) == [N, A, B]
+    assert C.get_frames_list(D) == [C, B, A, D]
+    assert C.get_frames_list(E) == [C, B, A, D, E]
     assert C.get_frames_list(F) == [C, B, A, D, E, F]
+    assert D.get_frames_list(C) == [D, A, B, C]
+    assert E.get_frames_list(C) == [E, D, A, B, C]
     assert F.get_frames_list(C) == [F, E, D, A, B, C]
 
 def test_get_frames_list4():

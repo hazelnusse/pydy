@@ -151,28 +151,24 @@ class ReferenceFrame:
         """
         if self == frame:
             return [self]
-        elif self.transforms.has_key(frame):
-            return [self, frame]
         else:
-            r1 = self.ref_frame_list
-            r2 = frame.ref_frame_list
-            # we strip the common right end of both lists:
-            i = 1
-            while not (len(r1) == i-1 or len(r2) == i-1) and r1[-i] == r2[-i]:
-                i += 1
-            i -= 1
+            r2t = [f for f in reversed(frame.ref_frame_list)]
 
-            #print "r1, r2, i:", r1, r2, i
-            if i - 1 == 0:
-                pass
-            else:
-                r1 = r1[:-(i-1)]
-            r2 = r2[:-i]
-            #print "stripped r1, r2:", r1, r2
-            # e.g.: r1 == [C, B, A]
-            # r2 == [F, E, D]
-            # middle == A
-            return r1 + list(reversed(r2))
+            if len(self.ref_frame_list) == 1:
+                return r2t
+            elif len(r2t) == 1:
+                return self.ref_frame_list
+
+            r1t = [f for f in reversed(self.ref_frame_list)]
+            i = 1
+            while r1t[i] == r2t[i]:
+                del r1t[i-1]
+                del r2t[i-1]
+                if len(r1t)<=2 or len(r2t)<=2:
+                    break
+
+            r1t.reverse()
+            return r1t[:-1] + r2t
 
     def get_rot_matrices(self, frame):
         """

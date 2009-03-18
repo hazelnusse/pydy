@@ -11,16 +11,29 @@ N = ReferenceFrame('N')
 A = N.rotate('A', 3, q1)
 B = A.rotate('B', 1, q2)
 C = B.rotate('C', 2, q3)
+D = A.rotate('D', 2, q3)
+E = D.rotate('E', 2, q3)
+F = E.rotate('F', 3, q1)
 
-print N.ref_frame_list
-print N.get_frames_list(N)
-print A.ref_frame_list
-print A.get_frames_list(N)
-print B.ref_frame_list
-print B.get_frames_list(N)
-print C.ref_frame_list
-print C.get_frames_list(N)
+print "N.ref_frame_list", N.ref_frame_list
+print "A.ref_frame_list", A.ref_frame_list
+print "N to N", N.get_frames_list(N)
+print "N to A", N.get_frames_list(A)
+print "A to A", A.get_frames_list(A)
+print "A to N", A.get_frames_list(N)
+print "B to B", B.get_frames_list(B)
+print "B to A", B.get_frames_list(A)
+print "B to N", B.get_frames_list(N)
+print "A to B", A.get_frames_list(B)
+print "N to B", N.get_frames_list(B)
+print "C to D: ", C.get_frames_list(D)
+print "C to E: ", C.get_frames_list(E)
+print "C to F: ", C.get_frames_list(F)
+print "D to C: ", D.get_frames_list(C)
+print "E to C: ", E.get_frames_list(C)
+print "F to C: ", F.get_frames_list(C)
 stop
+
 
 #print coeff(C.get_omega(N),[q1.diff(t),q2.diff(t),q3.diff(t)])
 #print N.get_omega(C)
