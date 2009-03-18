@@ -8,24 +8,19 @@ q2 = Function("q2")(t)
 q3 = Function("q3")(t)
 
 N = ReferenceFrame('N')
-print N.ref_frame_list
-#stop
-
-#print N.W
-#stop
 A = N.rotate('A', 3, q1)
-print A.ref_frame_list
-
-#print "W_A_N> = ", A.W
 B = A.rotate('B', 1, q2)
-print B.ref_frame_list
-#print "W_B_A> = ", B.W
 C = B.rotate('C', 2, q3)
-print C.ref_frame_list
-stop
-#print "W_C_B> = ", C.W
-#stop
 
+print N.ref_frame_list
+print N.get_frames_list(N)
+print A.ref_frame_list
+print A.get_frames_list(N)
+print B.ref_frame_list
+print B.get_frames_list(N)
+print C.ref_frame_list
+print C.get_frames_list(N)
+stop
 
 #print coeff(C.get_omega(N),[q1.diff(t),q2.diff(t),q3.diff(t)])
 #print N.get_omega(C)

@@ -91,10 +91,15 @@ zero = Matrix(FR) + Matrix(FRSTAR)
 eqns = [x for x in zero[:2]]
 r = solve(eqns, [u1p, cf1])
 
+print "_"*80
 print "Equations of motion in first order form: "
 print "q1p = ", gen_speeds[q1.diff(t)]
 print "u1p = ", r[u1p]
 
-
-print "Constraint force acting in the P3> direction: "
+print "_"*80
+print "\nConstraint force acting in the P3> direction: "
 print "cf1 = ", r[cf1]
+
+# Numerical integration of the equations of motion
+
+

@@ -68,13 +68,14 @@ class ReferenceFrame:
         ReferenceFrame('B', matrix, A)
         The matrix represents A_B, e.g. how to transform a vector from B to A.
         """
-        
+
 
         if frame == None:
             self.ref_frame_list = [self]
         else:
-            self.ref_frame_list = frame.ref_frame_list
-            self.ref_frame_list.append(self)
+            #print "inside __init__: ", frame.ref_frame_list
+            self.ref_frame_list = frame.ref_frame_list[:]
+            self.ref_frame_list.insert(0,self)
 
         self.name = s
         self.triad = [UnitVector(self, i) for i in (1,2,3)]
@@ -153,18 +154,8 @@ class ReferenceFrame:
         elif self.transforms.has_key(frame):
             return [self, frame]
         else:
-            # r1, r2 contains all the frames up to the top
-            r1 = [self]
-            a = self.parent
-            while a is not None:
-                r1.append(a)
-                a = a.parent
-            r2 = [frame]
-            a = frame.parent
-            while a is not None:
-                r2.append(a)
-                a = a.parent
-
+            r1 = self.ref_frame_list
+            r2 = frame.ref_frame_list
             # we strip the common right end of both lists:
             i = 1
             while not (len(r1) == i-1 or len(r2) == i-1) and r1[-i] == r2[-i]:
