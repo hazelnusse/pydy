@@ -15,23 +15,42 @@ D = A.rotate('D', 2, q3)
 E = D.rotate('E', 2, q3)
 F = E.rotate('F', 3, q1)
 
-print "N.ref_frame_list", N.ref_frame_list
-print "A.ref_frame_list", A.ref_frame_list
-print "N to N", N.get_frames_list(N)
-print "N to A", N.get_frames_list(A)
-print "A to A", A.get_frames_list(A)
-print "A to N", A.get_frames_list(N)
-print "B to B", B.get_frames_list(B)
-print "B to A", B.get_frames_list(A)
-print "B to N", B.get_frames_list(N)
-print "A to B", A.get_frames_list(B)
-print "N to B", N.get_frames_list(B)
-print "C to D: ", C.get_frames_list(D)
-print "C to E: ", C.get_frames_list(E)
-print "C to F: ", C.get_frames_list(F)
-print "D to C: ", D.get_frames_list(C)
-print "E to C: ", E.get_frames_list(C)
-print "F to C: ", F.get_frames_list(C)
+#print "N.ref_frame_list", N.ref_frame_list
+#print "A.ref_frame_list", A.ref_frame_list
+#print "N to N", N.get_frames_list(N)
+#print "N to A", N.get_frames_list(A)
+#print "A to A", A.get_frames_list(A)
+#print "A to N", A.get_frames_list(N)
+#print "B to B", B.get_frames_list(B)
+#print "B to A", B.get_frames_list(A)
+#print "B to N", B.get_frames_list(N)
+#print "A to B", A.get_frames_list(B)
+#print "N to B", N.get_frames_list(B)
+#print "C to D: ", C.get_frames_list(D)
+#print "C to E: ", C.get_frames_list(E)
+#print "C to F: ", C.get_frames_list(F)
+#print "D to C: ", D.get_frames_list(C)
+#print "E to C: ", E.get_frames_list(C)
+#print "F to C: ", F.get_frames_list(C)
+
+print "A[1]: ", type(A[1])
+print parse_terms(A[1])
+
+print "S(0): ", type(S(0))
+print parse_terms(S(0))
+
+print "sin(q1)*q2*A[3]: ", type(sin(q1)*q2*A[3])
+print parse_terms(sin(q1)*q2*A[3])
+
+print "sin(q1)*sin(q1)*q2*A[3]: ", type(sin(q1)*sin(q1)*q2*A[3])
+print parse_terms(sin(q1)*sin(q1)*q2*A[3])
+
+test = sin(q1)*sin(q1)*q2*A[3] + q1*A[2]
+print test, type(test)
+print parse_terms(test)
+test = sin(q1)*sin(q1)*q2*A[3] + q1*A[2] + S(0) + cos(q3)*A[2]
+print test, type(test)
+print parse_terms(test)
 stop
 
 

@@ -1,4 +1,5 @@
-from pydy import ReferenceFrame, dot, cross, UnitVector, identify, express, coeff
+from pydy import ReferenceFrame, dot, cross, UnitVector, identify, express, \
+        coeff, parse_terms
 from sympy import symbols, S, Symbol, Function, sin, cos, Matrix, eye, pprint
 import numpy as N
 A = ReferenceFrame('A')
@@ -300,3 +301,19 @@ def test_dot2():
             a = dot(N[i], B[j])
             b = dot(B[j], N[i])
             assert a == b
+
+def test_parse_terms():
+    q1, q2, q3, t = symbols('q1 q2 q3 t')
+    N = ReferenceFrame('N')
+    A = N.rotate('A', 3, q1)
+    B = A.rotate('A', 1, q2)
+    assert parse_terms(A[1]) == {A[1]: 1}
+    assert parse_terms(S(0)) == {}
+    assert parse_terms(sin(q1)*q2*A[3]) == {A[3]: sin(q1)*q2}
+    assert parse_terms(sin(q1)*q2*A[3]) == {A[3]: q2*sin(q1)}
+    assert parse_terms(sin(q1)*sin(q1)*q2*A[3]) == {A[3]: sin(q1)*sin(q1)*q2}
+    test = sin(q1)*sin(q1)*q2*A[3] + q1*A[2]
+    assert parse_terms(test) == {A[3]: sin(q1)*sin(q1)*q2, A[2]: q1}
+    test = sin(q1)*sin(q1)*q2*A[3] + q1*A[2] + S(0) + cos(q3)*A[2]
+    print parse_terms(test)
+    assert parse_terms(test) == {A[3]: sin(q1)**2*q2, A[2]: cos(q3) + q1}

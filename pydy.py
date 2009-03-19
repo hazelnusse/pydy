@@ -1,6 +1,7 @@
 #import numpy as N
 from sympy import Symbol, Basic, Mul, Pow, Matrix, sin, cos, S, eye, Add, \
         trigsimp
+
 e1 = Matrix([1, 0, 0])
 e2 = Matrix([0, 1, 0])
 e3 = Matrix([0, 0, 1])
@@ -262,6 +263,56 @@ def dot(v1,v2):
         else:
             raise NotImplementedError()
 
+
+def dot2(v1,v2):
+    """
+    Alternative implementation of dot product
+    """
+
+    v1.expand()
+    v2.expand()
+    v1_dict = parse_terms(v1)
+    v2_dict = parse_terms(v2)
+    return v1_dict,v2_dict
+
+def parse_terms(v):
+    """
+    Given a Sympy expression with UnitVector terms, return a dictionary whose
+    keys are the UnitVectors and whose values are the coeefficients of the
+    UnitVectors
+    """
+    v.expand()
+    if v == 0:
+        return {}
+    elif isinstance(v, UnitVector):
+        return {v : S(1)}
+    elif isinstance(v, Mul):
+        for b in v.args:
+            if isinstance(b, UnitVector):
+                return {b: v.coeff(b)}
+        return NotImplemented
+    elif isinstance(v, Pow):
+        #  I don't think this will ever be entered into.
+        #  You would have to have something like A[1]*A[2],
+        #  which isn't a valid vector expression.
+        #  Or q1*q2, which is a scalar expression.
+        for b in v.args:
+            if isinstance(b, UnitVector):
+                return {b: v.coeff(b)}
+    elif isinstance(v, Add):
+        terms = {}
+        for b in v.args:
+            #print "b = ", b, "type(b): ", type(b)
+            #print "b parsed = ", parse_terms(b)
+            bp = parse_terms(b)
+            #print "bp.keys(): ", bp.keys()[0]
+            if terms.has_key(bp.keys()[0]):
+                terms[bp.keys()[0]] += bp[bp.keys()[0]]
+            else:
+                terms.update(parse_terms(b))
+        return terms
+    else:
+        return NotImplemented
 
 def identify(a):
     """
