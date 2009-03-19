@@ -80,8 +80,8 @@ print "RSTAR_PO>", RSTAR_PO
 
 FR = [dot(ViPO, F_PO) for ViPO in VPO]
 FRSTAR = [dot(ViPO, RSTAR_PO) for ViPO in VPO]
-#print "FR = \n", FR
-#print "FRSTAR = \n", FRSTAR
+print "FR = \n", FR
+print "FRSTAR = \n", FRSTAR
 
 # Kane's dynamic equations:
 zero = Matrix(FR) + Matrix(FRSTAR)

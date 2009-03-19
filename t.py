@@ -72,6 +72,11 @@ v3 = v + v2
 print "v3 = v + v2 = ", v3
 print type(v3)
 print v3.dict
+
+v1 = Vector({A[1]: x, B[2]: y})
+v2 = Vector({B[2]: y, A[1]: x})
+print "v1 == v2 : ", v2 == Vector({A[1]: x, B[2]: y}) 
+
 stop
 
 

@@ -287,6 +287,7 @@ def test_cross2():
 
 def test_dot2():
     q1, q2, q3 = symbols('q1 q2 q3')
+    print "q1", q1
     N = ReferenceFrame('N')
     A = N.rotate('A', 3, q1)
     B = A.rotate('A', 1, q2)
@@ -307,35 +308,26 @@ def test_Vector_class():
     u1 = Function('u1')(t)
     N = ReferenceFrame('N')
     A = N.rotate('A', 3, q1)
-    B = A.rotate('A', 1, q2)
+    B = A.rotate('B', 1, q2)
     v1 = Vector(0)
     v2 = Vector(q1*u1*A[1] + q2*t*sin(t)*A[2])
-    print "v2 = ", v2
-    print "v2.dict", v2.dict
     v3 = Vector({B[1]: q1*sin(q2), B[2]: t*u1*q1*sin(q2)})
-    print "v3 = ", v3
+    # Basic functionality tests
     assert v1.parse_terms(A[1]) == {A[1]: 1}
     assert v1.parse_terms(0) == {}
     assert v1.parse_terms(S(0)) == {}
     assert v1.parse_terms(q1*sin(t)*A[1] + A[2]*cos(q2)*u1) == {A[1]: \
             q1*sin(t), A[2]: cos(q2)*u1}
-    test = sin(q1)*sin(q1)*q2*A[3] + q1*A[2] + S(0) + cos(q3)*A[2]
-    assert v1.parse_terms(test) == {A[3]: sin(q1)**2*q2, A[2]: cos(q3) + q1}
-    print "v2 = ", v2
-    print "v2.dict.keys() = ", v2.dict.keys()
-    print "v3 = ", v3
-    print "v3.dict.keys() = ", v3.dict.keys()
+    test = sin(q1)*sin(q1)*q2*A[3]  + q1*A[2] + S(0) + cos(q3)*A[2]
+    assert v1.parse_terms(test) == {A[3]: sin(q1)*sin(q1)*q2, \
+            A[2]:cos(q3) + q1}
+    # Equality tests
     v4 = v2 + v3
-    print "v4 = v2 + v3", v4
-    print v4.dict
-    assert v2+v3 == Vector({A[1]: q1*u1, B[1]: q1*sin(q2), B[2]: \
-            q2*t*sin(t)+t*u1*q1*sin(q2)})
-    '''
-    assert parse_terms(S(0)) == {}
-    assert parse_terms(sin(q1)*q2*A[3]) == {A[3]: sin(q1)*q2}
-    assert parse_terms(sin(q1)*q2*A[3]) == {A[3]: q2*sin(q1)}
-    assert parse_terms(sin(q1)*sin(q1)*q2*A[3]) == {A[3]: sin(q1)*sin(q1)*q2}
-    test = sin(q1)*sin(q1)*q2*A[3] + q1*A[2]
-    assert parse_terms(test) == {A[3]: sin(q1)*sin(q1)*q2, A[2]: q1}
-    print parse_terms(test)
-    '''
+    assert v4 == v2 + v3
+    v3 = Vector({B[1]: q1*sin(q2), B[2]: t*u1*q1*sin(q2)})
+    v5 = Vector({B[1]: q1*sin(q2), B[2]: t*u1*q1*sin(q2)})
+    assert v3 == v5
+    # Another way to generate the same vector
+    v5 = Vector(q1*sin(q2)*B[1] + t*u1*q1*sin(q2)*B[2])
+    assert v3 == v5
+    assert v5.dict == {B[1]: q1*sin(q2), B[2]: t*u1*q1*sin(q2)}

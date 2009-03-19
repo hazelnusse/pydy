@@ -72,6 +72,7 @@ class Vector(Basic):
         #keys are the UnitVectors and whose values are the coeefficients of the
         #UnitVectors
         #"""
+
         if v == 0:
             return {}
         elif isinstance(v, UnitVector):
@@ -134,6 +135,12 @@ class Vector(Basic):
             else:
                 print "shouldn't have gotten here"
         return Vector(sum)
+
+    def __eq__(self, other):
+        if self.dict == other.dict:
+            return True
+        else:
+            return False
 
 class Particle:
     def __init__(self, s, m):
