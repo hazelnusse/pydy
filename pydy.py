@@ -1,4 +1,3 @@
-#import numpy as N
 from sympy import Symbol, Basic, Mul, Pow, Matrix, sin, cos, S, eye, Add, \
         trigsimp
 
@@ -45,20 +44,101 @@ class UnitVector(Basic):
             self.v['sym'] = Symbol(s.lower()+str(0))
             self.v['num'] = zero
 
-
-#    def __neg__(self):
-#        return UnitVector(self.name,-self.i)
-
     def _sympystr_(self):
         return str(self.v['sym']) + ">"
 
+
+class Vector(Basic):
+    """
+    General vector expression.  Internally represented as a dictionary whose
+    keys are UnitVectors and whose key values are the corresponding coefficient
+    of that UnitVector.  For example:
+    N = ReferenceFrame("N")
+    x, y, z = symbols('x y z')
+    v = Vector(x*N[1]+y*N[2] + z*N[3])
+    then v would be represented internally as:
+    {N[1]: x, N[2]: y, N[3]: z}
+    """
+
+    def __init__(self, v):
+        if isinstance(v, dict):
+            self.dict = v
+        else:
+            self.dict = self.parse_terms(v)
+
+    def parse_terms(self,v):
+        #    """
+        #Given a Sympy expression with UnitVector terms, return a dictionary whose
+        #keys are the UnitVectors and whose values are the coeefficients of the
+        #UnitVectors
+        #"""
+        if v == 0:
+            return {}
+        elif isinstance(v, UnitVector):
+            v.expand()
+            return {v : S(1)}
+        elif isinstance(v, Mul):
+            v.expand()
+            for b in v.args:
+                if isinstance(b, UnitVector):
+                    return {b: v.coeff(b)}
+        elif isinstance(v, Pow):
+            v.expand()
+            #  I don't think this will ever be entered into.
+            #  You would have to have something like A[1]*A[2],
+            #  which isn't a valid vector expression.
+            #  Or q1*q2, which is a scalar expression.
+            for b in v.args:
+                if isinstance(b, UnitVector):
+                    return {b: v.coeff(b)}
+        elif isinstance(v, Add):
+            v.expand()
+            terms = {}
+            for b in v.args:
+                #print "b = ", b, "type(b): ", type(b)
+                #print "b parsed = ", parse_terms(b)
+                bp = self.parse_terms(b)
+                #print "bp.keys(): ", bp.keys()[0]
+                if terms.has_key(bp.keys()[0]):
+                    terms[bp.keys()[0]] += bp[bp.keys()[0]]
+                else:
+                    terms.update(self.parse_terms(b))
+            return terms
+        else:
+            return NotImplemented
+
+    def __add__(self, other):
+        list1 = self.dict.keys()
+        list2 = other.dict.keys()
+        intersection = filter(lambda x:x in list1, list2)
+        difference = filter(lambda x:x not in list2, list1)
+        union=list1+filter(lambda x:x not in list1,list2)
+        sum = {}
+        '''
+        for k in intersection:
+            sum.update({k: self.dict[k] + other.dict[k]})
+        for k in difference:
+            if self.dict.has_key(k):
+                sum.update({k: self.dict[k]})
+            elif other.dict.has_key(k):
+                sum.update({k: other.dict[k]})
+        return Vector(sum)
+        '''
+        for k in union:
+            if k in list1 and k in list2:
+                sum.update({k: (self.dict[k] + other.dict[k])})
+            elif (k in list1) and not (k in list2):
+                sum.update({k: self.dict[k]})
+            elif not (k in list1) and (k in list2):
+                sum.update({k: other.dict[k]})
+            else:
+                print "shouldn't have gotten here"
+        return Vector(sum)
 
 class Particle:
     def __init__(self, s, m):
         self.mass = m
         self.name = s
-
-
 
 
 class ReferenceFrame:
@@ -275,12 +355,14 @@ def dot2(v1,v2):
     v2_dict = parse_terms(v2)
     return v1_dict,v2_dict
 
+
+'''
 def parse_terms(v):
-    """
-    Given a Sympy expression with UnitVector terms, return a dictionary whose
-    keys are the UnitVectors and whose values are the coeefficients of the
-    UnitVectors
-    """
+    #"""
+    #Given a Sympy expression with UnitVector terms, return a dictionary whose
+    #keys are the UnitVectors and whose values are the coeefficients of the
+    #UnitVectors
+    #"""
     v.expand()
     if v == 0:
         return {}
@@ -313,6 +395,8 @@ def parse_terms(v):
         return terms
     else:
         return NotImplemented
+'''
+
 
 def identify(a):
     """
