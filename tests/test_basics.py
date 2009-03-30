@@ -113,6 +113,19 @@ def test_express1():
     assert express(A[3], C) == -sin(q3)*cos(q2)*C[1] + sin(q2)*C[2] + \
             cos(q2)*cos(q3)*C[3]
 
+def test_express2():
+    q1, q2, q3 = symbols('q1 q2 q3')
+    N = ReferenceFrame('N')
+    A = N.rotate('A', 3, q1)
+    B = A.rotate('B', 1, q2)
+    C = B.rotate('C', 2, q3)
+    print A[1].express(C)
+    print cos(q3)*C[1] + sin(q3)*C[3]
+    assert A[1].express(C) == Vector(cos(q3)*C[1] + sin(q3)*C[3])
+    assert A[2].express(C) == Vector(sin(q2)*sin(q3)*C[1] + cos(q2)*C[2] - \
+            sin(q2)*cos(q3)*C[3])
+    assert A[3].express(C) == Vector(-sin(q3)*cos(q2)*C[1] + sin(q2)*C[2] + \
+            cos(q2)*cos(q3)*C[3])
 
 def test_cross_different_frames2():
     q1, q2, q3 = symbols('q1 q2 q3')

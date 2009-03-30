@@ -1,4 +1,4 @@
-from sympy import Symbol, Basic, Mul, Pow, Matrix, sin, cos, S, eye, Add, \
+from sympy import Symbol, Basic, Derivative, Mul, Pow, Matrix, sin, cos, S, eye, Add, \
         trigsimp
 
 e1 = Matrix([1, 0, 0])
@@ -47,6 +47,38 @@ class UnitVector(Basic):
     def _sympystr_(self):
         return str(self.v['sym']) + ">"
 
+    def express(self, F):
+        '''
+        Express a UnitVector in the reference frame "F".
+        '''
+        if self.frame == F:
+            return self
+        else:
+            matrices = self.frame.get_rot_matrices(F)
+            #print matrices
+            u = self.v['num']
+            for m in reversed(matrices):
+                u = m*u
+            return Vector(u[0]*F[1] + u[1]*F[2] + u[2]*F[3])
+
+    def dot(self,other):
+        if isinstance(other, UnitVector):
+            c = other.express(self.frame)
+            if isinstance(c, UnitVector):
+                #print "c", c, "self", self
+                return self.v['num'] * c.v['num'].T
+            #print "c.dict =", c.dict, "c.dict.values() = ", c.dict.values()
+            s = S(0)
+            for k in c.dict.keys():
+                if self == k:
+                    s += c.dict[k]
+            return s
+        elif isinstance(other, Vector):
+            s = S(0)
+            for k in other.dict.keys():
+                s += other.dict[k]*self.dot(k)
+        else:
+            raise NotImplementedError()
 
 class Vector(Basic):
     """
@@ -64,7 +96,33 @@ class Vector(Basic):
         if isinstance(v, dict):
             self.dict = v
         else:
+            #print "Not a dict"
             self.dict = self.parse_terms(v)
+
+
+    def _sympystr_(self):
+        s = ''
+        i = 0
+        for k in self.dict.keys():
+            #print 'self.dict: ', type(self.dict)
+            #print 'self.dict[k]=', self.dict[k]
+            if (self.dict[k] == 1) or (self.dict[k] == -1):
+                if i == 0:
+                    #print "k =", k, "type(k) =", type(k)
+                    #print "k._sympystr_(k)", k._sympystr_(k)
+                    s += k.v['sym'] + '>'
+                    i += 1
+                else:
+                    s += ' + ' + k.v['sym'] + '>'
+            else:
+                if i == 0:
+                    #print "str(self.dict[k]) =", str(self.dict[k])
+                    s += str(self.dict[k]) + '*' + k._sympystr_()
+                    i += 1
+                else:
+                    s += ' + ' + str(self.dict[k]) + '*' + k._sympystr_()
+        return s
+
 
     def parse_terms(self,v):
         #    """
@@ -76,13 +134,42 @@ class Vector(Basic):
         if v == 0:
             return {}
         elif isinstance(v, UnitVector):
-            v.expand()
+            #v.expand()
             return {v : S(1)}
         elif isinstance(v, Mul):
-            v.expand()
-            for b in v.args:
-                if isinstance(b, UnitVector):
-                    return {b: v.coeff(b)}
+            v.expand()  #  Could expand out to an Add instance
+            if isinstance(v, Add):
+                return self.parse_terms(v)  # If this happens, reparse
+            elif isinstance(v, Mul):   # Otherwise it is still a Mul instance
+                args = v.args
+                term_types_list = [type(terms) for terms in args]
+                if UnitVector in term_types_list:
+                    #print "UnitVector term"
+                    i = term_types_list.index(UnitVector)
+                    coefs = args[:i] + args[i+1:]
+                    prod_coefs = S(1)
+                    for p in coefs:
+                        prod_coefs *= p
+                    return {args[i]: prod_coefs}
+                elif Vector in term_types_list:
+                    #print "Vector term"
+                    i = term_types_list.index(Vector)
+                    coefs = args[:i] + args[i+1:]
+                    prod_coefs = S(1)
+                    for p in coefs:
+                        prod_coefs *= p
+                    return {args[i]: prod_coefs}
+                else:
+                    raise NotImplementedError()
+            else:
+                raise NotImplementedError()
+            #for b in v.args:
+            #    if isinstance(b, UnitVector):
+            #        return {b: v.coeff(b)}
+            #    elif isinstance(b, Vector):
+            #        print "b = ", b
+            #        print "v = ", v 
+            #        return {b: v.coeff(b)}
         elif isinstance(v, Pow):
             v.expand()
             #  I don't think this will ever be entered into.
@@ -93,54 +180,74 @@ class Vector(Basic):
                 if isinstance(b, UnitVector):
                     return {b: v.coeff(b)}
         elif isinstance(v, Add):
-            v.expand()
+            #v.expand()
             terms = {}
-            for b in v.args:
+            for add_term in v.args:
                 #print "b = ", b, "type(b): ", type(b)
                 #print "b parsed = ", parse_terms(b)
-                bp = self.parse_terms(b)
-                #print "bp.keys(): ", bp.keys()[0]
-                if terms.has_key(bp.keys()[0]):
-                    terms[bp.keys()[0]] += bp[bp.keys()[0]]
+                if isinstance(add_term, Mul):
+                    add_term_dict = self.parse_terms(add_term)
+                elif isinstance(b, Pow):
+                    add_term_dict = self.parse_terms(b)
+                elif isinstance(b, UnitVector):
+                    add_term_dict = {b: S(1)}
+                elif isinstance(b, Vector):
+                    add_term_dict = b.dict
                 else:
-                    terms.update(self.parse_terms(b))
+                    raise NotImplementedError()
+                for k in add_term_dict.keys():
+                    if terms.has_key(k):
+                        terms[k] += add_term_dict[k]
+                    else:
+                        terms.update(add_term_dict)
             return terms
         else:
             return NotImplemented
 
     def __add__(self, other):
-        list1 = self.dict.keys()
-        list2 = other.dict.keys()
-        intersection = filter(lambda x:x in list1, list2)
-        difference = filter(lambda x:x not in list2, list1)
-        union=list1+filter(lambda x:x not in list1,list2)
-        sum = {}
-        '''
-        for k in intersection:
-            sum.update({k: self.dict[k] + other.dict[k]})
-        for k in difference:
-            if self.dict.has_key(k):
-                sum.update({k: self.dict[k]})
-            elif other.dict.has_key(k):
-                sum.update({k: other.dict[k]})
-        return Vector(sum)
-        '''
-        for k in union:
-            if k in list1 and k in list2:
-                sum.update({k: (self.dict[k] + other.dict[k])})
-            elif (k in list1) and not (k in list2):
-                sum.update({k: self.dict[k]})
-            elif not (k in list1) and (k in list2):
-                sum.update({k: other.dict[k]})
-            else:
-                print "shouldn't have gotten here"
-        return Vector(sum)
+        if isinstance(other, Vector):
+            list1 = self.dict.keys()
+            list2 = other.dict.keys()
+            union=list1+filter(lambda x:x not in list1,list2)
+            sum = {}
+
+            for k in union:
+                if k in list1 and k in list2:
+                    sum.update({k: (self.dict[k] + other.dict[k])})
+                elif (k in list1) and not (k in list2):
+                    sum.update({k: self.dict[k]})
+                elif not (k in list1) and (k in list2):
+                    sum.update({k: other.dict[k]})
+                else:
+                    print "shouldn't have gotten here"
+            return Vector(sum)
+        elif isinstance(other, UnitVector):
+            return self + Vector({UnitVector: S(1)})
+        elif isinstance(other, Mul):
+            return self + Vector(self.parse_terms(other))
+        elif isinstance(other, Pow):
+            return self + Vector(self.parse_terms(other))
+        else:
+            raise NotImplementedError()
 
     def __eq__(self, other):
-        if self.dict == other.dict:
-            return True
+        #print '__eq__ called'
+        #print "type(self): ", type(self), "type(other): ", type(other)
+        if isinstance(self, Vector) and isinstance(other, Vector):
+            if self.dict == other.dict:
+                return True
         else:
             return False
+
+#    def __rmul__(self, other):
+#        #print 'rmul called'
+#        #print 'self =', self, 'type(self): ', type(self)
+#        #print 'other =', other, 'type(other)', type(other)
+#        product = {}
+#        for k in self.dict.keys():
+#            product.update({k: other*self.dict[k]})
+#        return Vector(product)
+#        #raise NotImplementedError()
 
 class Particle:
     def __init__(self, s, m):
@@ -167,6 +274,8 @@ class ReferenceFrame:
 
         self.name = s
         self.triad = [UnitVector(self, i) for i in (1,2,3)]
+        #print "self.triad = ", self.triad, "type(self.triad) = ", \
+                #        type(self.triad)
         self.transforms = {}
         self.parent = frame
         self.W = {}
@@ -211,6 +320,8 @@ class ReferenceFrame:
                 [sin(angle), cos(angle), 0],
                 [0, 0, 1],
                 ])
+            #print "type(self[axis]) = ", type(self[axis])
+            #print "type(angle.diff(t)) = ", type(angle.diff(t))
             omega = angle.diff(t)*self[axis]
             #print "omega = ", omega
         else:
@@ -312,6 +423,15 @@ class RigidBody(ReferenceFrame, Particle):
         ReferenceFrame.__init__(self, s, Matrix=None, frame=None, omega=None)
         Particle.__init__(self,s+'O', m)
         self.inertia = I
+
+
+#class InertialSystem():
+#    def __init__(self, s):
+#        self.name = s
+#
+#    def __getitem__(self, i):
+#        return self.triad[i-1]
+
 
 
 def dot(v1,v2):
