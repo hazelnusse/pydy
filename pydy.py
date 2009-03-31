@@ -99,29 +99,53 @@ class Vector(Basic):
             #print "Not a dict"
             self.dict = self.parse_terms(v)
 
+    def express(self, Frame):
+        self_Frame_dict = {}
+
+        for unit_vector_term in self.dict.keys():
+            uv_in_Frame = unit_vector_term.express(Frame)
+            if isinstance(uv_in_Frame, UnitVector):
+                if self_Frame_dict.has_key(uv_in_Frame):
+                    self_Frame_dict[uv_in_Frame] += S(1)
+                else:
+                    self_Frame_dict.update({uv_in_Frame : \
+                            self.dict[unit_vector_term]})
+            elif isinstance(uv_in_Frame, Vector):
+                for uv_term in uv_in_Frame.dict.keys():
+                    if self_Frame_dict.has_key(uv_term):
+                        self_Frame_dict[uv_term] += self.dict[unit_vector_term] \
+                                * uv_in_Frame.dict[uv_term]
+                    else:
+                        self_Frame_dict.update({uv_term : \
+                                self.dict[unit_vector_term] \
+                                * uv_in_Frame.dict[uv_term]})
+        return Vector(self_Frame_dict)
 
     def _sympystr_(self):
         s = ''
         i = 0
-        for k in self.dict.keys():
-            #print 'self.dict: ', type(self.dict)
-            #print 'self.dict[k]=', self.dict[k]
-            if (self.dict[k] == 1) or (self.dict[k] == -1):
-                if i == 0:
-                    #print "k =", k, "type(k) =", type(k)
-                    #print "k._sympystr_(k)", k._sympystr_(k)
-                    s += k.v['sym'] + '>'
-                    i += 1
+        if self.dict != {}:
+            for k in self.dict.keys():
+                #print 'self.dict: ', type(self.dict)
+                #print 'self.dict[k]=', self.dict[k]
+                if (self.dict[k] == 1) or (self.dict[k] == -1):
+                    if i == 0:
+                        #print "k =", k, "type(k) =", type(k)
+                        #print "k._sympystr_(k)", k._sympystr_(k)
+                        s += str(k.v['sym']) + '>'
+                        i += 1
+                    else:
+                        s += ' + ' + k.v['sym'] + '>'
                 else:
-                    s += ' + ' + k.v['sym'] + '>'
-            else:
-                if i == 0:
-                    #print "str(self.dict[k]) =", str(self.dict[k])
-                    s += str(self.dict[k]) + '*' + k._sympystr_()
-                    i += 1
-                else:
-                    s += ' + ' + str(self.dict[k]) + '*' + k._sympystr_()
-        return s
+                    if i == 0:
+                        #print "str(self.dict[k]) =", str(self.dict[k])
+                        s += str(self.dict[k]) + '*' + k._sympystr_()
+                        i += 1
+                    else:
+                        s += ' + ' + str(self.dict[k]) + '*' + k._sympystr_()
+            return s
+        else:
+            return '0>'
 
 
     def parse_terms(self,v):

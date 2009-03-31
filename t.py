@@ -142,16 +142,37 @@ v3 = Vector(q1*v)
 
 v = Vector(q1*sin(q2)*A[1]+ q2*cos(q3)*F[3])
 
-print "v", v
-print "A[1].dot(N[1]) = ", A[1].dot(N[1])
+#print "v", v
+#print "A[1].dot(N[1]) = ", A[1].dot(N[1])
+z = Vector({})
+#print "z", z, "z.dict", z.dict
+
+
+# Expressing Vector instances in different frames
+A = N.rotate('A',3,q1)
+B = A.rotate('B',1,q2)
+v1 = Vector(sin(q1)*A[2])
+print "A[2].express(B)", A[2].express(B)
+print "v1 = ", v1
+print "v1.dict", v1.dict
+print "v1.express(A) = ", v1.express(A), "v1.express(B) = ", v1.express(B)
+v2 = v1.express(B)
+print "v2 =", v2
+print "v2.dict", v2.dict
 stop
 
-print "v = ", v
-
-print "A[1].dot(v) = ", A[1].dot(v)
 
 
-stop
+#print "v = ", v
+#print "A[1].dot(v) = ", A[1].dot(v)
+
+#stop
+
+
+
+
+
+
 #print coeff(C.get_omega(N),[q1.diff(t),q2.diff(t),q3.diff(t)])
 #print N.get_omega(C)
 
