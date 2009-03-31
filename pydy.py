@@ -55,11 +55,19 @@ class UnitVector(Basic):
             return self
         else:
             matrices = self.frame.get_rot_matrices(F)
-            #print matrices
-            u = self.v['num']
-            for m in reversed(matrices):
-                u = m*u
-            return Vector(u[0]*F[1] + u[1]*F[2] + u[2]*F[3])
+            print matrices[0]
+            print self.v['num']
+            print matrices[0]*self.v['num']
+            if len(matrices) == 1 and matrices[0]*self.v['num'] == \
+                    self.v['num']:
+                return F[self.i]
+            else:
+                #print matrices
+                #print len(matrices)
+                u = self.v['num']
+                for m in reversed(matrices):
+                    u = m*u
+                return Vector(u[0]*F[1] + u[1]*F[2] + u[2]*F[3])
 
     def dot(self,other):
         if isinstance(other, UnitVector):
@@ -93,6 +101,22 @@ class Vector(Basic):
     """
 
     def __init__(self, v):
+        """
+        Initialize a Vector in two ways:
+        Method 1 (dictionary way):
+        v = Vector({UnitVectors : Coefficients})
+        for example:
+        v = Vector({A[1] : sin(q1)})
+        or
+        Method 2 (sympy expression way):
+        v = Vector(sin(q1)*A[1])
+
+        Vector objects are internally represented as dictionaries whose keys
+        are the UnitVectors and whose values are the coefficients of those
+        UnitVectors.  In the above example, this would imply:
+        v.dict == {A[1] : sin(q1)}
+        """
+
         if isinstance(v, dict):
             self.dict = v
         else:
@@ -100,6 +124,10 @@ class Vector(Basic):
             self.dict = self.parse_terms(v)
 
     def express(self, Frame):
+        """
+        Expresses self in the basis vectors of 'Frame'.
+        """
+
         self_Frame_dict = {}
 
         for unit_vector_term in self.dict.keys():
@@ -119,9 +147,20 @@ class Vector(Basic):
                         self_Frame_dict.update({uv_term : \
                                 self.dict[unit_vector_term] \
                                 * uv_in_Frame.dict[uv_term]})
-        return Vector(self_Frame_dict)
+
+        print len(self_Frame_dict.keys())
+        print "keys:", self_Frame_dict.keys()
+        if len(self_Frame_dict.keys()) == 1:
+            if self_Frame_dict[self_Frame_dict.keys()[0]] == 1:
+                return self_Frame_dict.keys()[0]
+        else:
+            return Vector(self_Frame_dict)
 
     def _sympystr_(self):
+        """
+        Sympy printing of Vector objects.
+        """
+
         s = ''
         i = 0
         if self.dict != {}:
@@ -149,11 +188,11 @@ class Vector(Basic):
 
 
     def parse_terms(self,v):
-        #    """
-        #Given a Sympy expression with UnitVector terms, return a dictionary whose
-        #keys are the UnitVectors and whose values are the coeefficients of the
-        #UnitVectors
-        #"""
+        """
+        Given a Sympy expression with UnitVector terms, return a dictionary
+        whose keys are the UnitVectors and whose values are the coeefficients
+        of the UnitVectors
+        """
 
         if v == 0:
             return {}
@@ -229,6 +268,10 @@ class Vector(Basic):
             return NotImplemented
 
     def __add__(self, other):
+        """
+        Adds two Vector objects and return a new Vector object.
+        v1 + v2   <----> v1.__add__(v2)
+        """
         if isinstance(other, Vector):
             list1 = self.dict.keys()
             list2 = other.dict.keys()
@@ -255,23 +298,14 @@ class Vector(Basic):
             raise NotImplementedError()
 
     def __eq__(self, other):
-        #print '__eq__ called'
-        #print "type(self): ", type(self), "type(other): ", type(other)
+        """
+        Checks if two Vector objects are equal
+        """
         if isinstance(self, Vector) and isinstance(other, Vector):
             if self.dict == other.dict:
                 return True
         else:
             return False
-
-#    def __rmul__(self, other):
-#        #print 'rmul called'
-#        #print 'self =', self, 'type(self): ', type(self)
-#        #print 'other =', other, 'type(other)', type(other)
-#        product = {}
-#        for k in self.dict.keys():
-#            product.update({k: other*self.dict[k]})
-#        return Vector(product)
-#        #raise NotImplementedError()
 
 class Particle:
     def __init__(self, s, m):
@@ -280,15 +314,34 @@ class Particle:
 
 
 class ReferenceFrame:
-    """A standard reference frame with 3 dextral orthonormal vectors"""
+    """
+    A standard reference frame with 3 mutually perpendicular unit vectors.
+    Reference frames can be created in two ways:
+
+    Method 1:
+    A = ReferenceFrame('A')
+
+    Method 2:
+    B = A.rotate('B', axis, angle)
+    where:
+    axis = 1, 2 or 3
+    angle is the radian measure of the rotation.
+
+    Method 1 typically is used to create the 'base'frame from which all other
+    frames are derived.  Method 2 is used to create all subsequent frames.  In
+    doing so, circular definitions of frames are avoided and a tree structure
+    of reference frames is created.  The first argument is a string and
+    determines how the basis UnitVectors are printed. 
+    """
 
     def __init__(self, s, matrix=None, frame=None, omega=None):
         """
-        ReferenceFrame('B', matrix, A)
-        The matrix represents A_B, e.g. how to transform a vector from B to A.
+        If instantiated without the optional arguments, the 'base'
+        ReferenceFrame is created.  The optional arguments are automatically
+        generated by the rotate() method for the purpose of creating a new
+        ReferenceFrame object.  See rotate() method for details of the optional
+        arguments.
         """
-
-
         if frame == None:
             self.ref_frame_list = [self]
         else:
@@ -312,16 +365,43 @@ class ReferenceFrame:
             frame.append_transform(self, matrix.T)
 
     def __getitem__(self, i):
+        """
+        Reference the UnitVectors that are attached to a reference frame.
+        Example:
+        A = ReferenceFrame('A')
+
+        A[1], A[2], A[3] are the three basis vectors of the A frame.
+        """
         return self.triad[i-1]
 
     def append_transform(self, frame, matrix):
         """
-        Gives us a transform to the frame "frame".
+        Appends 'matrix' to the transforms dict which transform vectors
+        expressed in self basis vectors to the basis vectors of the frame
+        'frame'
         """
         # We just append it to our "transforms" dict.
         self.transforms[frame] = matrix
 
     def rotate(self, name, axis, angle):
+        """
+        Perform a simple rotation about the 1, 2, or 3 axis, by an amount
+        specified by angle, to create a new ReferenceFrame object.
+        Automatically generates the angular velocity of the new frame with
+        respect to the parent frame.
+
+        Currently the orientation is stored as the direction cosine matrix,
+        further work should implement quaternions.  Extra functionality such as
+        the ability to specify a set of Euler angles or an arbitrary axis and
+        angle needs to be implemented.
+
+        When rotate is used to generate a new ReferenceFrame, the orientation
+        of that reference frame relative to its parent reference frame is
+        stored in both frames in the form of the direction cosine matrix.
+        Additionally, the angular velocity of the new reference frame relative
+        to the parent frame (and vice versa) is stored with the new reference
+        frame (and the parent reference frame).
+        """
         if axis == 1:
             matrix = Matrix([
                 [1, 0, 0],
@@ -329,7 +409,6 @@ class ReferenceFrame:
                 [0, sin(angle), cos(angle)],
                 ])
             omega = angle.diff(t)*self[axis]
-            #print "omega = ", omega
         elif axis == 2:
             matrix = Matrix([
                 [cos(angle), 0, sin(angle)],
@@ -337,17 +416,13 @@ class ReferenceFrame:
                 [-sin(angle), 0, cos(angle)],
                 ])
             omega = angle.diff(t)*self[axis]
-            #print "omega = ", omega
         elif axis == 3:
             matrix = Matrix([
                 [cos(angle), -sin(angle), 0],
                 [sin(angle), cos(angle), 0],
                 [0, 0, 1],
                 ])
-            #print "type(self[axis]) = ", type(self[axis])
-            #print "type(angle.diff(t)) = ", type(angle.diff(t))
             omega = angle.diff(t)*self[axis]
-            #print "omega = ", omega
         else:
             raise ValueError("wrong axis")
         return ReferenceFrame(name, matrix, self, omega)
@@ -417,17 +492,13 @@ class ReferenceFrame:
 
     def get_omega(self, frame):
         """
-        Returns the angular velocity Omega with respect to the frame "frame".
-
-        E.g. it returns W_A_N, where A=self, N=frame
+        Returns the angular velocity of self relative to the frame "frame".
         """
 
         if self.W.has_key(frame):
             return self.W[frame]
         else:
-            #print self.W
             return sum(self.get_omega_list(frame))
-            raise NotImplementedError()
 
     def get_omega_list(self, frame):
         """

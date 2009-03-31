@@ -147,19 +147,22 @@ v = Vector(q1*sin(q2)*A[1]+ q2*cos(q3)*F[3])
 z = Vector({})
 #print "z", z, "z.dict", z.dict
 
-
 # Expressing Vector instances in different frames
 A = N.rotate('A',3,q1)
 B = A.rotate('B',1,q2)
-v1 = Vector(sin(q1)*A[2])
-print "A[2].express(B)", A[2].express(B)
-print "v1 = ", v1
-print "v1.dict", v1.dict
-print "v1.express(A) = ", v1.express(A), "v1.express(B) = ", v1.express(B)
-v2 = v1.express(B)
-print "v2 =", v2
-print "v2.dict", v2.dict
+#v1 = Vector(sin(q1)*A[2])
+#print "A[2].express(B)", A[2].express(B)
+#print "v1 = ", v1
+#print "v1.dict", v1.dict
+#print "v1.express(A) = ", v1.express(A), "v1.express(B) = ", v1.express(B)
+#v2 = v1.express(B)
+#print "v2 =", v2
+#print "v2.dict", v2.dict
+print type(A[3].express(N))
+
 stop
+
+
 
 
 

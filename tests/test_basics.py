@@ -121,12 +121,23 @@ def test_express2():
     C = B.rotate('C', 2, q3)
     print A[1].express(C)
     print cos(q3)*C[1] + sin(q3)*C[3]
+    assert A[1].express(N) == Vector(cos(q1)*N[1] + sin(q1)*N[2])
+    assert A[2].express(N) == Vector(-sin(q1)*N[1] + cos(q1)*N[2])
+    print "A[3].express(N) = ", A[3].express(N), "type(A[3].express(N)) = ",\
+            type(A[3].express(N))
+    assert A[3].express(N) == N[3]
+    assert A[1].express(A) == A[1]
+    assert A[2].express(A) == A[2]
+    assert A[3].express(A) == A[3]
+    assert A[1].express(B) == B[1]
+    assert A[2].express(B) == Vector(cos(q2)*B[2] - sin(q2)*B[3])
+    assert A[3].express(B) == Vector(sin(q2)*B[2] + cos(q2)*B[3])
     assert A[1].express(C) == Vector(cos(q3)*C[1] + sin(q3)*C[3])
     assert A[2].express(C) == Vector(sin(q2)*sin(q3)*C[1] + cos(q2)*C[2] - \
             sin(q2)*cos(q3)*C[3])
     assert A[3].express(C) == Vector(-sin(q3)*cos(q2)*C[1] + sin(q2)*C[2] + \
             cos(q2)*cos(q3)*C[3])
-
+    
 def test_cross_different_frames2():
     q1, q2, q3 = symbols('q1 q2 q3')
     N = ReferenceFrame('N')
