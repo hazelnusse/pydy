@@ -337,9 +337,9 @@ class Point:
                 newpoint.NewtonianFrame = self.NewtonianFrame
                 newpoint.vel = r.dt(newpoint.NewtonianFrame)
             elif isintance(Frame, ReferenceFrame):
-                
-
-            return
+                raise NotImplementedError()
+            else:
+                raise NotImplementedError()
 
 
 
@@ -553,11 +553,11 @@ class ReferenceFrame:
         return result
 
 
-class RigidBody(ReferenceFrame, Particle):
-    def __init__(self, s, matrix=None, frame=None, omega=None, m=0, I=0):
-        ReferenceFrame.__init__(self, s, Matrix=None, frame=None, omega=None)
-        Particle.__init__(self,s+'O', m)
-        self.inertia = I
+#class RigidBody(ReferenceFrame, Particle):
+#    def __init__(self, s, matrix=None, frame=None, omega=None, m=0, I=0):
+#        ReferenceFrame.__init__(self, s, Matrix=None, frame=None, omega=None)
+#        Particle.__init__(self,s+'O', m)
+#        self.inertia = I
 
 
 #class InertialSystem():
