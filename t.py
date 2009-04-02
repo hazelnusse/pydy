@@ -158,8 +158,10 @@ B = A.rotate('B',1,q2)
 #v2 = v1.express(B)
 #print "v2 =", v2
 #print "v2.dict", v2.dict
-print type(A[3].express(N))
-
+#print type(A[3].express(N))
+a1 = Vector(cos(q1)*N[1] + sin(q1)*N[2])
+print "a1 =", a1, "a1.express(A) = ", a1.express(A)
+print "type(a1.express(A))", type(a1.express(A))
 stop
 
 

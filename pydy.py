@@ -55,9 +55,9 @@ class UnitVector(Basic):
             return self
         else:
             matrices = self.frame.get_rot_matrices(F)
-            print matrices[0]
-            print self.v['num']
-            print matrices[0]*self.v['num']
+            #print matrices[0]
+            #print self.v['num']
+            #print matrices[0]*self.v['num']
             if len(matrices) == 1 and matrices[0]*self.v['num'] == \
                     self.v['num']:
                 return F[self.i]
@@ -67,7 +67,9 @@ class UnitVector(Basic):
                 u = self.v['num']
                 for m in reversed(matrices):
                     u = m*u
-                return Vector(u[0]*F[1] + u[1]*F[2] + u[2]*F[3])
+                #print "u[0]=", u[0], "u[1]=",u[1],"u[2]=",u[2]
+                return Vector(trigsimp(u[0])*F[1] + trigsimp(u[1])*F[2] + \
+                        trigsimp(u[2])*F[3])
 
     def dot(self,other):
         if isinstance(other, UnitVector):
@@ -137,23 +139,29 @@ class Vector(Basic):
                     self_Frame_dict[uv_in_Frame] += S(1)
                 else:
                     self_Frame_dict.update({uv_in_Frame : \
-                            self.dict[unit_vector_term]})
+                            trigsimp(self.dict[unit_vector_term])})
             elif isinstance(uv_in_Frame, Vector):
                 for uv_term in uv_in_Frame.dict.keys():
                     if self_Frame_dict.has_key(uv_term):
-                        self_Frame_dict[uv_term] += self.dict[unit_vector_term] \
-                                * uv_in_Frame.dict[uv_term]
+                        self_Frame_dict[uv_term] +=\
+                                trigsimp(self.dict[unit_vector_term] * \
+                                uv_in_Frame.dict[uv_term])
                     else:
                         self_Frame_dict.update({uv_term : \
-                                self.dict[unit_vector_term] \
-                                * uv_in_Frame.dict[uv_term]})
+                                trigsimp(self.dict[unit_vector_term] \
+                                * uv_in_Frame.dict[uv_term])})
 
-        print len(self_Frame_dict.keys())
-        print "keys:", self_Frame_dict.keys()
+        #print len(self_Frame_dict.keys())
+        #print "keys:", self_Frame_dict.keys()
+        for key in self_Frame_dict.keys():
+            self_Frame_dict[key] = trigsimp(self_Frame_dict[key])
+            if self_Frame_dict[key] == 0:
+                self_Frame_dict.pop(key)
         if len(self_Frame_dict.keys()) == 1:
             if self_Frame_dict[self_Frame_dict.keys()[0]] == 1:
                 return self_Frame_dict.keys()[0]
         else:
+            #print "self_Frame_dict = ", self_Frame_dict
             return Vector(self_Frame_dict)
 
     def _sympystr_(self):
@@ -307,10 +315,38 @@ class Vector(Basic):
         else:
             return False
 
-class Particle:
-    def __init__(self, s, m):
-        self.mass = m
+class Point:
+    def __init__(self, s, r=None, Frame=None):
         self.name = s
+        if r == S(0) and Frame != None:    # When instantiated by ReferenceFrame
+            self.pos = S(0)                # Should only happen for the base
+            self.vel = S(0)                # Newtonian Frame
+            self.acc = S(0)
+            self.NewtonianFrame = Frame
+            self.InertialOrigin = True
+        elif r != None and Frame == None:  # When instantiated by locate method
+            self.pos = r
+        else:
+            raise NotImplementedError()
+
+
+    def locate(self, s, r, Frame=None):
+        if isinstance(r, UnitVector) or isinstance(r, Vector):
+            if Frame == None:
+                newpoint = Point(s, r)
+                newpoint.NewtonianFrame = self.NewtonianFrame
+                newpoint.vel = r.dt(newpoint.NewtonianFrame)
+            elif isintance(Frame, ReferenceFrame):
+                
+
+            return
+
+
+
+#class Particle:
+#    def __init__(self, p, m):
+#        self.mass = Mass
+#        self.point = p
 
 
 class ReferenceFrame:
@@ -344,6 +380,7 @@ class ReferenceFrame:
         """
         if frame == None:
             self.ref_frame_list = [self]
+            self.Origin = Point(s, S(0), self)
         else:
             #print "inside __init__: ", frame.ref_frame_list
             self.ref_frame_list = frame.ref_frame_list[:]
@@ -372,7 +409,10 @@ class ReferenceFrame:
 
         A[1], A[2], A[3] are the three basis vectors of the A frame.
         """
-        return self.triad[i-1]
+        if i == 1 or i == 2 or i ==3:
+            return self.triad[i-1]
+        else:
+            raise NotImplementedError()
 
     def append_transform(self, frame, matrix):
         """
