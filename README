@@ -1,0 +1,24 @@
+PyDy
+=====
+
+A Python library for studying dynamics.
+
+0. Download
+-----------
+
+$ git clone git://github.com/hazelnusse/pydy.git
+
+1. Documentation and usage
+--------------------------
+This is a work in progress.  Much more will be added here as the project
+matures.  Eventually, the project will have a Google code project page, either
+within the Sympy page or a stand alone, separate project page.
+
+2. Project goals
+--------------------------
+To allow for easy manipulation of three-dimensional vectors for the purpose of
+deriving equations of motion.  In particular, PyDy is designed to implement
+Kane's method for forming the equations of motion.  Numerical integration of
+the equations of motion are provided by scipy.integrate.odeint.  PyDy has builtin
+functionality that allows for easy animation of reference frames, points, rigid
+bodies and particles.
