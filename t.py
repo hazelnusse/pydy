@@ -3,6 +3,14 @@ from sympy import *
 import sympy
 print sympy.__file__
 t, x, y = symbols('t x y')
+e1 = Matrix([1, 0, 0])
+e2 = Matrix([0, 1, 0])
+e3 = Matrix([0, 0, 1])
+e1n = Matrix([-1, 0, 0])
+e2n = Matrix([0, -1, 0])
+e3n = Matrix([0, 0, -1])
+zero = Matrix([0, 0, 0])
+
 q1 = Function("q1")(t)
 q2 = Function("q2")(t)
 q3 = Function("q3")(t)
@@ -17,6 +25,31 @@ C = B.rotate('C', 2, q3)
 D = A.rotate('D', 2, q4)
 E = D.rotate('E', 1, q5)
 F = E.rotate('F', 3, q6)
+
+
+print "N[1].cross(N[1])", N[1].cross(N[1])
+print "N[1].cross(N[2])", N[1].cross(N[2])
+print "N[1].cross(N[3])", N[1].cross(N[3])
+print N[1].cross(N[1]) == Vector(0)
+print N[1].cross(N[2]) == N[3]
+print N[1].cross(N[3]) == Vector({N[2]: -1})
+
+print "N[2].cross(N[1])", N[2].cross(N[1])
+print "N[2].cross(N[2])", N[2].cross(N[2])
+print "N[2].cross(N[3])", N[2].cross(N[3])
+print N[2].cross(N[1]) == Vector({N[3]: -1}) 
+print N[2].cross(N[2]) == Vector(0)
+print N[2].cross(N[3]) == N[1]
+
+print "N[3].cross(N[1])", N[3].cross(N[1])
+print "N[3].cross(N[2])", N[3].cross(N[2])
+print "N[3].cross(N[3])", N[3].cross(N[3])
+print N[3].cross(N[1]) == N[2]
+print N[3].cross(N[2]) == Vector({N[1]: -1})
+print N[3].cross(N[3]) == Vector(0)
+
+
+stop
 
 '''
 print "N.ref_frame_list", N.ref_frame_list

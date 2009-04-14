@@ -1,6 +1,6 @@
 from sympy import Symbol, Basic, Derivative, Mul, Pow, Matrix, sin, cos, S, eye, Add, \
         trigsimp
-
+from numpy import sign
 e1 = Matrix([1, 0, 0])
 e2 = Matrix([0, 1, 0])
 e3 = Matrix([0, 0, 1])
@@ -55,40 +55,76 @@ class UnitVector(Basic):
             return self
         else:
             matrices = self.frame.get_rot_matrices(F)
-            #print matrices[0]
-            #print self.v['num']
-            #print matrices[0]*self.v['num']
             if len(matrices) == 1 and matrices[0]*self.v['num'] == \
                     self.v['num']:
                 return F[self.i]
             else:
-                #print matrices
-                #print len(matrices)
                 u = self.v['num']
                 for m in reversed(matrices):
                     u = m*u
-                #print "u[0]=", u[0], "u[1]=",u[1],"u[2]=",u[2]
                 return Vector(trigsimp(u[0])*F[1] + trigsimp(u[1])*F[2] + \
                         trigsimp(u[2])*F[3])
 
-    def dot(self,other):
+    def dot(self, other):
         if isinstance(other, UnitVector):
             c = other.express(self.frame)
             if isinstance(c, UnitVector):
-                #print "c", c, "self", self
                 return self.v['num'] * c.v['num'].T
-            #print "c.dict =", c.dict, "c.dict.values() = ", c.dict.values()
-            s = S(0)
-            for k in c.dict.keys():
-                if self == k:
-                    s += c.dict[k]
-            return s
+            elif isinstance(c, Vector):
+                s = S(0)
+                for k in c.dict.keys():
+                    if self == k:
+                        s += trigsimp(c.dict[k])
+                return s
+            else:
+                raise NotImplementedError()
         elif isinstance(other, Vector):
             s = S(0)
             for k in other.dict.keys():
-                s += other.dict[k]*self.dot(k)
+                s += trigsimp(trigsimp(other.dict[k])*trigsimp(self.dot(k)))
+            return s
         else:
             raise NotImplementedError()
+
+    def cross(self, other):
+        if isinstance(other, UnitVector):
+            c = other.express(self.frame)
+            if isinstance(c, UnitVector):
+                crossproduct = [self.v['num'][1]*c.v['num'][2] - \
+                        self.v['num'][2]*c.v['num'][1], \
+                        -self.v['num'][0]*c.v['num'][2] + \
+                        self.v['num'][2]*c.v['num'][0],  \
+                        self.v['num'][0]*c.v['num'][1] - \
+                        self.v['num'][1]*c.v['num'][0]]
+                s = {}
+                for (c, i) in zip(crossproduct, [1, 2, 3]):
+                    if c != 0:
+                        s.update({self.frame[i] : c})
+                if len(s) == 1:
+                    if s.values()[0] == 1:
+                        #print "s =", s
+                        return s.keys()[0]  # Return a UnitVector object
+                    else:
+                        #print "s =", s
+                        return Vector(s)
+                else:
+                    return Vector(s)
+            elif isinstance(c, Vector):
+                s = S(0)
+                for k in c.dict.keys():
+                    if self == k:
+                        s += trigsimp(c.dict[k])
+                return s
+            else:
+                raise NotImplementedError()
+        elif isinstance(other, Vector):
+            s = S(0)
+            for k in other.dict.keys():
+                s += trigsimp(trigsimp(other.dict[k])*trigsimp(self.dot(k)))
+            return s
+        else:
+            raise NotImplementedError()
+
 
 class Vector(Basic):
     """
@@ -179,17 +215,25 @@ class Vector(Basic):
                     if i == 0:
                         #print "k =", k, "type(k) =", type(k)
                         #print "k._sympystr_(k)", k._sympystr_(k)
-                        s += str(k.v['sym']) + '>'
+                        #print 'hello'
+                        if self.dict[k] == 1: sign = ''
+                        if self.dict[k] == -1: sign = '-'
+                        s += sign + str(k.v['sym']) + '>'
                         i += 1
                     else:
-                        s += ' + ' + k.v['sym'] + '>'
+                        if int(abs(self.dict[k])/self.dict[k]) == 1: sign = ''
+                        if int(abs(self.dict[k])/self.dict[k]) == -1: sign = \
+                                '-'
+                        s += ' ' + sign + ' ' + abs(k.v['sym']) + '>'
                 else:
                     if i == 0:
                         #print "str(self.dict[k]) =", str(self.dict[k])
                         s += str(self.dict[k]) + '*' + k._sympystr_()
                         i += 1
                     else:
-                        s += ' + ' + str(self.dict[k]) + '*' + k._sympystr_()
+                        if str(self.dict[k])[0] == '-': sign = '-'
+                        if str(self.dict[k])[0] != '-': sign = '+'
+                        s += ' ' + sign + ' ' + str(self.dict[k]) + '*' + k._sympystr_()
             return s
         else:
             return '0>'
@@ -316,28 +360,30 @@ class Vector(Basic):
             return False
 
 class Point:
-    def __init__(self, s, r=None, Frame=None):
+    def __init__(self, s, r=None, frame=None):
         self.name = s
-        if r == S(0) and Frame != None:    # When instantiated by ReferenceFrame
+        if r == S(0) and isinstance(frame, ReferenceFrame):    # When instantiated by ReferenceFrame
             self.pos = S(0)                # Should only happen for the base
             self.vel = S(0)                # Newtonian Frame
             self.acc = S(0)
-            self.NewtonianFrame = Frame
-            self.InertialOrigin = True
-        elif r != None and Frame == None:  # When instantiated by locate method
+            self.NewtonianFrame = frame
+        elif r != None and frame == None:  # When instantiated by locate method
             self.pos = r
         else:
             raise NotImplementedError()
 
 
-    def locate(self, s, r, Frame=None):
+    def locate(self, s, r, frame=None):
         if isinstance(r, UnitVector) or isinstance(r, Vector):
             if Frame == None:
                 newpoint = Point(s, r)
                 newpoint.NewtonianFrame = self.NewtonianFrame
                 newpoint.vel = r.dt(newpoint.NewtonianFrame)
-            elif isintance(Frame, ReferenceFrame):
-                raise NotImplementedError()
+            elif isinstance(frame, ReferenceFrame):
+                newpoint = Point(s, r)
+                newpoint.NewtonianFrame = self.NewtonianFrame
+                newpoint.vel = self.vel +\
+                        frame.get_omega(newpoint.NewtonianFrame).cross(r)
             else:
                 raise NotImplementedError()
 
@@ -367,7 +413,7 @@ class ReferenceFrame:
     frames are derived.  Method 2 is used to create all subsequent frames.  In
     doing so, circular definitions of frames are avoided and a tree structure
     of reference frames is created.  The first argument is a string and
-    determines how the basis UnitVectors are printed. 
+    determines how the basis UnitVectors are printed.
     """
 
     def __init__(self, s, matrix=None, frame=None, omega=None):
@@ -380,7 +426,7 @@ class ReferenceFrame:
         """
         if frame == None:
             self.ref_frame_list = [self]
-            self.Origin = Point(s, S(0), self)
+            self.origin = Point(s, S(0), self)
         else:
             #print "inside __init__: ", frame.ref_frame_list
             self.ref_frame_list = frame.ref_frame_list[:]
