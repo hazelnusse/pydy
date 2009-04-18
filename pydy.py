@@ -47,6 +47,13 @@ class UnitVector(Basic):
     def _sympystr_(self):
         return str(self.v['sym']) + ">"
 
+    def __cmp__(self, other):
+        if isinstance(other, UnitVector):
+            if self.frame == other.frame:
+                return cmp(self.i, other.i)
+        else:
+            raise NotImplementedError()
+
     def __eq__(self, other):
         if isinstance(other, UnitVector):
             if other.frame == self.frame:
@@ -168,9 +175,14 @@ class UnitVector(Basic):
                     return cp1
                 else:
                     return cp2
-
         elif isinstance(other, Vector):
             return cross_with_Vector(self, other)
+        else:
+            raise NotImplementedError()
+
+    def dt(self, frame):
+        if isinstance(frame, ReferenceFrame):
+            return cross(self.frame.get_omega(frame), self)
         else:
             raise NotImplementedError()
 
@@ -210,44 +222,6 @@ class Vector(Basic):
             #print "Not a dict"
             self.dict = self.parse_terms(v)
 
-    def express(self, Frame):
-        """
-        Expresses self in the basis vectors of 'Frame'.
-        """
-
-        self_Frame_dict = {}
-
-        for unit_vector_term in self.dict.keys():
-            uv_in_Frame = unit_vector_term.express(Frame)
-            if isinstance(uv_in_Frame, UnitVector):
-                if self_Frame_dict.has_key(uv_in_Frame):
-                    self_Frame_dict[uv_in_Frame] += S(1)
-                else:
-                    self_Frame_dict.update({uv_in_Frame : \
-                            trigsimp(self.dict[unit_vector_term])})
-            elif isinstance(uv_in_Frame, Vector):
-                for uv_term in uv_in_Frame.dict.keys():
-                    if self_Frame_dict.has_key(uv_term):
-                        self_Frame_dict[uv_term] +=\
-                                trigsimp(self.dict[unit_vector_term] * \
-                                uv_in_Frame.dict[uv_term])
-                    else:
-                        self_Frame_dict.update({uv_term : \
-                                trigsimp(self.dict[unit_vector_term] \
-                                * uv_in_Frame.dict[uv_term])})
-
-        for key in self_Frame_dict.keys():
-            self_Frame_dict[key] = trigsimp(self_Frame_dict[key])
-            if self_Frame_dict[key] == 0:
-                self_Frame_dict.pop(key)
-        if len(self_Frame_dict.keys()) == 1:
-            if self_Frame_dict[self_Frame_dict.keys()[0]] == 1:
-                return self_Frame_dict.keys()[0]
-            else:
-                return Vector(self_Frame_dict)
-        else:
-            return Vector(self_Frame_dict)
-
     def _sympystr_(self):
         """
         Sympy printing of Vector objects.
@@ -271,15 +245,23 @@ class Vector(Basic):
                         s += ' ' + sign + ' ' + k._sympystr_()
                 else:
                     if i == 0:
-                        s += str(self.dict[k]) + '*' + k._sympystr_()
+                        if isinstance(self.dict[k], Add):
+                            s += '(' + str(self.dict[k]) + ')' + '*' + \
+                                    k._sympystr_()
+                        else:
+                            s += str(self.dict[k]) + '*' + k._sympystr_()
                         i += 1
                     else:
-                        if str(self.dict[k])[0] == '-':
-                            sign = '-'
-                            s += ' ' + sign + ' ' + str(self.dict[k])[1:] + '*' + k._sympystr_()
-                        elif str(self.dict[k])[0] != '-':
-                            sign = '+'
-                            s += ' ' + sign + ' ' + str(self.dict[k]) + '*' + k._sympystr_()
+                        if isinstance(self.dict[k], Add):
+                            s += ' + (' + str(self.dict[k]) + ')*' + \
+                                    k._sympystr_()
+                        else:
+                            if str(self.dict[k])[0] == '-':
+                                sign = '-'
+                                s += ' ' + sign + ' ' + str(self.dict[k])[1:] + '*' + k._sympystr_()
+                            else:
+                                sign = '+'
+                                s += ' ' + sign + ' ' + str(self.dict[k]) + '*' + k._sympystr_()
             return s
         else:
             return '0>'
@@ -463,6 +445,44 @@ class Vector(Basic):
             n[k] *= -1
         return Vector(n)
 
+    def express(self, Frame):
+        """
+        Expresses self in the basis vectors of 'Frame'.
+        """
+
+        self_Frame_dict = {}
+
+        for unit_vector_term in self.dict.keys():
+            uv_in_Frame = unit_vector_term.express(Frame)
+            if isinstance(uv_in_Frame, UnitVector):
+                if self_Frame_dict.has_key(uv_in_Frame):
+                    self_Frame_dict[uv_in_Frame] += S(1)
+                else:
+                    self_Frame_dict.update({uv_in_Frame : \
+                            trigsimp(self.dict[unit_vector_term])})
+            elif isinstance(uv_in_Frame, Vector):
+                for uv_term in uv_in_Frame.dict.keys():
+                    if self_Frame_dict.has_key(uv_term):
+                        self_Frame_dict[uv_term] +=\
+                                trigsimp(self.dict[unit_vector_term] * \
+                                uv_in_Frame.dict[uv_term])
+                    else:
+                        self_Frame_dict.update({uv_term : \
+                                trigsimp(self.dict[unit_vector_term] \
+                                * uv_in_Frame.dict[uv_term])})
+
+        for key in self_Frame_dict.keys():
+            self_Frame_dict[key] = trigsimp(self_Frame_dict[key])
+            if self_Frame_dict[key] == 0:
+                self_Frame_dict.pop(key)
+        if len(self_Frame_dict.keys()) == 1:
+            if self_Frame_dict[self_Frame_dict.keys()[0]] == 1:
+                return self_Frame_dict.keys()[0]
+            else:
+                return Vector(self_Frame_dict)
+        else:
+            return Vector(self_Frame_dict)
+
     def dot(self, other):
         if isinstance(other, Vector):
             s = S(0)
@@ -522,6 +542,35 @@ class Vector(Basic):
         else:
             raise NotImplementedError()
 
+    def dt(self, frame):
+        if isinstance(frame, ReferenceFrame):
+            dt_self = {}
+            for k in self.dict.keys():
+                # First term comes from time differentiating in the frame of
+                # the UnitVector frame of k
+                if dt_self.has_key(k):
+                    dt_self[k] += (self.dict[k]).diff(t)
+                else:
+                    dt_self.update({k: (self.dict[k]).diff(t)})
+                # Second term comes from the omega cross term
+                t2 = k.frame.get_omega(frame).cross(k)
+                if isinstance(t2, UnitVector):
+                    if dt_self.has_key(t2):
+                        dt_self[k] += self.dict[k]
+                    else:
+                        dt_self.update({t2: self.dict[k]})
+                else:       # Must be a Vector
+                    for term in t2.dict.keys():
+                        if dt_self.has_key(term):
+                            dt_self[term] += self.dict[k]*t2.dict[term]
+                        else:
+                            dt_self.update({term: self.dict[k]*t2.dict[term]})
+            if len(dt_self) == 1:
+                if dt_self.values()[0] == 1:
+                    return dt_self.keys()[0]        # Return a UnitVector
+            else:
+                return Vector(dt_self)
+
     def mag(self):
         m = 0
         for k in self.dict.keys():
@@ -555,8 +604,6 @@ class Point:
                         frame.get_omega(newpoint.NewtonianFrame).cross(r)
             else:
                 raise NotImplementedError()
-
-
 
 class ReferenceFrame:
     """
@@ -735,7 +782,7 @@ class ReferenceFrame:
         Sets the angular velocity Omega with respect to the frame "frame".
         """
         if self.W == {} or force:
-            self.W[frame] = W
+            self.W[frame] = Vector(W)
         else:
             raise ValueError("set_omaga has already been called.")
 
@@ -782,6 +829,12 @@ class ReferenceFrame:
 #    def __getitem__(self, i):
 #        return self.triad[i-1]
 
+def express(v, frame):
+    if (isinstance(v, UnitVector) or isinstance(v, Vector)) and \
+            (isinstance(frame, ReferenceFrame)):
+        return v.express(frame)
+    else:
+        raise NotImplementedError()
 
 def dot(v1, v2):
     if (isinstance(v1, UnitVector) or isinstance(v1, Vector)) and \
@@ -804,87 +857,6 @@ def cross(v1, v2):
         if not (isinstance(v2, UnitVector) or isinstance(v2, Vector)):
             v2 = Vector(v2)
         return v1.cross(v2)
-
-
-'''
-def dot(v1,v2):
-    if isinstance(v1, UnitVector) and isinstance(v2, UnitVector):
-        B = v2.frame
-        u = express(v1, B)
-        u1, u2, u3 = expression2vector(u, B)
-        # second vector:
-        v = Matrix(v2.v['num'])
-        return dot_vectors((u1, u2, u3), v)
-    else:
-        v1v2 = (v1*v2).expand()
-        #print "DOT:", v1v2
-        if isinstance(v1v2, Add):
-            #print v1v2.args
-            e = 0
-            for a in v1v2.args:
-                c, v1, v2 = identify(a)
-                #print "IDENTIFY", c, v1, v2, a
-                if v1 is None or v2 is None:
-                    raise Exception("!")
-                else:
-                    #print "c", c
-                    #print "dot", dot(v1, v2)
-                    e += c*dot(v1, v2)
-            return e
-        elif isinstance(v1v2, Mul):
-            c, v1, v2 = identify(v1v2)
-            if v1 is None or v2 is None:
-                raise NotImplementedError()
-            else:
-                e = c*dot(v1, v2)
-            return e
-        elif v1v2 == 0:
-            return v1v2
-        else:
-            raise NotImplementedError()
-'''
-
-'''
-def parse_terms(v):
-    #"""
-    #Given a Sympy expression with UnitVector terms, return a dictionary whose
-    #keys are the UnitVectors and whose values are the coeefficients of the
-    #UnitVectors
-    #"""
-    v.expand()
-    if v == 0:
-        return {}
-    elif isinstance(v, UnitVector):
-        return {v : S(1)}
-    elif isinstance(v, Mul):
-        for b in v.args:
-            if isinstance(b, UnitVector):
-                return {b: v.coeff(b)}
-        return NotImplemented
-    elif isinstance(v, Pow):
-        #  I don't think this will ever be entered into.
-        #  You would have to have something like A[1]*A[2],
-        #  which isn't a valid vector expression.
-        #  Or q1*q2, which is a scalar expression.
-        for b in v.args:
-            if isinstance(b, UnitVector):
-                return {b: v.coeff(b)}
-    elif isinstance(v, Add):
-        terms = {}
-        for b in v.args:
-            #print "b = ", b, "type(b): ", type(b)
-            #print "b parsed = ", parse_terms(b)
-            bp = parse_terms(b)
-            #print "bp.keys(): ", bp.keys()[0]
-            if terms.has_key(bp.keys()[0]):
-                terms[bp.keys()[0]] += bp[bp.keys()[0]]
-            else:
-                terms.update(parse_terms(b))
-        return terms
-    else:
-        return NotImplemented
-'''
-
 
 def identify(a):
     """
@@ -939,49 +911,6 @@ def identify_v1(a):
             return c, v1
 
     return a, None
-'''
-def express(v, frame):
-    """
-    Express "v" in the reference frame "frame".
-    """
-    if isinstance(v, UnitVector):
-        matrices = v.frame.get_rot_matrices(frame)
-        #print matrices
-        u = Matrix(v.v['num'])
-        #XXX: Not sure why reversed is necessary
-        for m in reversed(matrices):
-            u = m*u
-        return vector2expression(u, frame)
-    elif isinstance(v, Add):
-        e = 0
-        for a in v.args:
-            c, v1 = identify_v1(a)
-            #print c, v1
-            if v1 is None:
-                pass
-            else:
-                e += c*express(v1, frame)
-        e = e.expand()
-        u = expression2vector(e, frame)
-        u = [trigsimp(x) for x in u]
-        return vector2expression(u, frame)
-    elif isinstance(v, Mul):
-        c, v1 = identify_v1(v)
-        return (c*express(v1, frame)).expand()
-    elif v == 0:
-        return v
-    else:
-        #print "XXX", v
-        raise NotImplementedError()
-'''
-
-def express(v, frame):
-    if (isinstance(v, UnitVector) or isinstance(v, Vector)) and \
-            (isinstance(frame, ReferenceFrame)):
-        return v.express(frame)
-    else:
-        raise NotImplementedError()
-
 
 def cross_vectors(u, v):
     c1 = u[1]*v[2] - u[2]*v[1]

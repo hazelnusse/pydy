@@ -27,6 +27,23 @@ E = D.rotate('E', 1, q5)
 F = E.rotate('F', 3, q6)
 
 
+print 'A[1].dt = ', A[1].dt(N)
+print 'A[2].dt = ', A[2].dt(N)
+print 'A[3].dt = ', A[3].dt(N)
+
+v1 = Vector(5*q1*A[1] + A[2])
+print v1.dt(N)
+
+v2 = Vector(5*q1*q2*A[1] + 3*q2*q3*sin(q1)*A[2])
+print v2.dt(N)
+print dot(v2.dt(N), A[1])
+print dot(v2.dt(N), A[2])
+
+test = [A[3], A[1], A[2]]
+print test
+test.sort()
+print test
+stop
 
 '''
 print "N[1].cross(N[1])", N[1].cross(N[1])
