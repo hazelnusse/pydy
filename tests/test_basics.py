@@ -2,71 +2,78 @@ from pydy import ReferenceFrame, dot, cross, UnitVector, identify, express, \
         coeff, Vector
 from sympy import symbols, S, Symbol, Function, sin, cos, Matrix, eye, pprint
 import numpy as N
-A = ReferenceFrame('A')
-e1 = UnitVector(A, 1)
-e2 = UnitVector(A, 2)
-e3 = UnitVector(A, 3)
-#zero = UnitVector(A, 0)
-zero = 0
+zero = Vector({})
 
 def test_Mul_order():
+    A = ReferenceFrame('A')
+    e1 = UnitVector(A, 1)
+    e2 = UnitVector(A, 2)
+    e3 = UnitVector(A, 3)
     assert e1*e2 == e1*e2
     assert e1*e2 != e2*e1
 
     assert e2*e1*e3 == e2*e1*e3
     assert e2*e1*e3 != e3*e2*e1
 
-def eq(a, b, eps=1e-8):
-    return abs(a-b) < eps
-
-def vec_eq(a, b, eps=1e-8):
-    return N.dot((a.v['num'] - b),(a.v['num'] - b)) < eps
-
 def test_UnitVector():
-    a = UnitVector(A, 3)
+    A = ReferenceFrame('A')
+    a1 = UnitVector(A, 1)
+    a2 = UnitVector(A, 2)
+    a3 = UnitVector(A, 3)
 
 def test_dot_cross():
-    assert eq(dot(A[1], A[1]), 1.0)
-    assert eq(dot(A[1], A[2]), 0.0)
-    assert eq(dot(A[1], A[3]), 0.0)
-    assert eq(dot(A[2], A[1]), 0.0)
-    assert eq(dot(A[2], A[2]), 1.0)
-    assert eq(dot(A[2], A[3]), 0.0)
-    assert eq(dot(A[3], A[1]), 0.0)
-    assert eq(dot(A[3], A[2]), 0.0)
-    assert eq(dot(A[3], A[3]), 1.0)
+    A = ReferenceFrame('A')
+    assert dot(A[1], A[1]) == 1
+    assert dot(A[1], A[2]) == 0
+    assert dot(A[1], A[3]) == 0
+
+    assert dot(A[2], A[1]) == 0
+    assert dot(A[2], A[2]) == 1
+    assert dot(A[2], A[3]) == 0
+
+    assert dot(A[3], A[1]) == 0
+    assert dot(A[3], A[2]) == 0
+    assert dot(A[3], A[3]) == 1
+
     assert cross(A[1], A[1]) == zero
-    assert cross(A[1], A[2]) == e3
-    assert cross(A[1], A[3]) == -e2
-    assert cross(A[2], A[1]) == -e3
+    assert cross(A[1], A[2]) == A[3]
+    assert cross(A[1], A[3]) == -A[2]
+
+    assert cross(A[2], A[1]) == -A[3]
     assert cross(A[2], A[2]) == zero
-    assert cross(A[2], A[3]) == e1
-    assert cross(A[3], A[1]) == e2
-    assert cross(A[3], A[2]) == -e1
+    assert cross(A[2], A[3]) == A[1]
+
+    assert cross(A[3], A[1]) == A[2]
+    assert cross(A[3], A[2]) == -A[1]
     assert cross(A[3], A[3]) == zero
 
 def test_expressions():
-	x, y = symbols("x y")
-	e = x+x*A[1]+y+A[2]
-	assert e == x+x*A[1]+y+A[2]
-	assert e != x+x*A[1]+x+A[2]
+    A = ReferenceFrame('A')
+    x, y = symbols("x y")
+    e = x+x*A[1]+y+A[2]
+    assert e == x+x*A[1]+y+A[2]
+    assert e != x+x*A[1]+x+A[2]
 
 def test_coeff():
+    A = ReferenceFrame('A')
     x, y = symbols('x y')
     e = y+x*A[1]+x+A[2]
     assert e.coeff(x) == 1+A[1]
     assert e.coeff(y) == 1
+    print e.coeff(A[1])
     assert e.coeff(A[1]) == x
     assert e.coeff(A[2]) == 1
     assert coeff(e,[x,y]) == [A[1]+1, 1]
 
 def test_identify():
+    A = ReferenceFrame('A')
     x = symbols("x")
     assert set(identify(A[1]*A[2])) == set((S(1), A[1], A[2]))
     assert set(identify(x*A[1]*A[2])) == set((x, A[1], A[2]))
     assert set(identify(x*A[1]*A[1])) == set((x, A[1], A[1]))
 
 def test_ReferenceFrame():
+    A = ReferenceFrame('A')
     phi = Symbol("phi")
     B = A.rotate("B", 1, phi)
     assert B.transforms[A] is not None
@@ -91,6 +98,39 @@ def test_cross_different_frames1():
     assert cross(N[3], A[3]) == 0
     assert cross(u1*N[1], A[1]) == sin(q1)*u1*A[3]
 
+
+def test_cross_method():
+    q1, q2, q3, t = symbols('q1, q2, q3 t')
+    N = ReferenceFrame('N')
+    A = N.rotate('A', 1, q1)
+    B = N.rotate('B', 2, q2)
+    C = N.rotate('C', 3, q3)
+    assert cross(N[1], N[1]) == Vector(0) == 0
+    assert cross(N[1], N[2]) == N[3]
+    assert N[1].cross(N[3]) == Vector({N[2]: -1})
+
+    assert N[2].cross(N[1]) == Vector({N[3]: -1})
+    assert N[2].cross(N[2]) == Vector(0)
+    assert N[2].cross(N[3]) == N[1]
+
+    assert N[3].cross(N[1]) == N[2]
+    assert N[3].cross(N[2]) == Vector({N[1]: -1})
+    assert N[3].cross(N[3]) == Vector(0)
+
+    assert N[1].cross(A[1]) == Vector(0)
+    assert N[1].cross(A[2]) == A[3]
+    assert N[1].cross(A[3]) == Vector(-A[2])
+
+    assert N[2].cross(A[1]) == Vector(-N[3])
+    assert N[2].cross(A[2]) == Vector(sin(q1)*N[1])
+    assert N[2].cross(A[3]) == Vector(cos(q1)*N[1])
+
+    assert N[1].cross(B[1]) == Vector(sin(q2)*N[2])
+    assert N[1].cross(B[2]) == N[3]
+    assert N[1].cross(B[3]) == Vector(-cos(q2)*N[2])
+
+
+
 def test_cross_different_frames3():
     q1, q2, q3 = symbols('q1 q2 q3')
     N = ReferenceFrame('N')
@@ -98,6 +138,8 @@ def test_cross_different_frames3():
     B = A.rotate('B', 1, q2)
     C = B.rotate('C', 2, q3)
     assert cross(A[1], C[1]) == sin(q3)*C[2]
+    print "cross(A[1], C[2])" ,cross(A[1], C[2])
+    print "-sin(q3)*C[1]+cos(q3)*C[3]"
     assert cross(A[1], C[2]) == -sin(q3)*C[1]+cos(q3)*C[3]
     assert cross(A[1], C[3]) == -cos(q3)*C[2]
 
@@ -296,17 +338,17 @@ def test_cross2():
     q1, q2, q3 = symbols('q1 q2 q3')
     N = ReferenceFrame('N')
     A = N.rotate('A', 3, q1)
-    B = A.rotate('A', 1, q2)
-    for i in range(1, 4):
-        for j in range(1, 4):
+    B = A.rotate('B', 1, q2)
+    for i in (1, 2, 3):
+        for j in (1, 2, 3):
             a = cross(N[i], A[j])
-            b = express(cross(A[j], N[i]), A)
-            assert a == -b
+            b = express(cross(N[i], A[j]), A)
+            assert a == b
 
     for i in range(1, 4):
         for j in range(1, 4):
             a = cross(N[i], B[j])
-            b = express(cross(B[j], N[i]), B)
+            b = express(cross(B[j], N[i]), N)
             assert a == -b
 
 def test_dot2():
@@ -346,6 +388,8 @@ def test_Vector_class():
     assert v1.parse_terms(test) == {A[3]: sin(q1)*sin(q1)*q2, \
             A[2]:cos(q3) + q1}
     # Equality tests
+    print "v2: ", v2, "type(v2): ", type(v2), "v2.dict: ", v2.dict
+    print "v3: ", v3, "type(v3): ", type(v3), "v3.dict: ", v3.dict
     v4 = v2 + v3
     assert v4 == v2 + v3
     v3 = Vector({B[1]: q1*sin(q2), B[2]: t*u1*q1*sin(q2)})
@@ -355,3 +399,14 @@ def test_Vector_class():
     v5 = Vector(q1*sin(q2)*B[1] + t*u1*q1*sin(q2)*B[2])
     assert v3 == v5
     assert v5.dict == {B[1]: q1*sin(q2), B[2]: t*u1*q1*sin(q2)}
+
+def test_mag():
+    A = ReferenceFrame('A')
+    v1 = Vector(A[1])
+    v2 = Vector(A[1] + A[2])
+    v3 = Vector(A[1] + A[2] + A[3])
+    v4 = -A[1]
+    assert v1.mag() == 1
+    assert v2.mag() == 2**(1/2)
+    assert v3.mag() == 3**(1/2)
+    assert v4.mag() == 1

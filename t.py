@@ -27,6 +27,8 @@ E = D.rotate('E', 1, q5)
 F = E.rotate('F', 3, q6)
 
 
+
+'''
 print "N[1].cross(N[1])", N[1].cross(N[1])
 print "N[1].cross(N[2])", N[1].cross(N[2])
 print "N[1].cross(N[3])", N[1].cross(N[3])
@@ -47,7 +49,95 @@ print "N[3].cross(N[3])", N[3].cross(N[3])
 print N[3].cross(N[1]) == N[2]
 print N[3].cross(N[2]) == Vector({N[1]: -1})
 print N[3].cross(N[3]) == Vector(0)
+'''
 
+N = ReferenceFrame('N')
+A = N.rotate('A', 3, q1)
+B = A.rotate('B', 1, q2)
+
+b = Vector({N[3]: -sin(q1)})
+print '-b=',-b
+print 'type(-b)=',type(-b)
+negb = Vector(-b)
+
+stop
+
+
+print 'type(-B[1]) =', type(-B[1])
+negb1 =Vector(-B[1])
+print 'type(negb1) = ',type(negb1), 'negb1.dict =', negb1.dict,\
+        'negb1._sympystr_() =',negb1._sympystr_()
+
+negnegb1 = Vector(-negb1)
+print 'type(negnegb1) =', type(negnegb1), 'negnegb1.dict =', negnegb1.dict, \
+        'negnegb1._sympystr_() =', negnegb1._sympystr_()
+
+test2 = negnegb1 + negb1
+print 'type(test2) =', type(test2)
+print 'test2.dict =',test2.dict
+print 'test2 =',test2
+print B[1] - B[1]
+stop
+
+
+print hash(A[1])
+print hash(-A[1]+B[2])
+print (-A[1])._mhash, type((-A[1])._mhash)
+stop
+
+for i in range(1, 4):
+    for j in range(1, 4):
+        a = cross(N[i], B[j])
+        b = express(cross(B[j], N[i]), B)
+        print "a=",a,"b=",b,type(b), type(-b)
+        print a == -b
+
+stop
+
+A = N.rotate('A', 1, q1)
+B = N.rotate('B', 2, q2)
+C = N.rotate('C', 3, q3)
+
+x = cross(A[1], A[3])
+print "x =", x, "type(x) =", type(x), "x.dict =", x.dict, x.dict[A[2]]
+y = Vector(-A[2])
+print "y =", y, "type(y) =", type(y), "y.dict =", y.dict, y.dict[A[2]]
+print "x == y: ", x==y
+
+stop
+
+print "N[1].cross(A[1])", N[1].cross(A[1])
+print "N[1].cross(A[2])", N[1].cross(A[2])
+print "N[1].cross(A[3])", N[1].cross(A[3])
+print N[1].cross(A[1]) == Vector(0)
+print N[1].cross(A[2]) == A[3]
+print N[1].cross(A[3]) == Vector(-A[2])
+
+print "N[1].cross(B[1])", N[1].cross(B[1])
+print "N[1].cross(B[2])", N[1].cross(B[2])
+print "N[1].cross(B[3])", N[1].cross(B[3])
+print N[1].cross(B[1]) == Vector(sin(q2)*N[2])
+print N[1].cross(B[2]) == N[3]
+print N[1].cross(B[3]) == Vector(-cos(q2)*N[2])
+
+
+#== Vector({A[2]: -1})
+
+stop
+
+print "N[2].cross(N[1])", N[2].cross(N[1])
+print "N[2].cross(N[2])", N[2].cross(N[2])
+print "N[2].cross(N[3])", N[2].cross(N[3])
+print N[2].cross(N[1]) == Vector({N[3]: -1}) 
+print N[2].cross(N[2]) == Vector(0)
+print N[2].cross(N[3]) == N[1]
+
+print "N[3].cross(N[1])", N[3].cross(N[1])
+print "N[3].cross(N[2])", N[3].cross(N[2])
+print "N[3].cross(N[3])", N[3].cross(N[3])
+print N[3].cross(N[1]) == N[2]
+print N[3].cross(N[2]) == Vector({N[1]: -1})
+print N[3].cross(N[3]) == Vector(0)
 
 stop
 
