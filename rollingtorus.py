@@ -5,12 +5,13 @@ from sympy import symbols, Function, S, solve, simplify, \
         collect, Matrix, lambdify
 
 from pydy import ReferenceFrame, cross, dot, dt, express, expression2vector, \
-    coeff
+    coeff, Vector, UnitVector
 
-m, g, r1, r2, t = symbols("m, g r1 r2 t")
-au1, au2, au3 = symbols("au1 au2 au3")
-cf1, cf2, cf3 = symbols("cf1 cf2 cf3")
-I, J = symbols("I J")
+# Constants
+m, g, r1, r2, t, I, J = symbols("m g r1 r2 t I J")
+
+# Auxilliary generalized speeds and contact forces
+au1, au2, au3, cf1, cf2, cf3 = symbols("au1 au2 au3 cf1 cf2 cf3")
 u3p, u4p, u5p = symbols("u3p u4p u5p")
 
 q1 = Function("q1")(t)
@@ -18,6 +19,12 @@ q2 = Function("q2")(t)
 q3 = Function("q3")(t)
 q4 = Function("q4")(t)
 q5 = Function("q5")(t)
+
+u1 = Function("u1")(t)
+u2 = Function("u2")(t)
+u3 = Function("u3")(t)
+u4 = Function("u4")(t)
+u5 = Function("u5")(t)
 
 def eval(a):
     subs_dict = {
@@ -46,14 +53,22 @@ A = N.rotate("A", 3, q3)
 B = A.rotate("B", 1, q4)
 C = B.rotate("C", 2, q5)
 
-#u3 = q3.diff(t)
-u3 = Function("u3")(t)
-u4 = Function("u4")(t)
-u5 = Function("u5")(t)
+# Center of torus
+CO = N.O.locate('CO', Vector(q1*N[1] + q2*N[2] - r2*N[3] - r1*B[3]))
+print 'CO.pos=', CO.pos
+print 'CO.vel=', CO.vel
 
-#u3p = Function("u3p")(t)
-#u4p = Function("u4p")(t)
-#u5p = Function("u5p")(t)
+# Contact point
+CN = CO.locate('CN', Vector(r1*B[3] + r2*N[3]), C)
+print 'CN.pos (relative to CO) = ', CN.pos
+print 'CN.vel (relative to N) = ', CN.vel
+
+nh1 = dot(CN.vel, A[1])
+nh2 = dot(CN.vel, A[2])
+print 'nh1 =', nh1
+print 'nh2 =', nh2
+solve([nh1,nh2], )
+stop
 
 P_NC_CO = r2*A[3] - r1*B[3]
 #print "P_NC_CO> = ", P_NC_CO

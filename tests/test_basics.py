@@ -1,6 +1,7 @@
 from pydy import ReferenceFrame, dot, cross, UnitVector, identify, express, \
         coeff, Vector
-from sympy import symbols, S, Symbol, Function, sin, cos, Matrix, eye, pprint
+from sympy import symbols, S, Symbol, Function, sin, cos, tan, Matrix, eye, pprint,\
+        trigsimp, expand
 import numpy as N
 zero = Vector({})
 
@@ -179,7 +180,180 @@ def test_express2():
             sin(q2)*cos(q3)*C[3])
     assert A[3].express(C) == Vector(-sin(q3)*cos(q2)*C[1] + sin(q2)*C[2] + \
             cos(q2)*cos(q3)*C[3])
-    
+
+def test_express3():
+    q3, q4, q5 = symbols('q3 q4 q5')
+    N = ReferenceFrame('N')
+    A = N.rotate('A', 3, q3)
+    B = A.rotate('B', 1, q4)
+    C = B.rotate('C', 2, q5)
+    # Check to make sure UnitVectors get converted properly
+    assert express(N[1], N) == N[1]
+    assert express(N[2], N) == N[2]
+    assert express(N[3], N) == N[3]
+    assert express(N[1], A) == Vector(cos(q3)*A[1] - sin(q3)*A[2])
+    assert express(N[2], A) == Vector(sin(q3)*A[1] + cos(q3)*A[2])
+    assert express(N[3], A) == A[3]
+    assert express(N[1], B) == Vector(cos(q3)*B[1] - sin(q3)*cos(q4)*B[2] + \
+            sin(q3)*sin(q4)*B[3])
+    assert express(N[2], B) == Vector(sin(q3)*B[1] + cos(q3)*cos(q4)*B[2] - \
+            sin(q4)*cos(q3)*B[3])
+    assert express(N[3], B) == Vector(sin(q4)*B[2] + cos(q4)*B[3])
+    assert express(N[1], C) == Vector(
+            (cos(q3)*cos(q5)-sin(q3)*sin(q4)*sin(q5))*C[1] -
+            sin(q3)*cos(q4)*C[2] +
+            (sin(q5)*cos(q3)+sin(q3)*sin(q4)*cos(q5))*C[3])
+    assert express(N[2], C) == Vector(
+            (sin(q3)*cos(q5) + sin(q4)*sin(q5)*cos(q3))*C[1] +
+            cos(q3)*cos(q4)*C[2] +
+            (sin(q3)*sin(q5) - sin(q4)*cos(q3)*cos(q5))*C[3])
+    assert express(N[3], C) == Vector(-sin(q5)*cos(q4)*C[1] + sin(q4)*C[2] +
+            cos(q4)*cos(q5)*C[3])
+
+    assert express(A[1], N) == Vector(cos(q3)*N[1] + sin(q3)*N[2])
+    assert express(A[2], N) == Vector(-sin(q3)*N[1] + cos(q3)*N[2])
+    assert express(A[3], N) == N[3]
+    assert express(A[1], A) == A[1]
+    assert express(A[2], A) == A[2]
+    assert express(A[3], A) == A[3]
+    assert express(A[1], B) == B[1]
+    assert express(A[2], B) == Vector(cos(q4)*B[2] - sin(q4)*B[3])
+    assert express(A[3], B) == Vector(sin(q4)*B[2] + cos(q4)*B[3])
+    assert express(A[1], C) == Vector(cos(q5)*C[1] + sin(q5)*C[3])
+    assert express(A[2], C) == Vector(sin(q4)*sin(q5)*C[1] + cos(q4)*C[2] -
+            sin(q4)*cos(q5)*C[3])
+    assert express(A[3], C) == Vector(-sin(q5)*cos(q4)*C[1] + sin(q4)*C[2] +
+            cos(q4)*cos(q5)*C[3])
+
+    assert express(B[1], N) == Vector(cos(q3)*N[1] + sin(q3)*N[2])
+    assert express(B[2], N) == Vector(-sin(q3)*cos(q4)*N[1] +
+            cos(q3)*cos(q4)*N[2] + sin(q4)*N[3])
+    assert express(B[3], N) == Vector(sin(q3)*sin(q4)*N[1] -
+            sin(q4)*cos(q3)*N[2] + cos(q4)*N[3])
+    assert express(B[1], A) == A[1]
+    assert express(B[2], A) == Vector(cos(q4)*A[2] + sin(q4)*A[3])
+    assert express(B[3], A) == Vector(-sin(q4)*A[2] + cos(q4)*A[3])
+    assert express(B[1], B) == B[1]
+    assert express(B[2], B) == B[2]
+    assert express(B[3], B) == B[3]
+    assert express(B[1], C) == Vector(cos(q5)*C[1] + sin(q5)*C[3])
+    assert express(B[2], C) == C[2]
+    assert express(B[3], C) == Vector(-sin(q5)*C[1] + cos(q5)*C[3])
+
+    assert express(C[1], N) == Vector(
+            (cos(q3)*cos(q5)-sin(q3)*sin(q4)*sin(q5))*N[1] +
+            (sin(q3)*cos(q5)+sin(q4)*sin(q5)*cos(q3))*N[2] -
+                sin(q5)*cos(q4)*N[3])
+    assert express(C[2], N) == Vector(
+            -sin(q3)*cos(q4)*N[1] + cos(q3)*cos(q4)*N[2] + sin(q4)*N[3])
+    assert express(C[3], N) == Vector(
+            (sin(q5)*cos(q3)+sin(q3)*sin(q4)*cos(q5))*N[1] +
+            (sin(q3)*sin(q5)-sin(q4)*cos(q3)*cos(q5))*N[2] +
+            cos(q4)*cos(q5)*N[3])
+    assert express(C[1], A) == Vector(cos(q5)*A[1] + sin(q4)*sin(q5)*A[2] -
+            sin(q5)*cos(q4)*A[3])
+    assert express(C[2], A) == Vector(cos(q4)*A[2] + sin(q4)*A[3])
+    assert express(C[3], A) == Vector(sin(q5)*A[1] - sin(q4)*cos(q5)*A[2] +
+            cos(q4)*cos(q5)*A[3])
+    assert express(C[1], B) == Vector(cos(q5)*B[1] - sin(q5)*B[3])
+    assert express(C[2], B) == B[2]
+    assert express(C[3], B) == Vector(sin(q5)*B[1] + cos(q5)*B[3])
+    assert express(C[1], C) == C[1]
+    assert express(C[2], C) == C[2]
+    assert express(C[3], C) == C[3] == Vector(C[3])
+
+    #  Check to make sure Vectors get converted back to UnitVectors
+    assert N[1] == express(Vector(cos(q3)*A[1] - sin(q3)*A[2]), N)
+    assert N[2] == express(Vector(sin(q3)*A[1] + cos(q3)*A[2]), N)
+    # Trigsimp doesn't work properly here so the test fails
+    #print express(Vector(cos(q3)*B[1] - sin(q3)*cos(q4)*B[2] + sin(q3)*sin(q4)*B[3]), N)
+    #print trigsimp(cos(q4)**2 + sin(q3)**2*sin(q4)**2 + cos(q3)**2*cos(q4)**2*tan(q4)**2)
+    #print trigsimp(cos(q4)**2 + cos(q3)**2*sin(q4)**2 + sin(q3)**2*sin(q4)**2)
+    #assert N[1] == express(Vector(cos(q3)*B[1] - sin(q3)*cos(q4)*B[2] +
+    #        sin(q3)*sin(q4)*B[3]), N)
+    assert N[2] == express(Vector(sin(q3)*B[1] + cos(q3)*cos(q4)*B[2] -
+        sin(q4)*cos(q3)*B[3]), N)
+    assert N[3] == express(Vector(sin(q4)*B[2] + cos(q4)*B[3]), N)
+
+    # Trigsimp also doesn't work on this one.
+    #print express(Vector(
+    #        (cos(q3)*cos(q5)-sin(q3)*sin(q4)*sin(q5))*C[1] -
+    #        sin(q3)*cos(q4)*C[2] +
+    #        (sin(q5)*cos(q3)+sin(q3)*sin(q4)*cos(q5))*C[3]), N)
+
+    #assert N[1] == express(Vector(
+    #        (cos(q3)*cos(q5)-sin(q3)*sin(q4)*sin(q5))*C[1] -
+    #        sin(q3)*cos(q4)*C[2] +
+    #        (sin(q5)*cos(q3)+sin(q3)*sin(q4)*cos(q5))*C[3]), N)
+    # Trigsimp doesn't like this one either.
+    #assert N[2] == express(Vector(
+    #        (sin(q3)*cos(q5) + sin(q4)*sin(q5)*cos(q3))*C[1] +
+    #        cos(q3)*cos(q4)*C[2] +
+    #        (sin(q3)*sin(q5) - sin(q4)*cos(q3)*cos(q5))*C[3]), N)
+    #print express(Vector(-sin(q5)*cos(q4)*C[1] + sin(q4)*C[2] + cos(q4)*cos(q5)*C[3]), N)
+    #assert N[3] == express(Vector(-sin(q5)*cos(q4)*C[1] + sin(q4)*C[2] +
+    #        cos(q4)*cos(q5)*C[3]), N)
+
+    assert A[1] == express(Vector(cos(q3)*N[1] + sin(q3)*N[2]), A)
+    assert A[2] == express(Vector(-sin(q3)*N[1] + cos(q3)*N[2]), A)
+
+    assert A[2] == express(Vector(cos(q4)*B[2] - sin(q4)*B[3]), A)
+    assert A[3] == express(Vector(sin(q4)*B[2] + cos(q4)*B[3]), A)
+
+    assert A[1] == express(Vector(cos(q5)*C[1] + sin(q5)*C[3]), A)
+
+    # Tripsimp messes up here too.
+    #print express(Vector(sin(q4)*sin(q5)*C[1] + cos(q4)*C[2] -
+    #        sin(q4)*cos(q5)*C[3]), A)
+    #assert A[2] == express(Vector(sin(q4)*sin(q5)*C[1] + cos(q4)*C[2] -
+    #        sin(q4)*cos(q5)*C[3]), A)
+
+    assert A[3] == express(Vector(-sin(q5)*cos(q4)*C[1] + sin(q4)*C[2] +
+            cos(q4)*cos(q5)*C[3]), A)
+    assert B[1] == express(Vector(cos(q3)*N[1] + sin(q3)*N[2]), B)
+    assert B[2] == express(Vector(-sin(q3)*cos(q4)*N[1] +
+            cos(q3)*cos(q4)*N[2] + sin(q4)*N[3]), B)
+
+    # Trigsimp messes up here too.
+    #print express(Vector(sin(q3)*sin(q4)*N[1] - sin(q4)*cos(q3)*N[2]
+    #    + cos(q4)*N[3]), B)
+    #assert B[3] == express(Vector(sin(q3)*sin(q4)*N[1] -
+    #        sin(q4)*cos(q3)*N[2] + cos(q4)*N[3]), B)
+
+    assert B[2] == express(Vector(cos(q4)*A[2] + sin(q4)*A[3]), B)
+    assert B[3] == express(Vector(-sin(q4)*A[2] + cos(q4)*A[3]), B)
+    assert B[1] == express(Vector(cos(q5)*C[1] + sin(q5)*C[3]), B)
+    assert B[3] == express(Vector(-sin(q5)*C[1] + cos(q5)*C[3]), B)
+
+    # Trigsimp fails here too.
+    #print express(Vector(
+    #        (cos(q3)*cos(q5)-sin(q3)*sin(q4)*sin(q5))*N[1] +
+    #        (sin(q3)*cos(q5)+sin(q4)*sin(q5)*cos(q3))*N[2] -
+    #            sin(q5)*cos(q4)*N[3]), C)
+    #assert C[1] == express(Vector(
+    #        (cos(q3)*cos(q5)-sin(q3)*sin(q4)*sin(q5))*N[1] +
+    #        (sin(q3)*cos(q5)+sin(q4)*sin(q5)*cos(q3))*N[2] -
+    #            sin(q5)*cos(q4)*N[3]), C)
+    # Trigsimp fails here too.
+    #print trigsimp(dot(express(Vector(
+    #        -sin(q3)*cos(q4)*N[1] + cos(q3)*cos(q4)*N[2] + sin(q4)*N[3]), C),
+    #        C[3]))
+    #assert C[2] == express(Vector(
+    #        -sin(q3)*cos(q4)*N[1] + cos(q3)*cos(q4)*N[2] + sin(q4)*N[3]), C)
+    """
+    assert express(C[3], N) == Vector(
+            (sin(q5)*cos(q3)+sin(q3)*sin(q4)*cos(q5))*N[1] +
+            (sin(q3)*sin(q5)-sin(q4)*cos(q3)*cos(q5))*N[2] +
+            cos(q4)*cos(q5)*N[3])
+    assert express(C[1], A) == Vector(cos(q5)*A[1] + sin(q4)*sin(q5)*A[2] -
+            sin(q5)*cos(q4)*A[3])
+    assert express(C[2], A) == Vector(cos(q4)*A[2] + sin(q4)*A[3])
+    assert express(C[3], A) == Vector(sin(q5)*A[1] - sin(q4)*cos(q5)*A[2] +
+            cos(q4)*cos(q5)*A[3])
+    assert express(C[1], B) == Vector(cos(q5)*B[1] - sin(q5)*B[3])
+    assert express(C[3], B) == Vector(sin(q5)*B[1] + cos(q5)*B[3])
+    """
+
 def test_cross_different_frames2():
     q1, q2, q3 = symbols('q1 q2 q3')
     N = ReferenceFrame('N')

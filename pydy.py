@@ -1,5 +1,5 @@
 from sympy import Symbol, Basic, Derivative, Mul, Pow, Matrix, sin, cos, S, eye, Add, \
-        trigsimp
+        trigsimp, expand
 from numpy import sign
 e1 = Matrix([1, 0, 0])
 e2 = Matrix([0, 1, 0])
@@ -8,6 +8,7 @@ e1n = Matrix([-1, 0, 0])
 e2n = Matrix([0, -1, 0])
 e3n = Matrix([0, 0, -1])
 zero = Matrix([0, 0, 0])
+#eye = Matrix([[1, 0, 0], [0, 1, 0], [0, 0, 1]])
 t = Symbol("t")
 
 class UnitVector(Basic):
@@ -79,23 +80,24 @@ class UnitVector(Basic):
     def __neg__(self):
         return Vector({self: -1})
 
-    def express(self, F):
-        '''
-        Express a UnitVector in the reference frame "F".
-        '''
-        if self.frame == F:
+    def express(self, frame):
+        """Expresses a UnitVector with UnitVectors fixed in the specified frame.
+        """
+
+        if self.frame == frame:
             return self
         else:
-            matrices = self.frame.get_rot_matrices(F)
-            if len(matrices) == 1 and matrices[0]*self.v['num'] == \
-                    self.v['num']:
-                return F[self.i]
+            matrices = self.frame.get_rot_matrices(frame)
+            if len(matrices) == 1 and matrices[0]*self.v['num'] == self.v['num']:
+                return frame[self.i]
             else:
                 u = self.v['num']
                 for m in reversed(matrices):
                     u = m*u
-                return Vector(trigsimp(u[0])*F[1] + trigsimp(u[1])*F[2] + \
-                        trigsimp(u[2])*F[3])
+                u[0] = trigsimp(u[0])
+                u[1] = trigsimp(u[1])
+                u[2] = trigsimp(u[2])
+                return Vector(u[0]*frame[1] + u[1]*frame[2] + u[2]*frame[3])
 
     def dot(self, other):
         if isinstance(other, UnitVector):
@@ -106,14 +108,14 @@ class UnitVector(Basic):
                 s = S(0)
                 for k in c.dict.keys():
                     if self == k:
-                        s += trigsimp(c.dict[k])
+                        s += c.dict[k]
                 return trigsimp(s)
             else:
                 raise NotImplementedError()
         elif isinstance(other, Vector):
             s = S(0)
             for k in other.dict.keys():
-                s += trigsimp(trigsimp(other.dict[k])*trigsimp(self.dot(k)))
+                s += other.dict[k]*self.dot(k)
             return trigsimp(s)
         else:
             raise NotImplementedError()
@@ -217,10 +219,16 @@ class Vector(Basic):
         """
 
         if isinstance(v, dict):
+            for k in v.keys():
+                if v[k] == 0:  v.pop(k)
             self.dict = v
         else:
             #print "Not a dict"
-            self.dict = self.parse_terms(v)
+            vdict = self.parse_terms(v)
+            for k in vdict.keys():
+                if vdict[k] == 0:  vdict.pop(k)
+            self.dict = vdict
+            #self.dict = self.parse_terms(v)
 
     def _sympystr_(self):
         """
@@ -229,14 +237,23 @@ class Vector(Basic):
 
         s = ''
         i = 0
+
         if self.dict != {}:
             for k in self.dict.keys():
+                """
+                if i == 0:
+                    s = '(' + str(self.dict[k]) + ')*' + str(k)
+                    i += 1
+                else:
+                    s +=  ' + (' + str(self.dict[k]) + ')*' + str(k)
+                """
+                #"""
+                #Needs a major rewrite, sometimes this method doesn't work at
+                #all.
                 if (self.dict[k] == 1) or (self.dict[k] == -1):
                     if i == 0:
-                        #print 'hello'
                         if self.dict[k] == 1: sign = ''
                         if self.dict[k] == -1: sign = '-'
-                        #s += k._sympystr_()
                         s += sign + k._sympystr_()
                         i += 1
                     else:
@@ -262,6 +279,7 @@ class Vector(Basic):
                             else:
                                 sign = '+'
                                 s += ' ' + sign + ' ' + str(self.dict[k]) + '*' + k._sympystr_()
+                #"""
             return s
         else:
             return '0>'
@@ -342,26 +360,31 @@ class Vector(Basic):
             return NotImplemented
 
     def __add__(self, other):
-        """
-        Adds two Vector objects and return a new Vector object.
+        """Adds two Vector objects and return a new Vector object.
         v1 + v2   <----> v1.__add__(v2)
         """
         if isinstance(other, Vector):
+            #print '__add__ was called, with', self, 'and', other
             s1 = set(self.dict.keys())
             s2 = set(other.dict.keys())
             sum = {}
-
+            #print 's1', s1
+            #print 's2', s2
             for k in s1.intersection(s2):
                 sum.update({k: trigsimp(self.dict[k] + other.dict[k])})
             for k in s1.difference(s2):
                 sum.update({k: trigsimp(self.dict[k])})
             for k in s2.difference(s1):
                 sum.update({k: trigsimp(other.dict[k])})
-            if not all(sum.values()):
-                return Vector({})
+
+            for k in sum.keys():
+                sum[k] = trigsimp(sum[k])
+                if sum[k] == 0: sum.pop(k)
+
+            if len(sum) == 1 and sum[sum.keys()[0]] == 1:
+                return sum.keys()[0]
             else:
                 return Vector(sum)
-            return Vector(sum)
         elif isinstance(other, UnitVector):
             return self + Vector({other: S(1)})
         elif isinstance(other, Add):
@@ -372,8 +395,7 @@ class Vector(Basic):
             raise NotImplementedError()
 
     def __sub__(self, other):
-        """
-        Subtracts two Vector objects and return a new Vector object.
+        """Subtracts two Vector objects and return a new Vector object.
         v1 - v2   <----> v1.__sub__(v2)
         """
         if isinstance(other, Vector):
@@ -402,9 +424,8 @@ class Vector(Basic):
             raise NotImplementedError()
 
     def __eq__(self, other):
-        '''
-        Compares two Vector objects for equality.
-        '''
+        """Compares two Vector objects for equality.
+        """
         if isinstance(other, Vector):
             if self.dict == other.dict:         # Easy case
                 return True
@@ -445,43 +466,41 @@ class Vector(Basic):
             n[k] *= -1
         return Vector(n)
 
-    def express(self, Frame):
-        """
-        Expresses self in the basis vectors of 'Frame'.
+    def express(self, frame):
+        """Expresses a Vector with UnitVectors fixed in the specified frame.
         """
 
-        self_Frame_dict = {}
+        new = {}
 
-        for unit_vector_term in self.dict.keys():
-            uv_in_Frame = unit_vector_term.express(Frame)
-            if isinstance(uv_in_Frame, UnitVector):
-                if self_Frame_dict.has_key(uv_in_Frame):
-                    self_Frame_dict[uv_in_Frame] += S(1)
+        for uv in self.dict.keys():
+            # Convert each unit vector term to the desired frame
+            uv_in_frame = uv.express(frame)
+
+            # Case for UnitVectors
+            if isinstance(uv_in_frame, UnitVector):
+                if new.has_key(uv_in_frame):
+                    new[uv_in_frame] += self.dict[uv]
                 else:
-                    self_Frame_dict.update({uv_in_Frame : \
-                            trigsimp(self.dict[unit_vector_term])})
-            elif isinstance(uv_in_Frame, Vector):
-                for uv_term in uv_in_Frame.dict.keys():
-                    if self_Frame_dict.has_key(uv_term):
-                        self_Frame_dict[uv_term] +=\
-                                trigsimp(self.dict[unit_vector_term] * \
-                                uv_in_Frame.dict[uv_term])
-                    else:
-                        self_Frame_dict.update({uv_term : \
-                                trigsimp(self.dict[unit_vector_term] \
-                                * uv_in_Frame.dict[uv_term])})
+                    new.update({uv_in_frame : self.dict[uv]})
 
-        for key in self_Frame_dict.keys():
-            self_Frame_dict[key] = trigsimp(self_Frame_dict[key])
-            if self_Frame_dict[key] == 0:
-                self_Frame_dict.pop(key)
-        if len(self_Frame_dict.keys()) == 1:
-            if self_Frame_dict[self_Frame_dict.keys()[0]] == 1:
-                return self_Frame_dict.keys()[0]
-            else:
-                return Vector(self_Frame_dict)
+            # Case for Vectors
+            elif isinstance(uv_in_frame, Vector):
+                # Go through each term
+                for uv_term in uv_in_frame.dict.keys():
+                    if new.has_key(uv_term):
+                        new[uv_term] += self.dict[uv]*uv_in_frame.dict[uv_term]
+                    else:
+                        new.update({uv_term :
+                            self.dict[uv]*uv_in_frame.dict[uv_term]})
+
+        for uv in new.keys():
+            new[uv] = trigsimp(new[uv])
+            if new[uv] == 0: new.pop(uv)
+
+        if len(new) == 1 and new.values()[0] == 1:
+            return new.keys()[0]
         else:
-            return Vector(self_Frame_dict)
+            return Vector(new)
 
     def dot(self, other):
         if isinstance(other, Vector):
@@ -512,13 +531,13 @@ class Vector(Basic):
                         else:
                             vcp.update({kcrossko: self.dict[k]*other.dict[ko]})
                     else:
-                        for uv_term in kcrossko.keys():
+                        for uv_term in kcrossko.dict.keys():
                             if vcp.has_key(uv_term):
                                 vcp[uv_term] +=\
-                                        self.dict[k]*other.dict[ko]*kcrossko[uv_term]
+                                        self.dict[k]*other.dict[ko]*kcrossko.dict[uv_term]
                             else:
-                                vcp.update({uv_term: 
-                                    self.dict[k]*other.dict[ko]*kcrossko[uv_term]})
+                                vcp.update({uv_term:
+                                    self.dict[k]*other.dict[ko]*kcrossko.dict[uv_term]})
             return Vector(vcp)
         elif isinstance(other, UnitVector):
             vcp = {}
@@ -580,9 +599,10 @@ class Vector(Basic):
 class Point:
     def __init__(self, s, r=None, frame=None):
         self.name = s
-        if r == S(0) and isinstance(frame, ReferenceFrame):    # When instantiated by ReferenceFrame
+        # When instantiated by ReferenceFrame
+        if r == S(0) and isinstance(frame, ReferenceFrame):
             self.pos = S(0)                # Should only happen for the base
-            self.vel = S(0)                # Newtonian Frame
+            self.vel = S(0)                # Newtonian/Inertial Frame
             self.acc = S(0)
             self.NewtonianFrame = frame
         elif r != None and frame == None:  # When instantiated by locate method
@@ -593,17 +613,24 @@ class Point:
 
     def locate(self, s, r, frame=None):
         if isinstance(r, UnitVector) or isinstance(r, Vector):
-            if Frame == None:
+            if frame == None:
                 newpoint = Point(s, r)
                 newpoint.NewtonianFrame = self.NewtonianFrame
+                #print 'r', r, 'type(r)', type(r)
                 newpoint.vel = r.dt(newpoint.NewtonianFrame)
             elif isinstance(frame, ReferenceFrame):
                 newpoint = Point(s, r)
                 newpoint.NewtonianFrame = self.NewtonianFrame
-                newpoint.vel = self.vel +\
-                        frame.get_omega(newpoint.NewtonianFrame).cross(r)
+                wn = frame.get_omega(newpoint.NewtonianFrame)
+                #print 'computing vel'
+                #print 'omega', wn
+                #print 'self.vel', self.vel
+                #print 'w x r', cross(wn, r)
+                newpoint.vel = self.vel + cross(wn, r)
+                #print 'self.vel + w x r = ', newpoint.vel
             else:
                 raise NotImplementedError()
+        return newpoint
 
 class ReferenceFrame:
     """
@@ -636,20 +663,18 @@ class ReferenceFrame:
         """
         if frame == None:
             self.ref_frame_list = [self]
-            self.origin = Point(s, S(0), self)
+            self.O = Point(s, S(0), self)
         else:
-            #print "inside __init__: ", frame.ref_frame_list
             self.ref_frame_list = frame.ref_frame_list[:]
             self.ref_frame_list.insert(0,self)
 
         self.name = s
         self.triad = [UnitVector(self, i) for i in (1,2,3)]
-        #print "self.triad = ", self.triad, "type(self.triad) = ", \
-                #        type(self.triad)
         self.transforms = {}
         self.parent = frame
         self.W = {}
         if omega != None:
+            #print 'omega', omega
             self.set_omega(omega, self.parent)
             self.parent.set_omega(-omega, self, force=True)
 
@@ -784,7 +809,7 @@ class ReferenceFrame:
         if self.W == {} or force:
             self.W[frame] = Vector(W)
         else:
-            raise ValueError("set_omaga has already been called.")
+            raise ValueError("set_omega has already been called.")
 
     def get_omega(self, frame):
         """
@@ -792,9 +817,21 @@ class ReferenceFrame:
         """
 
         if self.W.has_key(frame):
+            #print 'i have the key'
             return self.W[frame]
         else:
-            return sum(self.get_omega_list(frame))
+            om = {}
+            #print 'omega list',self.get_omega_list(frame)
+            #print 'sum(omega list)', sum(self.get_omega_list(frame))
+            for term in self.get_omega_list(frame):
+                for k in term.dict.keys():
+                    if om.has_key(k):
+                        om[k] += term.dict[k]
+                    else:
+                        om.update({k: term.dict[k]})
+            self.W.update({frame: Vector(om)})
+            return self.W[frame]
+            #return sum(self.get_omega_list(frame))
 
     def get_omega_list(self, frame):
         """
@@ -802,7 +839,8 @@ class ReferenceFrame:
         """
         frames = self.get_frames_list(frame)
         if frames == [self]:
-            return [S(0)]
+            #return [S(0)]
+            return [Vector({})]
         result = []
         for i, f in enumerate(frames[:-1]):
             result.append(f.W[frames[i+1]])

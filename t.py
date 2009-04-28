@@ -19,12 +19,50 @@ q5 = Function("q5")(t)
 q6 = Function("q6")(t)
 
 N = ReferenceFrame('N')
-A = N.rotate('A', 3, q1)
-B = A.rotate('B', 1, q2)
-C = B.rotate('C', 2, q3)
-D = A.rotate('D', 2, q4)
-E = D.rotate('E', 1, q5)
-F = E.rotate('F', 3, q6)
+A = N.rotate('A', 3, q3)
+B = A.rotate('B', 1, q4)
+C = B.rotate('C', 2, q5)
+#D = A.rotate('D', 2, q4)
+#E = D.rotate('E', 1, q5)
+#F = E.rotate('F', 3, q6)
+
+
+
+
+r1, r2 = symbols('r1 r2')
+p_no_co = Vector(q1*N[1] + q2*N[2] - r2*N[3] - r1*B[3])
+p_co_cn = Vector(r2*N[3] + r1*B[3])
+print 'p_no_co> =', p_no_co
+print 'w_a_n> =', A.get_omega(N)
+print 'w_b_a> =', B.get_omega(A)
+print 'w_c_b> =', C.get_omega(B)
+test = C.get_omega(N).cross(p_co_cn)
+test_a = express(test, A)
+test_b = express(test, B)
+test_c = express(test, C)
+test_da1 = dot(test, A[1])
+test_da2 = dot(test, A[2])
+test_da3 = dot(test, A[3])
+print 'cross(W_C_N>, P_CO_CN>) = ', test
+print 'dot(test,a1>): ', test_da1
+print 'dot(test,a2>): ', test_da2
+print 'dot(test,a3>): ', test_da3
+print 'a1>: ', test_a.dict[A[1]]
+print 'a2>: ', test_a.dict[A[2]]
+print 'a3>: ', test_a.dict[A[3]]
+print 'cross(W_C_N>, P_CO_CN>) (in A) = ', test_a
+print 'cross(W_C_N>, P_CO_CN>) (in B) = ', test_b
+print 'cross(W_C_N>, P_CO_CN>) (in C) = ', test_c
+
+stop
+CO = N._origin.locate('CO', Vector(q1*N[1] + q2*N[2] - r2*N[3] - r1*B[3]))
+print 'position', CO.pos
+print 'velocity', CO.vel
+CN = CO.locate('CN', Vector(r1*B[3] + r2*N[3]), C)
+print 'position', CN.pos
+print 'velocity', CN.vel
+stop
+
 
 
 print 'A[1].dt = ', A[1].dt(N)
