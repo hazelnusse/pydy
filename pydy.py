@@ -1,6 +1,5 @@
-from sympy import Symbol, Basic, Derivative, Mul, Pow, Matrix, sin, cos, S, eye, Add, \
-        trigsimp, expand
-from numpy import sign
+from sympy import Symbol, symbols, Basic, Derivative, Mul, Pow, Matrix, sin, \
+        cos, S, eye, Add, trigsimp, expand
 e1 = Matrix([1, 0, 0])
 e2 = Matrix([0, 1, 0])
 e3 = Matrix([0, 0, 1])
@@ -995,6 +994,12 @@ def vector2expression(u, frame):
     """
     return u[0]*frame[1] + u[1]*frame[2] + u[2]*frame[3]
 
+def dt(v, frame):
+    if isinstance(v, UnitVector) or isinstance(v, Vector):
+        return v.dt(frame)
+    else:
+        raise NotImplementedError()
+"""
 def dt(u, frame, t):
     if isinstance(u, Add):
         r = 0
@@ -1025,6 +1030,7 @@ def dt(u, frame, t):
         return r
     else:
         raise NotImplementedError()
+"""
 
 from sympy.printing.pretty.pretty import PrettyPrinter, xsym
 # here is how to get a nice symbol for multiplication:

@@ -340,19 +340,23 @@ def test_express3():
     #        C[3]))
     #assert C[2] == express(Vector(
     #        -sin(q3)*cos(q4)*N[1] + cos(q3)*cos(q4)*N[2] + sin(q4)*N[3]), C)
-    """
-    assert express(C[3], N) == Vector(
-            (sin(q5)*cos(q3)+sin(q3)*sin(q4)*cos(q5))*N[1] +
-            (sin(q3)*sin(q5)-sin(q4)*cos(q3)*cos(q5))*N[2] +
-            cos(q4)*cos(q5)*N[3])
-    assert express(C[1], A) == Vector(cos(q5)*A[1] + sin(q4)*sin(q5)*A[2] -
-            sin(q5)*cos(q4)*A[3])
-    assert express(C[2], A) == Vector(cos(q4)*A[2] + sin(q4)*A[3])
-    assert express(C[3], A) == Vector(sin(q5)*A[1] - sin(q4)*cos(q5)*A[2] +
-            cos(q4)*cos(q5)*A[3])
-    assert express(C[1], B) == Vector(cos(q5)*B[1] - sin(q5)*B[3])
-    assert express(C[3], B) == Vector(sin(q5)*B[1] + cos(q5)*B[3])
-    """
+    #print express(Vector(
+    #        (sin(q5)*cos(q3)+sin(q3)*sin(q4)*cos(q5))*N[1] +
+    #        (sin(q3)*sin(q5)-sin(q4)*cos(q3)*cos(q5))*N[2] +
+    #        cos(q4)*cos(q5)*N[3]), C)
+    #assert C[3] == express(Vector(
+    #        (sin(q5)*cos(q3)+sin(q3)*sin(q4)*cos(q5))*N[1] +
+    #        (sin(q3)*sin(q5)-sin(q4)*cos(q3)*cos(q5))*N[2] +
+    #        cos(q4)*cos(q5)*N[3]), C)
+    #print express(Vector(cos(q5)*A[1] + sin(q4)*sin(q5)*A[2] -
+    #        sin(q5)*cos(q4)*A[3]), C)
+    #assert C[1] == express(Vector(cos(q5)*A[1] + sin(q4)*sin(q5)*A[2] -
+    #        sin(q5)*cos(q4)*A[3]), C)
+    assert C[2] == express(Vector(cos(q4)*A[2] + sin(q4)*A[3]), C)
+    assert C[3] == express(Vector(sin(q5)*A[1] - sin(q4)*cos(q5)*A[2] +
+            cos(q4)*cos(q5)*A[3]), C)
+    assert C[1] == express(Vector(cos(q5)*B[1] - sin(q5)*B[3]), C)
+    assert C[3] == express(Vector(sin(q5)*B[1] + cos(q5)*B[3]), C)
 
 def test_cross_different_frames2():
     q1, q2, q3 = symbols('q1 q2 q3')
