@@ -1,5 +1,5 @@
 from pydy import ReferenceFrame, dot, cross, UnitVector, identify, express, \
-        coeff, Vector
+        coeff, Vector, dt
 from sympy import symbols, S, Symbol, Function, sin, cos, tan, Matrix, eye, pprint,\
         trigsimp, expand
 import numpy as N
@@ -357,6 +357,32 @@ def test_express3():
             cos(q4)*cos(q5)*A[3]), C)
     assert C[1] == express(Vector(cos(q5)*B[1] - sin(q5)*B[3]), C)
     assert C[3] == express(Vector(sin(q5)*B[1] + cos(q5)*B[3]), C)
+
+
+def test_dt():
+    t = Symbol('t')
+
+    q1 = Function('q1')(t)
+    q2 = Function('q2')(t)
+    q3 = Function('q3')(t)
+    q4 = Function('q4')(t)
+    q5 = Function('q5')(t)
+
+    N = ReferenceFrame('N')
+    A = N.rotate('A', 3, q3)
+    B = A.rotate('B', 1, q4)
+    C = B.rotate('C', 2, q5)
+    assert dt(N[1], N) == Vector({})
+    assert dt(N[2], N) == Vector({})
+    assert dt(N[3], N) == Vector({})
+    assert dt(N[1], A) == Vector(-q3.diff(t)*N[2])
+    assert dt(N[2], A) == Vector(q3.diff(t)*N[1])
+    assert dt(N[3], A) == Vector({})
+    assert dt(N[1], B) == Vector(-q3.diff(t)*N[2] + sin(q3)*q4.diff(t)*N[3])
+    assert dt(N[2], B) == Vector(q3.diff(t)*N[1] - cos(q3)*q4.diff(t)*N[3])
+    assert dt(N[3], B) == Vector(q4.diff(t)*A[2])
+    #assert dt(N[1], C) == Vector((-q3.diff(t) - sin(q4)*q5.diff(t))*N[2] +
+    #        (sin(q3)*q4.diff(t) + cos(q3)*cos(q4)*q5.diff(t))*N[3])
 
 def test_cross_different_frames2():
     q1, q2, q3 = symbols('q1 q2 q3')
