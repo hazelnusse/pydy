@@ -10,6 +10,7 @@ zero = Matrix([0, 0, 0])
 #eye = Matrix([[1, 0, 0], [0, 1, 0], [0, 0, 1]])
 t = Symbol("t")
 
+
 class UnitVector(Basic):
     """A standard unit vector  with a symbolic and a numeric representation"""
 
@@ -711,7 +712,12 @@ class ReferenceFrame:
         self.transforms[frame] = matrix
 
     def rotate(self, name, axis, angle):
-        """
+        """Rotate a reference frame.
+
+        Perform simple rotations, Euler rotations, space fixed rotations, axis
+        angle rotations, Euler parameter rotations, or Rodrigues parameter
+        rotations.
+
         Perform a simple rotation about the 1, 2, or 3 axis, by an amount
         specified by angle, to create a new ReferenceFrame object.
         Automatically generates the angular velocity of the new frame with
@@ -729,30 +735,53 @@ class ReferenceFrame:
         to the parent frame (and vice versa) is stored with the new reference
         frame (and the parent reference frame).
         """
-        if axis == 1:
-            matrix = Matrix([
-                [1, 0, 0],
-                [0, cos(angle), -sin(angle)],
-                [0, sin(angle), cos(angle)],
-                ])
-            omega = angle.diff(t)*self[axis]
-        elif axis == 2:
-            matrix = Matrix([
-                [cos(angle), 0, sin(angle)],
-                [0, 1, 0],
-                [-sin(angle), 0, cos(angle)],
-                ])
-            omega = angle.diff(t)*self[axis]
-        elif axis == 3:
-            matrix = Matrix([
-                [cos(angle), -sin(angle), 0],
-                [sin(angle), cos(angle), 0],
-                [0, 0, 1],
-                ])
-            omega = angle.diff(t)*self[axis]
+        if not isinstance(angle, (list, tuple)):
+            if axis in set((1, 2, 3)):
+                matrix = self._rot(axis, angle)
+                omega = angle.diff(t)*self[axis]
+            elif isinstance(axis, (UnitVector, Vector)):
+                raise NotImplementedError("Axis angle rotations not \
+                    implemented")
+            else:
+                raise ValueError("Invalid axis")
+            return ReferenceFrame(name, matrix, self, omega)
         else:
-            raise ValueError("wrong axis")
-        return ReferenceFrame(name, matrix, self, omega)
+            if len(angle) == 3:
+                rot_type = str(axis)
+                if rot_type in set(('BODY123', 'BODY132', 'BODY231', 'BODY213',
+                    'BODY312', 'BODY321', 'BODY121', 'BODY131', 'BODY232',
+                    'BODY212', 'BODY313', 'BODY323', 'SPACE123', 'SPACE132',
+                    'SPACE231', 'SPACE213', 'SPACE312', 'SPACE321', 'SPACE121',
+                    'SPACE131', 'SPACE232', 'SPACE212', 'SPACE313', 'SPACE323')):
+                    a1 = int(rot_type[4])
+                    a2 = int(rot_type[5])
+                    a3 = int(rot_type[6])
+                    if rot_type[0] == 'B':  # Body fixed (Euler) angles
+                        matrix = _rot(a1, angle[0]) * _rot(a2, angle[1]) * \
+                            _rot(a3, angle[2])
+                        omega = 'blah'      # XXX Need to implement
+                    else:                   # Space fixed angles
+                        matrix = _rot(a3, angle[2]) * _rot(a2, angle[1]) * \
+                            _rot(a1, angle[0])
+                        omega = 'blah'      # XXX Need to implement
+
+    def _rot(self, axis, angle):
+        """Returns direction cosine matrix for simple 1,2,3 rotations
+
+        """
+        if axis == 1:
+            return Matrix([[1, 0, 0],
+                [0, cos(angle), -sin(angle)],
+                [0, sin(angle), cos(angle)]])
+        elif axis == 2:
+            return Matrix([[cos(angle), 0, sin(angle)],
+                [0, 1, 0],
+                [-sin(angle), 0, cos(angle)]])
+        elif axis == 3:
+            return Matrix([[cos(angle), -sin(angle), 0],
+                [sin(angle), cos(angle), 0],
+                [0, 0, 1]])
+
 
     def __repr__(self):
         return "<Frame %s>" % self.name
