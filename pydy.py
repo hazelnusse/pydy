@@ -592,8 +592,14 @@ class Vector(Basic):
     def mag(self):
         m = 0
         for k in self.dict.keys():
-            m += self.dict[k]**2
-        return m**(1/2)
+            m += self.dict[k]**S(2)
+        return m**(S(1)/S(2))
+
+    def mag_sqr(self):
+        m = 0
+        for k in self.dict.keys():
+            m += self.dict[k]**S(2.0)
+        return m
 
 class Point:
     def __init__(self, s, r=None, frame=None):
@@ -611,6 +617,7 @@ class Point:
 
 
     def locate(self, s, r, frame=None):
+        r = Vector(r)
         if isinstance(r, UnitVector) or isinstance(r, Vector):
             if frame == None:
                 newpoint = Point(s, r)
@@ -977,6 +984,19 @@ def coeff(e, x):
             return S(0)
         else:
             return r
+
+def coeffv(v, scalar):
+    if isinstance(v, Vector):
+        c = {}
+        for k in v.dict.keys():
+            s = v.dict[k].coeff(scalar)
+            if s == None:
+                continue
+            else:
+                c.update({k: s})
+        return Vector(c)
+    else:
+        raise NotImplementedError()
 
 
 def expression2vector(e, frame):

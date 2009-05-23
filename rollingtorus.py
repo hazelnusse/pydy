@@ -8,7 +8,10 @@ from pydy import ReferenceFrame, cross, dot, dt, express, expression2vector, \
     coeff, Vector, UnitVector
 
 # Constants
-m, g, r1, r2, t, I, J = symbols("m g r1 r2 t I J")
+m, g, r1, r2, t, = symbols("m g r1 r2 t")
+
+I = (r1**2/2 + 5*r2**2/8)*m  # Central moment of inertia about any diameter
+J = (r1**2 + 3*r2**2/4)*m    # Central moment of inertia about normal axis
 
 # Auxilliary generalized speeds and contact forces
 au1, au2, au3, cf1, cf2, cf3 = symbols("au1 au2 au3 cf1 cf2 cf3")
