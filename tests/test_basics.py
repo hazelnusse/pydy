@@ -664,17 +664,70 @@ def test_rotate_Euler_Space():
     q3 = Function('q3')(t)
     A = ReferenceFrame('A')
 
+    c1 = cos(q1)
+    c2 = cos(q2)
+    c3 = cos(q3)
+    s1 = sin(q1)
+    s2 = sin(q2)
+    s3 = sin(q3)
+
+    q1p = q1.diff(t)
+    q2p = q2.diff(t)
+    q3p = q3.diff(t)
+
+    #### Rotation matrices from Spacecraft Dynamics, by Kane, Likins, Levinson,
+    #### 1982, Appendix I, pg. 422
+
+
+    ###########  DIRECTION COSINE MATRICES AS FUNCTIONS OF ORIENTATION ANGLES
     #### Euler Angles (Body Fixed rotations) ####
-    #### Body 123
+    #### Body 1-2-3
     B = A.rotate('B', 'BODY123', (q1, q2, q3))
-    R123_Body = Matrix([ [cos(q2)*cos(q3), -cos(q2)*sin(q3), sin(q2)],
-                         [sin(q1)*sin(q2)*cos(q3) + cos(q1)*sin(q3),
-                             -sin(q1)*sin(q2)*sin(q3) + cos(q1)*cos(q3),
-                             -sin(q1)*cos(q2)],
-                        [-cos(q1)*sin(q2)*cos(q3) + sin(q1)*sin(q3),
-                             cos(q1)*sin(q2)*sin(q3) + sin(q1)*cos(q3),
-                             cos(q1)*cos(q2)]])
-    print B.get_rot_matrices(A)[0]
-    print R123_Body
+    R123_Body = Matrix([ [ c2*c3, -c2*s3, s2],
+                         [s1*s2*c3 + s3*c1, -s1*s2*s3 + c3*c1, -s1*c2],
+                         [-c1*s2*c3 + s3*s1, c1*s2*s3 + c3*s1, c1*c2]])
+    W_B_A = Vector((q1p*c2*c3 + q2p*s3)*B[1] + (-q1p*c2*s3+q2p*c3)*B[2] +
+            (q1p*s2 + q3p)*B[3])
+    #print B.get_rot_matrices(A)[0]
+    #print R123_Body
     assert B.get_rot_matrices(A)[0] == R123_Body
+    #print W_B_A
+    #print 'b1>', dot(B.get_omega(A), B[1])
+    #print 'b2>', dot(B.get_omega(A), B[2])
+    #print 'b3>', dot(B.get_omega(A), B[3])
+    # Currently trigsimp can't handle this kind of thing...
+    #assert B.get_omega(A) == W_B_A
+
+    #### Body 1-3-2
+    B = A.rotate('B', 'BODY132', (q1, q2, q3))
+    R132_Body = Matrix([ [c2*c3, -s2, c2*s3],
+                         [c1*s2*c3 + s3*s1, c1*c2, c1*s2*s3 - c3*s1],
+                         [s1*s2*c3 - s3*c1, s1*c2, s1*s2*s3 + c3*c1]])
+    W_B_A = Vector((q1p*c2*c3 - q2p*s3)*B[1] + (-q1p*s2+q3p)*B[2] + (q1p*c2*s3
+        + q2p*c3)*B[3])
+    print W_B_A
+    print B.get_omega(A)
+    #print B.get_rot_matrices(A)[0]
+    #print R132_Body
+    assert B.get_rot_matrices(A)[0] == R132_Body
+    #assert B.get_omega(A) == W_B_A
+
+    #### Space Fixed rotations ####
+    #### Space 1-2-3
+    B = A.rotate('B', 'SPACE123', (q1, q2, q3))
+    R123_Space = Matrix([ [c2*c3, s1*s2*c3 - s3*c1, c1*s2*c3 + s3*s1],
+                          [c2*s3, s1*s2*s3 + c3*c1, c1*s2*s3 - c3*s1],
+                          [-s2, s1*c2, c1*c2]])
+    print B.get_rot_matrices(A)[0]
+    print R123_Space
+    assert B.get_rot_matrices(A)[0] == R123_Space
+
+    #### Space 1-3-2
+    B = A.rotate('B', 'SPACE132', (q1, q2, q3))
+    R132_Space = Matrix([ [c2*c3, -c1*s2*c3 + s3*s1, s1*s2*c3 + s3*c1],
+                          [s2, c1*c2, -s1*c2],
+                          [-c2*s3, c1*s2*s3 + c3*s1, -s1*s2*s3 + c3*c1]])
+    print B.get_rot_matrices(A)[0]
+    print R132_Space
+    assert B.get_rot_matrices(A)[0] == R132_Space
 

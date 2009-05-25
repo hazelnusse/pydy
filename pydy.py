@@ -709,7 +709,7 @@ class ReferenceFrame:
         self.transforms[frame] = matrix
 
     def rotate(self, name, axis, angle):
-        """Rotate a reference frame.
+        """Returns a new rotated reference frame.
 
         Perform simple rotations, Euler rotations, space fixed rotations, axis
         angle rotations, Euler parameter rotations, or Rodrigues parameter
@@ -751,24 +751,31 @@ class ReferenceFrame:
                     'BODY212', 'BODY313', 'BODY323', 'SPACE123', 'SPACE132',
                     'SPACE231', 'SPACE213', 'SPACE312', 'SPACE321', 'SPACE121',
                     'SPACE131', 'SPACE232', 'SPACE212', 'SPACE313', 'SPACE323')):
-                    a1 = int(rot_type[4])
-                    a2 = int(rot_type[5])
-                    a3 = int(rot_type[6])
                     if rot_type[0] == 'B':  # Body fixed (Euler) angles
+                        a1 = int(rot_type[4])
+                        a2 = int(rot_type[5])
+                        a3 = int(rot_type[6])
                         C = self._rot(a1, angle[0]) * self._rot(a2, angle[1]) * \
                             self._rot(a3, angle[2])
                     else:                   # Space fixed angles
+                        a1 = int(rot_type[5])
+                        a2 = int(rot_type[6])
+                        a3 = int(rot_type[7])
                         C = self._rot(a3, angle[2]) * self._rot(a2, angle[1]) * \
                             self._rot(a1, angle[0])
                     # From Spacecraft Dynamics, by Kane, Likins, Levinson
                     # Eqns 1.10.(5-7), pg. 47
                     # Angular velocity components in new frame's basis vectors
-                    w1 = C[0,2]*C[0,1].diff(t) + C[1,2]*C[1,1].diff(t) + \
-                            C[2,2]*C[2,1]
-                    w2 = C[1,0]*C[1,2].diff(t) + C[2,0]*C[2,2].diff(t) + \
-                            C[0,0]*C[0,2].diff(t)
-                    w3 = C[2,1]*C[2,0].diff(t) + C[0,1]*C[0,0].diff(t) + \
-                            C[1,1]*C[1,0]
+
+                    w1 = C[0,2]*(C[0,1].diff(t)) + C[1,2]*(C[1,1].diff(t)) + \
+                        C[2,2]*(C[2,1].diff(t))
+
+                    w2 = C[1,0]*(C[1,2].diff(t)) + C[2,0]*(C[2,2].diff(t)) + \
+                        C[0,0]*(C[0,2].diff(t))
+
+                    w3 = C[2,1]*(C[2,0].diff(t)) + C[0,1]*(C[0,0].diff(t)) + \
+                        C[1,1]*(C[1,0].diff(t))
+
                     # First initialize with zero angular velocity
                     newFrame = ReferenceFrame(name, C, self, Vector({}))
                     # Angular velocity vector of newFrame relative to self
