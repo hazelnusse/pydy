@@ -2,6 +2,47 @@ from pydy import *
 from sympy import *
 import sympy
 print sympy.__file__
+
+t = Symbol('t')
+
+q1 = Function('q1')(t)
+q2 = Function('q2')(t)
+q3 = Function('q3')(t)
+q4 = Function('q4')(t)
+q5 = Function('q5')(t)
+
+N = ReferenceFrame('N')
+A = N.rotate('A', 3, q3)
+
+print A.get_omega(N)
+print N.get_omega(A)
+stop
+
+
+
+a = Function("a")(t)
+b = Function("b")(t)
+c = Function("c")(t)
+
+A = ReferenceFrame('A')
+B = A.rotate('B', 'BODY123', (a, b, c))
+A_B = B.get_rot_matrices(A)[0]
+A_B = A_B.subs({sin(a): Symbol('sa'), cos(a): Symbol('ca'),
+                sin(b): Symbol('sb'), cos(b): Symbol('cb'),
+                sin(c): Symbol('sc'), cos(c): Symbol('cc')})
+print A_B
+stop
+
+
+
+
+
+
+
+
+
+
+
 t, x, y = symbols('t x y')
 e1 = Matrix([1, 0, 0])
 e2 = Matrix([0, 1, 0])

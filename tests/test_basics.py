@@ -395,7 +395,9 @@ def test_dt():
             (sin(q3)*cos(q4)*q5.diff(t) - cos(q3)*q4.diff(t))*N[3])
     assert dt(N[3], C) == Vector(q4.diff(t)*A[2] - cos(q4)*q5.diff(t)*B[1])
 
-    assert dt(A[1], N) == Vector(q3.diff(t)*A[2]) == q3.diff(t)*A[2]
+    print dt(A[1],N)
+    print Vector(q3.diff(t)*A[2])
+    assert dt(A[1], N) == Vector(q3.diff(t)*A[2]) #== q3.diff(t)*A[2]
     assert dt(A[2], N) == Vector(-q3.diff(t)*A[1]) == -q3.diff(t)*A[1]
     assert dt(A[3], N) == Vector({}) == 0
     assert dt(A[1], A) == Vector({}) == 0
@@ -653,3 +655,26 @@ def test_mag():
     assert v2.mag() == 2**Rational(1,2)
     assert v3.mag() == 3**Rational(1,2)
     assert v4.mag() == 1
+
+
+def test_rotate_Euler_Space():
+    t = Symbol('t')
+    q1 = Function('q1')(t)
+    q2 = Function('q2')(t)
+    q3 = Function('q3')(t)
+    A = ReferenceFrame('A')
+
+    #### Euler Angles (Body Fixed rotations) ####
+    #### Body 123
+    B = A.rotate('B', 'BODY123', (q1, q2, q3))
+    R123_Body = Matrix([ [cos(q2)*cos(q3), -cos(q2)*sin(q3), sin(q2)],
+                         [sin(q1)*sin(q2)*cos(q3) + cos(q1)*sin(q3),
+                             -sin(q1)*sin(q2)*sin(q3) + cos(q1)*cos(q3),
+                             -sin(q1)*cos(q2)],
+                        [-cos(q1)*sin(q2)*cos(q3) + sin(q1)*sin(q3),
+                             cos(q1)*sin(q2)*sin(q3) + sin(q1)*cos(q3),
+                             cos(q1)*cos(q2)]])
+    print B.get_rot_matrices(A)[0]
+    print R123_Body
+    assert B.get_rot_matrices(A)[0] == R123_Body
+

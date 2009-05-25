@@ -182,9 +182,10 @@ class UnitVector(Basic):
         else:
             raise NotImplementedError()
 
-    def dt(self, frame):
-        if isinstance(frame, ReferenceFrame):
-            return cross(self.frame.get_omega(frame), self)
+    def dt(self, diff_frame):
+        if isinstance(diff_frame, ReferenceFrame):
+            #print 'should be q3.diff(t)*A[3]',self.frame.get_omega(diff_frame)
+            return cross(self.frame.get_omega(diff_frame), self)
         else:
             raise NotImplementedError()
 
@@ -223,12 +224,10 @@ class Vector(Basic):
                 if v[k] == 0:  v.pop(k)
             self.dict = v
         else:
-            #print "Not a dict"
             vdict = self.parse_terms(v)
             for k in vdict.keys():
                 if vdict[k] == 0:  vdict.pop(k)
             self.dict = vdict
-            #self.dict = self.parse_terms(v)
 
     def _sympystr_(self):
         """
@@ -240,16 +239,6 @@ class Vector(Basic):
 
         if self.dict != {}:
             for k in self.dict.keys():
-                """
-                if i == 0:
-                    s = '(' + str(self.dict[k]) + ')*' + str(k)
-                    i += 1
-                else:
-                    s +=  ' + (' + str(self.dict[k]) + ')*' + str(k)
-                """
-                #"""
-                #Needs a major rewrite, sometimes this method doesn't work at
-                #all.
                 if (self.dict[k] == 1) or (self.dict[k] == -1):
                     if i == 0:
                         if self.dict[k] == 1: sign = ''
@@ -338,8 +327,6 @@ class Vector(Basic):
             #v.expand()
             terms = {}
             for add_term in v.args:
-                #print "b = ", b, "type(b): ", type(b)
-                #print "b parsed = ", parse_terms(b)
                 if isinstance(add_term, Mul):
                     add_term_dict = self.parse_terms(add_term)
                 elif isinstance(add_term, Pow):
@@ -444,8 +431,6 @@ class Vector(Basic):
                     # coordinate frame
                     if self_in_first_key_frame.dict == \
                             other_in_first_key_frame.dict:
-                        #print self_in_first_key_frame.dict
-                        #print other_in_first_key_frame.dict
                         return True
                     else:
                         return False
@@ -456,14 +441,13 @@ class Vector(Basic):
             else:
                 return False
         else:
-            #print "hello"
             other_as_Vector = Vector(other)
             return self == other_as_Vector
 
     def __neg__(self):
-        n = self.dict
+        n = self.dict.copy()
         for k in n:
-            n[k] *= -1
+            n[k] *= -S(1)
         return Vector(n)
 
     def express(self, frame):
@@ -681,9 +665,22 @@ class ReferenceFrame:
         self.parent = frame
         self.W = {}
         if omega != None:
-            #print 'omega', omega
+            #print 'omega in init', omega
+            #print 'self.W before set_omega', self.W
             self.set_omega(omega, self.parent)
-            self.parent.set_omega(-omega, self, force=True)
+            #print 'omegas after set_omega',self.W
+            #print 'omegas after set_omega, using get_omega', \
+            #    self.get_omega(frame)
+            #print 'self', self, 'parent frame', frame
+            #print 'frame',frame.set_omega
+            #print 'parent frame omega', frame.W
+            #print 'arguments to frame.set_omega()', -omega, self
+            frame.set_omega(-omega, self, force=True)
+            #print 'after setting parent omega'
+            #print 'omegas after set_omega, self.W',self.W
+            #print 'omegas after set_omega, using get_omega', \
+            #    self.get_omega(frame)
+            #print 'parent frame omega', frame.W
 
         if frame is not None:
             self.append_transform(frame, matrix)
@@ -738,7 +735,8 @@ class ReferenceFrame:
         if not isinstance(angle, (list, tuple)):
             if axis in set((1, 2, 3)):
                 matrix = self._rot(axis, angle)
-                omega = angle.diff(t)*self[axis]
+                omega = Vector(angle.diff(t)*self[axis])
+                print 'omega = ', omega
             elif isinstance(axis, (UnitVector, Vector)):
                 raise NotImplementedError("Axis angle rotations not \
                     implemented")
@@ -757,13 +755,27 @@ class ReferenceFrame:
                     a2 = int(rot_type[5])
                     a3 = int(rot_type[6])
                     if rot_type[0] == 'B':  # Body fixed (Euler) angles
-                        matrix = _rot(a1, angle[0]) * _rot(a2, angle[1]) * \
-                            _rot(a3, angle[2])
-                        omega = 'blah'      # XXX Need to implement
+                        C = self._rot(a1, angle[0]) * self._rot(a2, angle[1]) * \
+                            self._rot(a3, angle[2])
                     else:                   # Space fixed angles
-                        matrix = _rot(a3, angle[2]) * _rot(a2, angle[1]) * \
-                            _rot(a1, angle[0])
-                        omega = 'blah'      # XXX Need to implement
+                        C = self._rot(a3, angle[2]) * self._rot(a2, angle[1]) * \
+                            self._rot(a1, angle[0])
+                    # From Spacecraft Dynamics, by Kane, Likins, Levinson
+                    # Eqns 1.10.(5-7), pg. 47
+                    # Angular velocity components in new frame's basis vectors
+                    w1 = C[0,2]*C[0,1].diff(t) + C[1,2]*C[1,1].diff(t) + \
+                            C[2,2]*C[2,1]
+                    w2 = C[1,0]*C[1,2].diff(t) + C[2,0]*C[2,2].diff(t) + \
+                            C[0,0]*C[0,2].diff(t)
+                    w3 = C[2,1]*C[2,0].diff(t) + C[0,1]*C[0,0].diff(t) + \
+                            C[1,1]*C[1,0]
+                    # First initialize with zero angular velocity
+                    newFrame = ReferenceFrame(name, C, self, Vector({}))
+                    # Angular velocity vector of newFrame relative to self
+                    omega  = Vector({newFrame[1]: w1, newFrame[2]: w2,
+                        newFrame[3]: w3})
+                    newFrame.set_omega(omega, self, force=True)
+                    return newFrame
 
     def _rot(self, axis, angle):
         """Returns direction cosine matrix for simple 1,2,3 rotations
@@ -837,12 +849,11 @@ class ReferenceFrame:
         result.reverse()
         return result
 
-    def set_omega(self, W, frame, force=False):
-        """
-        Sets the angular velocity Omega with respect to the frame "frame".
+    def set_omega(self, omega, frame, force=False):
+        """Sets the angular velocity of self relative to frame.
         """
         if self.W == {} or force:
-            self.W[frame] = Vector(W)
+            self.W[frame] = omega
         else:
             raise ValueError("set_omega has already been called.")
 
@@ -852,12 +863,9 @@ class ReferenceFrame:
         """
 
         if self.W.has_key(frame):
-            #print 'i have the key'
             return self.W[frame]
         else:
             om = {}
-            #print 'omega list',self.get_omega_list(frame)
-            #print 'sum(omega list)', sum(self.get_omega_list(frame))
             for term in self.get_omega_list(frame):
                 for k in term.dict.keys():
                     if om.has_key(k):
