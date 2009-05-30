@@ -1,18 +1,114 @@
-from pydy import *
+"""
+from sympy import Basic
+from sympy.printing.str import StrPrinter
+from sympy.printing.pretty.pretty import xsym
+
+class GreenEggsAndHam(Basic):
+    def __init__(self, string):
+        self.s = string
+
+    def __str__(self):
+        return print_GreenEggsAndHam(self)
+
+class HamPrinter(StrPrinter):
+    def _print_GreenEggsAndHam(self, e):
+        # The xsym('*') causes a UnicodeEncodeError
+        return e.s.lower() + '*' + "\xC2\xB7"
+
+def print_GreenEggsAndHam(e):
+    pp = HamPrinter()
+    return pp.doprint(e)
+
+MyBreakfast = GreenEggsAndHam('I LOVE SYMPY')
+print MyBreakfast
+stop
+"""
+
 from sympy import *
-import sympy
-print sympy.__file__
+from pydy import *
+from sympy.printing.pretty.pretty import PrettyPrinter, xsym
+
+
+
+class GeneralizedCoordinate(Symbol):
+    def __init__(self, name, depends_on=Symbol('t'), *args):
+        self.dv = depends_on
+    """
+    def diff(self, var=Symbol('t')):
+        if var == self:
+            print 'var == self'
+            return 1
+        elif var == self.dv:
+            print 'var != self'
+            return GeneralizedCoordinate(self.name+'\'')
+        else:
+            print 'none'
+
+        if n == 1:
+            print 'n = ', n
+            return GeneralizedCoordinate(self.name+'\'')
+        else:
+            print 'n = ', n
+            d = GeneralizedCoordinate(self.name+'\'')
+            return d.dt(n=n-1)
+    """
+    def _eval_derivative(self, s):
+        if s == self:
+            return S.One
+        elif s == self.dv:
+            return GeneralizedCoordinate(self.name+'\'')
+        else:
+            return S.Zero
+
+    def _latex_(self):
+        return '\dot{'+str(self.name)+'}'
+
+
+global _compact_trig
+_compact_trig = True
+t = Symbol('t')
+q1 = GeneralizedCoordinate('q1')
+q2 = GeneralizedCoordinate('q2')
+u1 = Function('u1')(t)
+#print 'q1 = ',q1
+#print 'diff(q1, t) = ', q1.diff(t)
+#print 'dt(sin(q1))', sin(q1).diff(t)
+e = sin(q1).diff(t)
+#print 'type(sin(q1).diff(t))', type(e)
+#print latex(q1)
+#print 'print_pydy(sin(q1)', print_pydy(sin(q1)), 'print sin(q1)', sin(q1)
+#print print_pydy(cos(q1))
+A = ReferenceFrame('A')
+#print 'print_pydy(A[1])', print_pydy(A[1])
+#print 'print A[1]', A[1]
+#print 'print A[1]', Vector((1+sin(q1))*A[1] + cos(q1)*A[2])
+#print 'Vector({})', Vector({})
+v2 = Vector(q1*u1*A[1] + q2*t*sin(t)*A[2])
+print v2
+stop
+
+print print_pydy(sin(q1)+cos(q1)+tan(q1))
+print 'type(xsym("*"))', type(xsym("*")+'blah')
+print 'xsym("*")', xsym("*"), type(print_pydy(sin(q1)))
+stop
+
+
+
 
 t = Symbol('t')
-
 q1 = Function('q1')(t)
 q2 = Function('q2')(t)
 q3 = Function('q3')(t)
-q4 = Function('q4')(t)
-q5 = Function('q5')(t)
 
-N = ReferenceFrame('N')
-A = N.rotate('A', 3, q3)
+A = ReferenceFrame('A')
+B = A.rotate('B', 'BODY123', (q1, q2, q3))
+
+
+stop
+
+
+
+
 
 print A.get_omega(N)
 print N.get_omega(A)

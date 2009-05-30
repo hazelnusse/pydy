@@ -1,5 +1,14 @@
 from sympy import Symbol, symbols, Basic, Derivative, Mul, Pow, Matrix, sin, \
         cos, S, eye, Add, trigsimp, expand
+from sympy.printing.pretty.pretty import PrettyPrinter, xsym, pprint, pretty
+# here is how to get a nice symbol for multiplication:
+# print xsym("*")
+from sympy.printing.str import StrPrinter
+import sys
+sys.displayhook = pprint
+
+global _compact_trig
+_compact_trig = False
 e1 = Matrix([1, 0, 0])
 e2 = Matrix([0, 1, 0])
 e3 = Matrix([0, 0, 1])
@@ -45,9 +54,23 @@ class UnitVector(Basic):
             self.v['sym'] = Symbol(s.lower()+str(0))
             self.v['num'] = zero
 
-    def _sympystr_(self):
-        return str(self.v['sym']) + ">"
+    def __str__(self):
+        return print_pydy(self)
+    
+#    def _sympystr_(self):
+#        return print_pydy(self)
 
+    """    
+    def _sympystr_(self):
+        #return str(self.v['sym']) + ">"
+        #print type(print_pydy(self))
+        #return print_pydy(self)
+        #return str(print_pydy(self))
+
+    def _pydystr_(self):
+        #return str(self.v['sym']) + ">"
+        return print_pydy(self.v['sym'])
+    """
     def __cmp__(self, other):
         if isinstance(other, UnitVector):
             if self.frame == other.frame:
@@ -228,51 +251,12 @@ class Vector(Basic):
             for k in vdict.keys():
                 if vdict[k] == 0:  vdict.pop(k)
             self.dict = vdict
+    
+    def __str__(self):
+        return print_pydy(self)
 
-    def _sympystr_(self):
-        """
-        Sympy printing of Vector objects.
-        """
-
-        s = ''
-        i = 0
-
-        if self.dict != {}:
-            for k in self.dict.keys():
-                if (self.dict[k] == 1) or (self.dict[k] == -1):
-                    if i == 0:
-                        if self.dict[k] == 1: sign = ''
-                        if self.dict[k] == -1: sign = '-'
-                        s += sign + k._sympystr_()
-                        i += 1
-                    else:
-                        if int(abs(self.dict[k])/self.dict[k]) == 1: sign = ''
-                        if int(abs(self.dict[k])/self.dict[k]) == -1: sign = '-'
-                        s += ' ' + sign + ' ' + k._sympystr_()
-                else:
-                    if i == 0:
-                        if isinstance(self.dict[k], Add):
-                            s += '(' + str(self.dict[k]) + ')' + '*' + \
-                                    k._sympystr_()
-                        else:
-                            s += str(self.dict[k]) + '*' + k._sympystr_()
-                        i += 1
-                    else:
-                        if isinstance(self.dict[k], Add):
-                            s += ' + (' + str(self.dict[k]) + ')*' + \
-                                    k._sympystr_()
-                        else:
-                            if str(self.dict[k])[0] == '-':
-                                sign = '-'
-                                s += ' ' + sign + ' ' + str(self.dict[k])[1:] + '*' + k._sympystr_()
-                            else:
-                                sign = '+'
-                                s += ' ' + sign + ' ' + str(self.dict[k]) + '*' + k._sympystr_()
-                #"""
-            return s
-        else:
-            return '0>'
-
+#    def _sympystr_(self):
+#        return print_pydy(self)
 
     def parse_terms(self, v):
         """
@@ -386,7 +370,7 @@ class Vector(Basic):
         v1 - v2   <----> v1.__sub__(v2)
         """
         if isinstance(other, Vector):
-            print 'v2 is a Vector'
+            #print 'v2 is a Vector'
             s1 = set(self.dict.keys())
             s2 = set(other.dict.keys())
             difference = {}
@@ -736,7 +720,7 @@ class ReferenceFrame:
             if axis in set((1, 2, 3)):
                 matrix = self._rot(axis, angle)
                 omega = Vector(angle.diff(t)*self[axis])
-                print 'omega = ', omega
+                #print 'omega = ', omega
             elif isinstance(axis, (UnitVector, Vector)):
                 raise NotImplementedError("Axis angle rotations not \
                     implemented")
@@ -1060,49 +1044,15 @@ def vector2expression(u, frame):
 
 def dt(v, frame):
     if isinstance(v, UnitVector) or isinstance(v, Vector):
-        return v.dt(frame)
+        res = v.dt(frame)
+        #print res
+        return res
     else:
         raise NotImplementedError()
-"""
-def dt(u, frame, t):
-    if isinstance(u, Add):
-        r = 0
-        for a in u.args:
-            c, v = identify_v1(a)
-            #print "c = ", c, "type(c)", type(c), "v = ",v, "type(v)", type(v)
-            dc_dt = c.diff(t)
-            W = v.frame.get_omega(frame)
-            #print "W = ", W, "type(W):", type(W)
-            if W == 0:
-                print "W = 0"
-                print "r = ", r, "dc_dt = ", dc_dt, "v = ", v
-                r += dc_dt * v
-                continue
-            #print "dc_dt*v + W x v", dc_dt, v, W, v, cross(W, v)
-            r += dc_dt * v + c*cross(W, v)
-        r = r.expand()
-        return r
 
-    elif isinstance(u, Mul):
-        c, v = identify_v1(u)
-        #print "c = ", c, "v = ", v
-        dc_dt = c.diff(t)
-        W = v.frame.get_omega(frame)
-        #print "W = ", W
-        #print "W x v = ", cross(W,v)
-        r = dc_dt * v + c*cross(W, v)
-        return r
-    else:
-        raise NotImplementedError()
-"""
-
-from sympy.printing.pretty.pretty import PrettyPrinter, xsym
-# here is how to get a nice symbol for multiplication:
-# print xsym("*")
-from sympy.printing.str import StrPrinter
 
 class PyDyPrinter(StrPrinter):
-    printmethod = "_pydystr_"
+    #printmethod = "_pydystr_"
 
     #def _print_Symbol(self, e):
     #    return "|%s|" % str(e)
@@ -1123,17 +1073,81 @@ class PyDyPrinter(StrPrinter):
             r += two
         elif index == "3":
             r += three
+        #print type(r)
         return r
 
+    def _print_Vector(self, e):
+        """
+        Sympy printing of Vector objects.
+        """
+        s = ''
+        i = 0
+        small_dot = "\xC2\xB7"
+        if e.dict != {}:
+            for k in e.dict.keys():
+                if (e.dict[k] == 1) or (e.dict[k] == -1):
+                    if i == 0:
+                        if e.dict[k] == 1: sign = ''
+                        if e.dict[k] == -1: sign = '-'
+                        s += sign + k.__str__()
+                        i += 1
+                    else:
+                        if int(abs(e.dict[k])/e.dict[k]) == 1: sign = ''
+                        if int(abs(e.dict[k])/e.dict[k]) == -1: sign = '-'
+                        s += ' ' + sign + ' ' + k.__str__()
+                else:
+                    if i == 0:
+                        if isinstance(e.dict[k], Add):
+                            s += ('(' + pretty(e.dict[k], use_unicdoe=True) +
+                                    ')' + small_dot + k.__str__())
+                        else:
+                            s += (pretty(e.dict[k], use_unicode=True) + 
+                                small_dot + k.__str__())
+                        i += 1
+                    else:
+                        if isinstance(e.dict[k], Add):
+                            s += (' + (' + pretty(e.dict[k], use_unicode=True)
+                                + ')' + small_dot + k.__str__())
+                        else:
+                            if str(e.dict[k])[0] == '-':
+                                sign = '-'
+                                s += (' ' + sign + ' ' + pretty(e.dict[k][1:],
+                                    use_unicode=True) + small_dot + k.__str__())
+                            else:
+                                sign = '+'
+                                s += (' ' + sign + ' ' + pretty(e.dict[k],
+                                    use_unicode=True) + small_dot + k.__str__())
+            return s
+        else:
+            return "\033[1m" + "0" + "\033[0;0m"
+    """
+    def _print_Mul(self, e):
+        return "\xC2\xB7"
+    """
     def _print_sin(self, e):
         name = str(e.args[0])
         if name[0] == "q":
             index = name[1]
-            return "s_%s" % index
+            return "s%s" % index
+        else:
+            return e
+
+    def _print_cos(self, e):
+        name = str(e.args[0])
+        if name[0] == "q":
+            index = name[1]
+            return "c%s" % index
         else:
             return str(e)
 
+    def _print_tan(self, e):
+        name = str(e.args[0])
+        if name[0] == "q":
+            index = name[1]
+            return "t%s" % index
+        else:
+            return str(e)
 
 def print_pydy(e):
     pp = PyDyPrinter()
-    print pp.doprint(e)
+    return pp.doprint(e)

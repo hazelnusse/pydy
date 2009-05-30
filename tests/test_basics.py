@@ -143,8 +143,8 @@ def test_cross_different_frames3():
     B = A.rotate('B', 1, q2)
     C = B.rotate('C', 2, q3)
     assert cross(A[1], C[1]) == sin(q3)*C[2]
-    print "cross(A[1], C[2])" ,cross(A[1], C[2])
-    print "-sin(q3)*C[1]+cos(q3)*C[3]"
+    #print "cross(A[1], C[2])" ,cross(A[1], C[2])
+    #print "-sin(q3)*C[1]+cos(q3)*C[3]"
     assert cross(A[1], C[2]) == -sin(q3)*C[1]+cos(q3)*C[3]
     assert cross(A[1], C[3]) == -cos(q3)*C[2]
 
@@ -166,12 +166,12 @@ def test_express2():
     A = N.rotate('A', 3, q1)
     B = A.rotate('B', 1, q2)
     C = B.rotate('C', 2, q3)
-    print A[1].express(C)
-    print cos(q3)*C[1] + sin(q3)*C[3]
+    #print A[1].express(C)
+    #print cos(q3)*C[1] + sin(q3)*C[3]
     assert A[1].express(N) == Vector(cos(q1)*N[1] + sin(q1)*N[2])
     assert A[2].express(N) == Vector(-sin(q1)*N[1] + cos(q1)*N[2])
-    print "A[3].express(N) = ", A[3].express(N), "type(A[3].express(N)) = ",\
-            type(A[3].express(N))
+    #print "A[3].express(N) = ", A[3].express(N), "type(A[3].express(N)) = ",\
+    #        type(A[3].express(N))
     assert A[3].express(N) == N[3]
     assert A[1].express(A) == A[1]
     assert A[2].express(A) == A[2]
@@ -385,19 +385,23 @@ def test_dt():
     assert dt(N[1], B) == Vector(-q3.diff(t)*N[2] + sin(q3)*q4.diff(t)*N[3])
     assert dt(N[2], B) == Vector(q3.diff(t)*N[1] - cos(q3)*q4.diff(t)*N[3])
     assert dt(N[3], B) == Vector(q4.diff(t)*A[2])
-    #print express(dt(N[1], C), N)
-    # Shouldn't have to express LHS in N, but equality test fails otherwise....
-    # need to improve __eq__, or express
-    assert express(dt(N[1], C), N) == Vector((-q3.diff(t) - sin(q4)*q5.diff(t))*N[2] +
-            (sin(q3)*q4.diff(t) + cos(q3)*cos(q4)*q5.diff(t))*N[3])
-    #print dt(N[2], C)
-    assert express(dt(N[2], C), N) == Vector((q3.diff(t) + sin(q4)*q5.diff(t))*N[1] +
-            (sin(q3)*cos(q4)*q5.diff(t) - cos(q3)*q4.diff(t))*N[3])
+    assert express(dt(N[1], C), N) == Vector((-q3.diff(t) -
+        sin(q4)*q5.diff(t))*N[2] + (sin(q3)*q4.diff(t) +
+            cos(q3)*cos(q4)*q5.diff(t))*N[3])
+
+    #print express(dt(N[2], C), N)
+    #print Vector((q3.diff(t) +
+    #    sin(q4)*q5.diff(t))*N[1] + (sin(q3)*cos(q4)*q5.diff(t) -
+    #        cos(q3)*q4.diff(t))*N[3])
+    assert express(dt(N[2], C), N) == Vector((q3.diff(t) +
+        sin(q4)*q5.diff(t))*N[1] + (sin(q3)*cos(q4)*q5.diff(t) -
+            cos(q3)*q4.diff(t))*N[3])
+
     assert dt(N[3], C) == Vector(q4.diff(t)*A[2] - cos(q4)*q5.diff(t)*B[1])
 
-    print dt(A[1],N)
-    print Vector(q3.diff(t)*A[2])
-    assert dt(A[1], N) == Vector(q3.diff(t)*A[2]) #== q3.diff(t)*A[2]
+    #print dt(A[1],N)
+    #print Vector(q3.diff(t)*A[2])
+    assert dt(A[1], N) == Vector(q3.diff(t)*A[2]) == q3.diff(t)*A[2]
     assert dt(A[2], N) == Vector(-q3.diff(t)*A[1]) == -q3.diff(t)*A[1]
     assert dt(A[3], N) == Vector({}) == 0
     assert dt(A[1], A) == Vector({}) == 0
@@ -632,8 +636,8 @@ def test_Vector_class():
     assert v1.parse_terms(test) == {A[3]: sin(q1)*sin(q1)*q2, \
             A[2]:cos(q3) + q1}
     # Equality tests
-    print "v2: ", v2, "type(v2): ", type(v2), "v2.dict: ", v2.dict
-    print "v3: ", v3, "type(v3): ", type(v3), "v3.dict: ", v3.dict
+    #print "v2: ", v2, "type(v2): ", type(v2), "v2.dict: ", v2.dict
+    #print "v3: ", v3, "type(v3): ", type(v3), "v3.dict: ", v3.dict
     v4 = v2 + v3
     assert v4 == v2 + v3
     v3 = Vector({B[1]: q1*sin(q2), B[2]: t*u1*q1*sin(q2)})
@@ -705,8 +709,8 @@ def test_rotate_Euler_Space():
                          [s1*s2*c3 - s3*c1, s1*c2, s1*s2*s3 + c3*c1]])
     W_B_A = Vector((q1p*c2*c3 - q2p*s3)*B[1] + (-q1p*s2+q3p)*B[2] + (q1p*c2*s3
         + q2p*c3)*B[3])
-    print W_B_A
-    print B.get_omega(A)
+    #print W_B_A
+    #print B.get_omega(A)
     #print B.get_rot_matrices(A)[0]
     #print R132_Body
     assert B.get_rot_matrices(A)[0] == R132_Body
@@ -718,8 +722,8 @@ def test_rotate_Euler_Space():
     R123_Space = Matrix([ [c2*c3, s1*s2*c3 - s3*c1, c1*s2*c3 + s3*s1],
                           [c2*s3, s1*s2*s3 + c3*c1, c1*s2*s3 - c3*s1],
                           [-s2, s1*c2, c1*c2]])
-    print B.get_rot_matrices(A)[0]
-    print R123_Space
+    #print B.get_rot_matrices(A)[0]
+    #print R123_Space
     assert B.get_rot_matrices(A)[0] == R123_Space
 
     #### Space 1-3-2
