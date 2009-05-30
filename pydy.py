@@ -1101,7 +1101,7 @@ class PyDyPrinter(StrPrinter):
                             s += ('(' + pretty(e.dict[k], use_unicdoe=True) +
                                     ')' + small_dot + k.__str__())
                         else:
-                            s += (pretty(e.dict[k], use_unicode=True) + 
+                            s += (pretty(e.dict[k], use_unicode=True) +
                                 small_dot + k.__str__())
                         i += 1
                     else:
