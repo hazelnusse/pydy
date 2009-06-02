@@ -66,12 +66,37 @@ CN = CO.locate('CN', Vector(r1*B[3] + r2*N[3]), C)
 print 'CN.pos (relative to CO) = ', CN.pos
 print 'CN.vel (relative to N) = ', CN.vel
 
-nh1 = dot(CN.vel, A[1])
-nh2 = dot(CN.vel, A[2])
+print 'W_B_N x B[3] = ',cross(B.get_omega(N), B[3])
+print 'W_C_N x (r1*B[3] + r2*N[3]) = ', cross(C.get_omega(N), r1*B[3]+r2*N[3])
+
+nh1 = dot(CN.vel, N[1])
+nh2 = dot(CN.vel, N[2])
 print 'nh1 =', nh1
 print 'nh2 =', nh2
-solve([nh1,nh2], )
+res = solve([nh1,nh2], (q1.diff(t), q2.diff(t)))
+print res
+
+CO.vel = CO.vel.subs(res)
+print 'CO.vel =',CO.vel
+
+print 'W_C_N = ', C.W[N]
+u1 = Function('u1')(t)
+u2 = Function('u2')(t)
+u3 = Function('u3')(t)
+gen_speeds = {q3.diff(t): u1, q4.diff(t): u2, q5.diff(t): u3}
+
+CO.vel = CO.vel.subs(gen_speeds)
+C.W[N] = C.W[N].subs(gen_speeds)
+print CO.vel
+print C.W[N]
+CO.acc = dt(CO.vel, N)
+C.alpha = dt(C.W[N], N)
+print 'a_co_n =', CO.acc
+print 'alf_c_n =', C.alpha
 stop
+
+
+
 
 P_NC_CO = r2*A[3] - r1*B[3]
 #print "P_NC_CO> = ", P_NC_CO

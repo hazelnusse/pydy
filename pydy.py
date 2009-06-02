@@ -56,11 +56,11 @@ class UnitVector(Basic):
 
     def __str__(self):
         return print_pydy(self)
-    
+
 #    def _sympystr_(self):
 #        return print_pydy(self)
 
-    """    
+    """
     def _sympystr_(self):
         #return str(self.v['sym']) + ">"
         #print type(print_pydy(self))
@@ -251,84 +251,12 @@ class Vector(Basic):
             for k in vdict.keys():
                 if vdict[k] == 0:  vdict.pop(k)
             self.dict = vdict
-    
+
     def __str__(self):
         return print_pydy(self)
 
 #    def _sympystr_(self):
 #        return print_pydy(self)
-
-    def parse_terms(self, v):
-        """
-        Given a Sympy expression with UnitVector terms, return a dictionary
-        whose keys are the UnitVectors and whose values are the coeefficients
-        of the UnitVectors
-        """
-
-        if v == 0:
-            return {}
-        elif isinstance(v, UnitVector):
-            return {v: S(1)}
-        elif isinstance(v, Vector):
-            return v.dict
-        elif isinstance(v, Mul):
-            v.expand()  #  Could expand out to an Add instance
-            if isinstance(v, Add):
-                return self.parse_terms(v)  # If this happens, reparse
-            elif isinstance(v, Mul):   # Otherwise it is still a Mul instance
-                args = v.args
-                term_types_list = [type(terms) for terms in args]
-                if UnitVector in term_types_list:
-                    i = term_types_list.index(UnitVector)
-                    coefs = args[:i] + args[i+1:]
-                    prod_coefs = S(1)
-                    for p in coefs:
-                        prod_coefs *= p
-                    return {args[i]: prod_coefs}
-                elif Vector in term_types_list:
-                    i = term_types_list.index(Vector)
-                    coefs = args[:i] + args[i+1:]
-                    prod_coefs = S(1)
-                    for p in coefs:
-                        prod_coefs *= p
-                    for k in args[i].dict.keys():
-                        args[i].dict[k] *= prod_coefs
-                    return args[i].dict
-                else:
-                    raise NotImplementedError()
-            else:
-                raise NotImplementedError()
-        elif isinstance(v, Pow):
-            v.expand()
-            #  I don't think this will ever be entered into.
-            #  You would have to have something like A[1]*A[2],
-            #  which isn't a valid vector expression.
-            #  Or q1*q2, which is a scalar expression.
-            for b in v.args:
-                if isinstance(b, UnitVector):
-                    return {b: v.coeff(b)}
-        elif isinstance(v, Add):
-            #v.expand()
-            terms = {}
-            for add_term in v.args:
-                if isinstance(add_term, Mul):
-                    add_term_dict = self.parse_terms(add_term)
-                elif isinstance(add_term, Pow):
-                    add_term_dict = self.parse_terms(add_term)
-                elif isinstance(add_term, UnitVector):
-                    add_term_dict = {add_term: S(1)}
-                elif isinstance(add_term, Vector):
-                    add_term_dict = add_term.dict
-                else:
-                    raise NotImplementedError()
-                for k in add_term_dict.keys():
-                    if terms.has_key(k):
-                        terms[k] += add_term_dict[k]
-                    else:
-                        terms.update(add_term_dict)
-            return terms
-        else:
-            return NotImplemented
 
     def __add__(self, other):
         """Adds two Vector objects and return a new Vector object.
@@ -434,59 +362,6 @@ class Vector(Basic):
             n[k] *= -S(1)
         return Vector(n)
 
-    def express(self, frame):
-        """Expresses a Vector with UnitVectors fixed in the specified frame.
-        """
-
-        new = {}
-
-        for uv in self.dict.keys():
-            # Convert each unit vector term to the desired frame
-            uv_in_frame = uv.express(frame)
-
-            # Case for UnitVectors
-            if isinstance(uv_in_frame, UnitVector):
-                if new.has_key(uv_in_frame):
-                    new[uv_in_frame] += self.dict[uv]
-                else:
-                    new.update({uv_in_frame : self.dict[uv]})
-
-            # Case for Vectors
-            elif isinstance(uv_in_frame, Vector):
-                # Go through each term
-                for uv_term in uv_in_frame.dict.keys():
-                    if new.has_key(uv_term):
-                        new[uv_term] += self.dict[uv]*uv_in_frame.dict[uv_term]
-                    else:
-                        new.update({uv_term :
-                            self.dict[uv]*uv_in_frame.dict[uv_term]})
-
-        for uv in new.keys():
-            new[uv] = trigsimp(new[uv])
-            if new[uv] == 0: new.pop(uv)
-
-        if len(new) == 1 and new.values()[0] == 1:
-            return new.keys()[0]
-        else:
-            return Vector(new)
-
-    def dot(self, other):
-        if isinstance(other, Vector):
-            s = S(0)
-            for k in self.dict.keys():
-                for ko in other.dict.keys():
-                    s += self.dict[k]*other.dict[ko]*k.dot(ko)
-            return s
-        elif isinstance(other, UnitVector):
-            s = S(0)
-            for k in self.dict.keys():
-                s += self.dict[k]*k.dot(other)
-            return s
-        elif isinstance(other, Mul) or isinstance(other, Add):
-            return self.dot(Vector(other))
-        else:
-            raise NotImplementedError()
-
     def cross(self, other):
         if isinstance(other, Vector):
             vcp = {}
@@ -529,6 +404,23 @@ class Vector(Basic):
         else:
             raise NotImplementedError()
 
+    def dot(self, other):
+        if isinstance(other, Vector):
+            s = S(0)
+            for k in self.dict.keys():
+                for ko in other.dict.keys():
+                    s += self.dict[k]*other.dict[ko]*k.dot(ko)
+            return s
+        elif isinstance(other, UnitVector):
+            s = S(0)
+            for k in self.dict.keys():
+                s += self.dict[k]*k.dot(other)
+            return s
+        elif isinstance(other, Mul) or isinstance(other, Add):
+            return self.dot(Vector(other))
+        else:
+            raise NotImplementedError()
+
     def dt(self, frame):
         if isinstance(frame, ReferenceFrame):
             dt_self = {}
@@ -558,6 +450,42 @@ class Vector(Basic):
             else:
                 return Vector(dt_self)
 
+    def express(self, frame):
+        """Expresses a Vector with UnitVectors fixed in the specified frame.
+        """
+
+        new = {}
+
+        for uv in self.dict.keys():
+            # Convert each unit vector term to the desired frame
+            uv_in_frame = uv.express(frame)
+
+            # Case for UnitVectors
+            if isinstance(uv_in_frame, UnitVector):
+                if new.has_key(uv_in_frame):
+                    new[uv_in_frame] += self.dict[uv]
+                else:
+                    new.update({uv_in_frame : self.dict[uv]})
+
+            # Case for Vectors
+            elif isinstance(uv_in_frame, Vector):
+                # Go through each term
+                for uv_term in uv_in_frame.dict.keys():
+                    if new.has_key(uv_term):
+                        new[uv_term] += self.dict[uv]*uv_in_frame.dict[uv_term]
+                    else:
+                        new.update({uv_term :
+                            self.dict[uv]*uv_in_frame.dict[uv_term]})
+
+        for uv in new.keys():
+            new[uv] = trigsimp(new[uv])
+            if new[uv] == 0: new.pop(uv)
+
+        if len(new) == 1 and new.values()[0] == 1:
+            return new.keys()[0]
+        else:
+            return Vector(new)
+
     def mag(self):
         m = 0
         for k in self.dict.keys():
@@ -569,6 +497,84 @@ class Vector(Basic):
         for k in self.dict.keys():
             m += self.dict[k]**S(2.0)
         return m
+
+    def parse_terms(self, v):
+        """
+        Given a Sympy expression with UnitVector terms, return a dictionary
+        whose keys are the UnitVectors and whose values are the coeefficients
+        of the UnitVectors
+        """
+
+        if v == 0:
+            return {}
+        elif isinstance(v, UnitVector):
+            return {v: S(1)}
+        elif isinstance(v, Vector):
+            return v.dict
+        elif isinstance(v, Mul):
+            v.expand()  #  Could expand out to an Add instance
+            if isinstance(v, Add):
+                return self.parse_terms(v)  # If this happens, reparse
+            elif isinstance(v, Mul):   # Otherwise it is still a Mul instance
+                args = v.args
+                term_types_list = [type(terms) for terms in args]
+                if UnitVector in term_types_list:
+                    i = term_types_list.index(UnitVector)
+                    coefs = args[:i] + args[i+1:]
+                    prod_coefs = S(1)
+                    for p in coefs:
+                        prod_coefs *= p
+                    return {args[i]: prod_coefs}
+                elif Vector in term_types_list:
+                    i = term_types_list.index(Vector)
+                    coefs = args[:i] + args[i+1:]
+                    prod_coefs = S(1)
+                    for p in coefs:
+                        prod_coefs *= p
+                    for k in args[i].dict.keys():
+                        args[i].dict[k] *= prod_coefs
+                    return args[i].dict
+                else:
+                    raise NotImplementedError()
+            else:
+                raise NotImplementedError()
+        elif isinstance(v, Pow):
+            v.expand()
+            #  I don't think this will ever be entered into.
+            #  You would have to have something like A[1]*A[2],
+            #  which isn't a valid vector expression.
+            #  Or q1*q2, which is a scalar expression.
+            for b in v.args:
+                if isinstance(b, UnitVector):
+                    return {b: v.coeff(b)}
+        elif isinstance(v, Add):
+            #v.expand()
+            terms = {}
+            for add_term in v.args:
+                if isinstance(add_term, Mul):
+                    add_term_dict = self.parse_terms(add_term)
+                elif isinstance(add_term, Pow):
+                    add_term_dict = self.parse_terms(add_term)
+                elif isinstance(add_term, UnitVector):
+                    add_term_dict = {add_term: S(1)}
+                elif isinstance(add_term, Vector):
+                    add_term_dict = add_term.dict
+                else:
+                    raise NotImplementedError()
+                for k in add_term_dict.keys():
+                    if terms.has_key(k):
+                        terms[k] += add_term_dict[k]
+                    else:
+                        terms.update(add_term_dict)
+            return terms
+        else:
+            return NotImplemented
+
+    def subs(self, subs_dict):
+        new_dict = {}
+        for k in self.dict.keys():
+            new_dict.update({k: self.dict[k].subs(subs_dict)})
+        return Vector(new_dict)
 
 class Point:
     def __init__(self, s, r=None, frame=None):
@@ -1075,14 +1081,11 @@ class PyDyPrinter(StrPrinter):
             r += three
         #print type(r)
         return r
-
+    """
     def _print_Vector(self, e):
-        """
-        Sympy printing of Vector objects.
-        """
         s = ''
         i = 0
-        small_dot = "\xC2\xB7"
+        small_dot = '*' #"\xC2\xB7"
         if e.dict != {}:
             for k in e.dict.keys():
                 if (e.dict[k] == 1) or (e.dict[k] == -1):
@@ -1098,32 +1101,51 @@ class PyDyPrinter(StrPrinter):
                 else:
                     if i == 0:
                         if isinstance(e.dict[k], Add):
-                            s += ('(' + pretty(e.dict[k], use_unicdoe=True) +
+                            s += ('(' + str(e.dict[k]) +
                                     ')' + small_dot + k.__str__())
                         else:
-                            s += (pretty(e.dict[k], use_unicode=True) +
+                            s += (str(e.dict[k]) +
                                 small_dot + k.__str__())
                         i += 1
                     else:
                         if isinstance(e.dict[k], Add):
-                            s += (' + (' + pretty(e.dict[k], use_unicode=True)
+                            s += (' + (' + str(e.dict[k])
                                 + ')' + small_dot + k.__str__())
                         else:
                             if str(e.dict[k])[0] == '-':
                                 sign = '-'
-                                s += (' ' + sign + ' ' + pretty(e.dict[k][1:],
-                                    use_unicode=True) + small_dot + k.__str__())
+                                s += (' ' + sign + ' ' + str(e.dict[k])[1:]
+                                    + small_dot + k.__str__())
                             else:
                                 sign = '+'
-                                s += (' ' + sign + ' ' + pretty(e.dict[k],
-                                    use_unicode=True) + small_dot + k.__str__())
+                                s += (' ' + sign + ' ' + str(e.dict[k])
+                                    + small_dot + k.__str__())
             return s
         else:
             return "\033[1m" + "0" + "\033[0;0m"
     """
+
+    def _print_Function(self, e):
+        return "%s" % str(e.func)
+
+    def _print_Derivative(self, e):
+        return "%s'" % str(e.args[0].func)
+
     def _print_Mul(self, e):
-        return "\xC2\xB7"
-    """
+        s = ''
+        i = 1
+        N = len(e.args)
+        for a in e.args:
+            if i == 0:
+                s += self.doprint(a) + '\xC2\xB7'
+                i += 1
+            elif i < N:
+                s += self.doprint(a) + '\xC2\xB7'
+                i += 1
+            else:
+                s += self.doprint(a)
+        return s
+
     def _print_sin(self, e):
         name = str(e.args[0])
         if name[0] == "q":

@@ -28,6 +28,13 @@ from sympy import *
 from pydy import *
 from sympy.printing.pretty.pretty import PrettyPrinter, xsym
 
+q1 = Function('q1')(t)
+q2 = Function('q2')(t)
+q3 = Function('q3')(t)
+A = ReferenceFrame('A')
+B = A.rotate('B', 'BODY312', (q1, q2, q3))
+print B.get_omega(A)
+stop
 
 
 class GeneralizedCoordinate(Symbol):
