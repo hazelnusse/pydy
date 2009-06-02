@@ -2,7 +2,7 @@ from math import sin, cos, pi
 
 from numpy import array, arange
 from sympy import symbols, Function, S, solve, simplify, \
-        collect, Matrix, lambdify
+        collect, Matrix, lambdify, trigsimp, expand
 
 from pydy import ReferenceFrame, cross, dot, dt, express, expression2vector, \
     coeff, Vector, UnitVector
@@ -55,7 +55,6 @@ N = ReferenceFrame('N')
 A = N.rotate("A", 3, q3)
 B = A.rotate("B", 1, q4)
 C = B.rotate("C", 2, q5)
-
 # Center of torus
 CO = N.O.locate('CO', Vector(q1*N[1] + q2*N[2] - r2*N[3] - r1*B[3]))
 print 'CO.pos=', CO.pos
@@ -75,24 +74,33 @@ print 'nh1 =', nh1
 print 'nh2 =', nh2
 res = solve([nh1,nh2], (q1.diff(t), q2.diff(t)))
 print res
-
-CO.vel = CO.vel.subs(res)
+CN.vel = express(CN.vel, B).subs(res)
+CO.vel = express(CO.vel, B).subs(res)
 print 'CO.vel =',CO.vel
+print CO.vel.dict[B[1]]
+print CO.vel.dict[B[2]]
+print CO.vel.dict[B[3]]
+print 'CN.vel =',CN.vel
+stop
 
 print 'W_C_N = ', C.W[N]
-u1 = Function('u1')(t)
-u2 = Function('u2')(t)
 u3 = Function('u3')(t)
-gen_speeds = {q3.diff(t): u1, q4.diff(t): u2, q5.diff(t): u3}
+u4 = Function('u4')(t)
+u5 = Function('u5')(t)
+gen_speeds = {q3.diff(t): u3, q4.diff(t): u4, q5.diff(t): u5}
 
 CO.vel = CO.vel.subs(gen_speeds)
-C.W[N] = C.W[N].subs(gen_speeds)
-print CO.vel
-print C.W[N]
-CO.acc = dt(CO.vel, N)
-C.alpha = dt(C.W[N], N)
+C.W[N] = express(C.W[N].subs(gen_speeds), B)
+print 'V_CO_N> =', CO.vel
+print 'W_C_N> = ',C.W[N]
+CO.acc = express(dt(CO.vel, N), B).subs(gen_speeds)
+C.alpha = express(dt(C.W[N], N).subs(gen_speeds), B)
 print 'a_co_n =', CO.acc
+print 'a_co_n[b1>] = ', CO.acc.dict[B[1]]
 print 'alf_c_n =', C.alpha
+stop
+
+print 'alf_c_n.dict.keys()', C.alpha.dict.keys().sort()
 stop
 
 

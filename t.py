@@ -33,6 +33,16 @@ q2 = Function('q2')(t)
 q3 = Function('q3')(t)
 A = ReferenceFrame('A')
 B = A.rotate('B', 'BODY312', (q1, q2, q3))
+
+uv_list = [B[3], B[2], B[1], A[3], A[2], A[1]]
+
+print uv_list
+uv_list.sort()
+print uv_list
+stop
+print cmp(A[3].i, B[2].i)
+
+
 print B.get_omega(A)
 stop
 

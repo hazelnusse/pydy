@@ -55,26 +55,15 @@ class UnitVector(Basic):
             self.v['num'] = zero
 
     def __str__(self):
-        return print_pydy(self)
+        return pydy_str(self)
 
-#    def _sympystr_(self):
-#        return print_pydy(self)
-
-    """
-    def _sympystr_(self):
-        #return str(self.v['sym']) + ">"
-        #print type(print_pydy(self))
-        #return print_pydy(self)
-        #return str(print_pydy(self))
-
-    def _pydystr_(self):
-        #return str(self.v['sym']) + ">"
-        return print_pydy(self.v['sym'])
-    """
     def __cmp__(self, other):
         if isinstance(other, UnitVector):
             if self.frame == other.frame:
                 return cmp(self.i, other.i)
+            else:
+                return cmp(len(self.frame.ref_frame_list),
+                       len(other.frame.ref_frame_list))
         else:
             raise NotImplementedError()
 
@@ -253,10 +242,7 @@ class Vector(Basic):
             self.dict = vdict
 
     def __str__(self):
-        return print_pydy(self)
-
-#    def _sympystr_(self):
-#        return print_pydy(self)
+        return pydy_str(self)
 
     def __add__(self, other):
         """Adds two Vector objects and return a new Vector object.
@@ -573,7 +559,7 @@ class Vector(Basic):
     def subs(self, subs_dict):
         new_dict = {}
         for k in self.dict.keys():
-            new_dict.update({k: self.dict[k].subs(subs_dict)})
+            new_dict.update({k: trigsimp(expand(self.dict[k].subs(subs_dict)))})
         return Vector(new_dict)
 
 class Point:
@@ -1087,8 +1073,10 @@ class PyDyPrinter(StrPrinter):
         s = ''
         i = 0
         small_dot = "\xC2\xB7"
-        if e.dict != {}:
-            for k in e.dict.keys():
+        if e.dict.keys() != []:
+            uv_list = e.dict.keys()
+            uv_list.sort(sort_UnitVector)
+            for k in uv_list:
                 if (e.dict[k] == 1) or (e.dict[k] == -1):
                     if i == 0:
                         if e.dict[k] == 1: sign = ''
@@ -1136,7 +1124,8 @@ class PyDyPrinter(StrPrinter):
         s = ''
         i = 1
         N = len(e.args)
-        for a in e.args:
+        e_ts = trigsimp(expand(e))
+        for a in e_ts.args:
             if i == 0:
                 if a == -1:
                     s += '-'
@@ -1177,6 +1166,13 @@ class PyDyPrinter(StrPrinter):
         else:
             return str(e)
 
-def print_pydy(e):
+def pydy_str(e):
     pp = PyDyPrinter()
     return pp.doprint(e)
+
+def sort_UnitVector(a, b):
+    if a.frame == b.frame:
+        return cmp(a.i, b.i)
+    else:
+        return cmp(len(a.frame.ref_frame_list),
+               len(b.frame.ref_frame_list))
