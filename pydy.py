@@ -1072,7 +1072,7 @@ class PyDyPrinter(StrPrinter):
         s = str(e.v['sym'])
         name = s[:-1]
         index = s[-1]
-        r = "%s%s%s" % (bold, name, reset)
+        r = "%s%s" % (bold, name)
         if index == "1":
             r += one
         elif index == "2":
@@ -1080,12 +1080,13 @@ class PyDyPrinter(StrPrinter):
         elif index == "3":
             r += three
         #print type(r)
+        r += reset
         return r
-    """
+
     def _print_Vector(self, e):
         s = ''
         i = 0
-        small_dot = '*' #"\xC2\xB7"
+        small_dot = "\xC2\xB7"
         if e.dict != {}:
             for k in e.dict.keys():
                 if (e.dict[k] == 1) or (e.dict[k] == -1):
@@ -1101,29 +1102,29 @@ class PyDyPrinter(StrPrinter):
                 else:
                     if i == 0:
                         if isinstance(e.dict[k], Add):
-                            s += ('(' + str(e.dict[k]) +
+                            s += ('(' + self.doprint(e.dict[k]) +
                                     ')' + small_dot + k.__str__())
                         else:
-                            s += (str(e.dict[k]) +
+                            s += (self.doprint(e.dict[k]) +
                                 small_dot + k.__str__())
                         i += 1
                     else:
                         if isinstance(e.dict[k], Add):
-                            s += (' + (' + str(e.dict[k])
+                            s += (' + (' + self.doprint(e.dict[k])
                                 + ')' + small_dot + k.__str__())
                         else:
                             if str(e.dict[k])[0] == '-':
                                 sign = '-'
-                                s += (' ' + sign + ' ' + str(e.dict[k])[1:]
-                                    + small_dot + k.__str__())
+                                s += (' ' + sign + ' ' +
+                                        self.doprint(e.dict[k])[1:] + small_dot + k.__str__())
                             else:
                                 sign = '+'
-                                s += (' ' + sign + ' ' + str(e.dict[k])
+                                s += (' ' + sign + ' ' + self.doprint(e.dict[k])
                                     + small_dot + k.__str__())
             return s
         else:
             return "\033[1m" + "0" + "\033[0;0m"
-    """
+
 
     def _print_Function(self, e):
         return "%s" % str(e.func)
@@ -1137,10 +1138,16 @@ class PyDyPrinter(StrPrinter):
         N = len(e.args)
         for a in e.args:
             if i == 0:
-                s += self.doprint(a) + '\xC2\xB7'
+                if a == -1:
+                    s += '-'
+                else:
+                    s += self.doprint(a) + '\xC2\xB7'
                 i += 1
             elif i < N:
-                s += self.doprint(a) + '\xC2\xB7'
+                if a == -1:
+                    s += '-'
+                else:
+                    s += self.doprint(a) + '\xC2\xB7'
                 i += 1
             else:
                 s += self.doprint(a)
