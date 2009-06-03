@@ -2,10 +2,10 @@ from math import sin, cos, pi
 
 from numpy import array, arange
 from sympy import symbols, Function, S, solve, simplify, \
-        collect, Matrix, lambdify, trigsimp, expand
+        collect, Matrix, lambdify, trigsimp, expand, Eq, pretty_print
 
 from pydy import ReferenceFrame, cross, dot, dt, express, expression2vector, \
-    coeff, Vector, UnitVector
+        coeff, Vector, UnitVector, pydy_str
 
 # Constants
 m, g, r1, r2, t, = symbols("m g r1 r2 t")
@@ -17,17 +17,9 @@ J = (r1**2 + 3*r2**2/4)*m    # Central moment of inertia about normal axis
 au1, au2, au3, cf1, cf2, cf3 = symbols("au1 au2 au3 cf1 cf2 cf3")
 u3p, u4p, u5p = symbols("u3p u4p u5p")
 
-q1 = Function("q1")(t)
-q2 = Function("q2")(t)
-q3 = Function("q3")(t)
-q4 = Function("q4")(t)
-q5 = Function("q5")(t)
 
-u1 = Function("u1")(t)
-u2 = Function("u2")(t)
-u3 = Function("u3")(t)
-u4 = Function("u4")(t)
-u5 = Function("u5")(t)
+q1, q2, q3, q4, q5 = [Function("q%i"%j)(t) for j in range(1, 6)]
+u1, u2, u3 = [Function("u%i"%j)(t) for j in (1,2,3)]
 
 def eval(a):
     subs_dict = {
@@ -55,42 +47,55 @@ N = ReferenceFrame('N')
 A = N.rotate("A", 3, q3)
 B = A.rotate("B", 1, q4)
 C = B.rotate("C", 2, q5)
-# Center of torus
+# Locate the mass center of torus
 CO = N.O.locate('CO', Vector(q1*N[1] + q2*N[2] - r2*N[3] - r1*B[3]))
-print 'CO.pos=', CO.pos
-print 'CO.vel=', CO.vel
 
-# Contact point
+# Contact point, taken to be fixed on C
 CN = CO.locate('CN', Vector(r1*B[3] + r2*N[3]), C)
-print 'CN.pos (relative to CO) = ', CN.pos
-print 'CN.vel (relative to N) = ', CN.vel
 
-print 'W_B_N x B[3] = ',cross(B.get_omega(N), B[3])
-print 'W_C_N x (r1*B[3] + r2*N[3]) = ', cross(C.get_omega(N), r1*B[3]+r2*N[3])
+# Nonholonomic rolling constraints, imposing the requirement that the velocity
+# of the point fixed to C, instantaneously in contact with the ground, must be
+# zero.
+nh1, nh2 = dot(CN.vel, N[1]), dot(CN.vel, N[2])
+dependent_rates = solve([nh1,nh2], (q1.diff(t), q2.diff(t)))
+print 'Dependent rates', dependent_rates
 
-nh1 = dot(CN.vel, N[1])
-nh2 = dot(CN.vel, N[2])
-print 'nh1 =', nh1
-print 'nh2 =', nh2
-res = solve([nh1,nh2], (q1.diff(t), q2.diff(t)))
-print res
-CN.vel = express(CN.vel, B).subs(res)
-CO.vel = express(CO.vel, B).subs(res)
-print 'CO.vel =',CO.vel
-print CO.vel.dict[B[1]]
-print CO.vel.dict[B[2]]
-print CO.vel.dict[B[3]]
-print 'CN.vel =',CN.vel
+# Imposing the constraints upon the velocity of the two points CO, CN.  Note
+# that CN.vel == zero after inposing the constraints.
+CN.vel = express(CN.vel.subs(dependent_rates), N)
+CO.vel = CO.vel.subs(dependent_rates)
+
+# Define lists for the time derivatives of the coordinates, the generalized
+# speeds
+qdot_list = [q3.diff(t), q4.diff(t), q5.diff(t)]
+u_lhs = [Function('u%i'%i)(t) for i in (1,2,3)]
+
+# Take the generalized speeds to be the B frame measure numbers of the angular
+# velocity of the torus C in N
+u_rhs = [dot(C.get_omega(N), B[i]) for i in (1,2,3)]
+
+# Create the equations that define the generalized speeds, then solve them for
+# the time derivatives of the generalized coordinates
+u_definitions = [Eq(u_l, u_r) for u_l, u_r in zip(u_lhs, u_rhs)]
+kindiffs = solve(u_definitions, qdot_list)
+print 'Kinematic differential equations', kindiffs
+
+# Replace occurances of q_dots with the corresponding definition from the
+# kinematic differential equations.
+CO.vel = CO.vel.subs(kindiffs)
+C.W[N] = C.W[N].subs(kindiffs)
+
+# Compute the partial velocity of CO
+partial_v = CO.vel.partials(u_lhs)
+# Compute the partial angular velocity of C
+partial_w = C.W[N].partials(u_lhs)
+
+print 'Partial velocities of CO'
+pretty_print([pydy_str(p) for p in partial_v])
+print 'Partial angular velocities of C'
+pretty_print([pydy_str(p) for p in partial_w])
 stop
 
-print 'W_C_N = ', C.W[N]
-u3 = Function('u3')(t)
-u4 = Function('u4')(t)
-u5 = Function('u5')(t)
-gen_speeds = {q3.diff(t): u3, q4.diff(t): u4, q5.diff(t): u5}
-
-CO.vel = CO.vel.subs(gen_speeds)
-C.W[N] = express(C.W[N].subs(gen_speeds), B)
 print 'V_CO_N> =', CO.vel
 print 'W_C_N> = ',C.W[N]
 CO.acc = express(dt(CO.vel, N), B).subs(gen_speeds)

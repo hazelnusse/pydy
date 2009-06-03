@@ -327,6 +327,7 @@ def test_express3():
     assert B[2] == express(Vector(cos(q4)*A[2] + sin(q4)*A[3]), B)
     assert B[3] == express(Vector(-sin(q4)*A[2] + cos(q4)*A[3]), B)
     assert B[1] == express(Vector(cos(q5)*C[1] + sin(q5)*C[3]), B)
+    #print express(Vector(-sin(q5)*C[1] + cos(q5)*C[3]), B)
     assert B[3] == express(Vector(-sin(q5)*C[1] + cos(q5)*C[3]), B)
 
     # Trigsimp fails here too.

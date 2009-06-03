@@ -106,9 +106,9 @@ class UnitVector(Basic):
                 u = self.v['num']
                 for m in reversed(matrices):
                     u = m*u
-                u[0] = trigsimp(u[0])
-                u[1] = trigsimp(u[1])
-                u[2] = trigsimp(u[2])
+                #u[0] = trigsimp(u[0])
+                #u[1] = trigsimp(u[1])
+                #u[2] = trigsimp(u[2])
                 return Vector(u[0]*frame[1] + u[1]*frame[2] + u[2]*frame[3])
 
     def dot(self, other):
@@ -348,6 +348,18 @@ class Vector(Basic):
             n[k] *= -S(1)
         return Vector(n)
 
+    def coeffv(self, scalar):
+        """Vector coefficient of a scalar
+        """
+        c = {}
+        for k in self.dict.keys():
+            s = self.dict[k].coeff(scalar)
+            if s == None:
+                continue
+            else:
+                c.update({k: s})
+        return Vector(c)
+
     def cross(self, other):
         if isinstance(other, Vector):
             vcp = {}
@@ -464,7 +476,7 @@ class Vector(Basic):
                             self.dict[uv]*uv_in_frame.dict[uv_term]})
 
         for uv in new.keys():
-            new[uv] = trigsimp(new[uv])
+            new[uv] = trigsimp(expand(trigsimp(new[uv])))
             if new[uv] == 0: new.pop(uv)
 
         if len(new) == 1 and new.values()[0] == 1:
@@ -556,6 +568,14 @@ class Vector(Basic):
         else:
             return NotImplemented
 
+    def partials(self, u_list):
+        """Computes partial velocities.
+        """
+        partials_list = []
+        for u in u_list:
+            partials_list.append(self.coeffv(u))
+        return partials_list
+
     def subs(self, subs_dict):
         new_dict = {}
         for k in self.dict.keys():
@@ -631,6 +651,7 @@ class ReferenceFrame:
         if frame == None:
             self.ref_frame_list = [self]
             self.O = Point(s, S(0), self)
+            self.point_list = [self.O]
         else:
             self.ref_frame_list = frame.ref_frame_list[:]
             self.ref_frame_list.insert(0,self)
@@ -641,22 +662,8 @@ class ReferenceFrame:
         self.parent = frame
         self.W = {}
         if omega != None:
-            #print 'omega in init', omega
-            #print 'self.W before set_omega', self.W
             self.set_omega(omega, self.parent)
-            #print 'omegas after set_omega',self.W
-            #print 'omegas after set_omega, using get_omega', \
-            #    self.get_omega(frame)
-            #print 'self', self, 'parent frame', frame
-            #print 'frame',frame.set_omega
-            #print 'parent frame omega', frame.W
-            #print 'arguments to frame.set_omega()', -omega, self
             frame.set_omega(-omega, self, force=True)
-            #print 'after setting parent omega'
-            #print 'omegas after set_omega, self.W',self.W
-            #print 'omegas after set_omega, using get_omega', \
-            #    self.get_omega(frame)
-            #print 'parent frame omega', frame.W
 
         if frame is not None:
             self.append_transform(frame, matrix)
@@ -712,7 +719,6 @@ class ReferenceFrame:
             if axis in set((1, 2, 3)):
                 matrix = self._rot(axis, angle)
                 omega = Vector(angle.diff(t)*self[axis])
-                #print 'omega = ', omega
             elif isinstance(axis, (UnitVector, Vector)):
                 raise NotImplementedError("Axis angle rotations not \
                     implemented")
@@ -1007,14 +1013,7 @@ def coeff(e, x):
 
 def coeffv(v, scalar):
     if isinstance(v, Vector):
-        c = {}
-        for k in v.dict.keys():
-            s = v.dict[k].coeff(scalar)
-            if s == None:
-                continue
-            else:
-                c.update({k: s})
-        return Vector(c)
+        return v.coeffv(scalar)
     else:
         raise NotImplementedError()
 
@@ -1077,38 +1076,46 @@ class PyDyPrinter(StrPrinter):
             uv_list = e.dict.keys()
             uv_list.sort(sort_UnitVector)
             for k in uv_list:
+                # Case when the scalar coefficient is 1 or -1
                 if (e.dict[k] == 1) or (e.dict[k] == -1):
+                    # First term don't print a leading + if positive
                     if i == 0:
                         if e.dict[k] == 1: sign = ''
                         if e.dict[k] == -1: sign = '-'
-                        s += sign + k.__str__()
+                        s += sign + self.doprint(k)
                         i += 1
+                    # All other terms put the sign and pad with spaces
                     else:
-                        if int(abs(e.dict[k])/e.dict[k]) == 1: sign = ''
-                        if int(abs(e.dict[k])/e.dict[k]) == -1: sign = '-'
-                        s += ' ' + sign + ' ' + k.__str__()
+                        if e.dict[k] == 1: sign = '+'
+                        if e.dict[k] == -1: sign = '-'
+                        s += ' ' + sign + ' ' + self.doprint(k)
                 else:
+                    # First term
                     if i == 0:
+                        # Put parenthesis around Add terms
                         if isinstance(e.dict[k], Add):
                             s += ('(' + self.doprint(e.dict[k]) +
-                                    ')' + small_dot + k.__str__())
+                                    ')' + small_dot + self.doprint(k))
                         else:
                             s += (self.doprint(e.dict[k]) +
-                                small_dot + k.__str__())
+                                small_dot + self.doprint(k))
                         i += 1
+                    # All other terms pad with spaces and add parenthesis
                     else:
                         if isinstance(e.dict[k], Add):
                             s += (' + (' + self.doprint(e.dict[k])
-                                + ')' + small_dot + k.__str__())
-                        else:
-                            if str(e.dict[k])[0] == '-':
-                                sign = '-'
-                                s += (' ' + sign + ' ' +
-                                        self.doprint(e.dict[k])[1:] + small_dot + k.__str__())
+                                + ')' + small_dot + self.doprint(k))
+                        elif isinstance(e.dict[k], (Mul, Pow)):
+                            coef = (self.doprint(e.dict[k]) + small_dot +
+                                    self.doprint(k))
+                            if coef[0] == '-':
+                                s += ' - ' + coef[1:]
                             else:
-                                sign = '+'
-                                s += (' ' + sign + ' ' + self.doprint(e.dict[k])
-                                    + small_dot + k.__str__())
+                                s += ' + ' + coef
+                        else:
+                            s += (' + ' + self.doprint(e.dict[k]) + small_dot +
+                                    self.doprint(k))
+
             return s
         else:
             return "\033[1m" + "0" + "\033[0;0m"
@@ -1122,25 +1129,30 @@ class PyDyPrinter(StrPrinter):
 
     def _print_Mul(self, e):
         s = ''
-        i = 1
-        N = len(e.args)
-        e_ts = trigsimp(expand(e))
-        for a in e_ts.args:
-            if i == 0:
-                if a == -1:
-                    s += '-'
-                else:
+        i = 0
+        e_ts = trigsimp(expand(trigsimp(e)))
+        if e_ts.is_Mul:
+            N = len(e_ts.args)
+            for a in e_ts.args:
+                if i == 0:
+                    if a == -1:
+                        s += '-'
+                    else:
+                        s += self.doprint(a) + '\xC2\xB7'
+                    i += 1
+                elif i < N-1:
                     s += self.doprint(a) + '\xC2\xB7'
-                i += 1
-            elif i < N:
-                if a == -1:
-                    s += '-'
+                    i += 1
                 else:
-                    s += self.doprint(a) + '\xC2\xB7'
-                i += 1
-            else:
-                s += self.doprint(a)
-        return s
+                    s += self.doprint(a)
+            return s
+        else:
+            return self.doprint(e_ts)
+
+    #def _print_Pow(self, e):
+    #    s = ''
+    #    if (e.args[1] < 0) and (len(e.args) == 2):
+    #        s = self.doprint(e.args[0]
 
     def _print_sin(self, e):
         name = str(e.args[0])
