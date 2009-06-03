@@ -16,9 +16,7 @@ e1n = Matrix([-1, 0, 0])
 e2n = Matrix([0, -1, 0])
 e3n = Matrix([0, 0, -1])
 zero = Matrix([0, 0, 0])
-#eye = Matrix([[1, 0, 0], [0, 1, 0], [0, 0, 1]])
 t = Symbol("t")
-
 
 class UnitVector(Basic):
     """A standard unit vector  with a symbolic and a numeric representation"""
@@ -88,6 +86,12 @@ class UnitVector(Basic):
             return (self == other_as_Vector)
         else:
             return False
+
+    def __mul__(self, other):
+        if isinstance(other, Dyad):
+            return NotImplemented
+        else:
+            return Basic.__mul__(self, other)
 
     def __neg__(self):
         return Vector({self: -1})
@@ -201,6 +205,99 @@ class UnitVector(Basic):
         else:
             raise NotImplementedError()
 
+class Dyad(Basic):
+    """
+    General dyad expression
+    """
+    def __init__(self, v):
+        """ v should be an additive expression of the form:
+        (sympy expression)*UnitVector*UnitVector
+
+        The sympy expression is optional, but typically would be an inertia
+        scalar.
+        """
+        self.dict = {}
+        if v.is_Add:
+            for term in v.args:
+                if term.args[-1].is_Pow:
+                    self.dict.update({term.args[-1]: term.coeff(term.args[-1])})
+                else:
+                    self.dict.update({term.coeff(term.args[0]): term.args[0]})
+        elif v.is_Mul:
+            self.dict.update({v.args[-2:]: v.args[:-2]})
+        elif v.is_Pow:
+            self.dict.update({term.args[-1]: term.coeff(term.args[-1])})
+        else:
+            raise NotImplementedError()
+
+    def __rmul__(self, other):
+        """Multplitcation by a UnitVector/Vector on the left.
+        v * Dyad
+
+        Returns a UnitVector / Vector
+        """
+        vec_dict = {}
+        if isinstance(other, (UnitVector, Vector)):
+            for d_term, coeff in self.dict.items():
+                scalar_part = coeff*other.dot(d_term.args[0])
+                if d_term.is_Mul:
+                    if vec_dict.has_key(d_term.args[1]):
+                        vec_dict[d_term.args[1]] += scalar_part
+                    else:
+
+                        vec_dict.update({d_term.args[1]: scalar_part})
+                elif d_term.is_Pow:
+                    if vec_dict.has_key(d_term.args[0]):
+                        vec_dict[d_term.args[0]] += scalar_part
+                    else:
+                        vec_dict.update({d_term.args[0]: scalar_part})
+                else:
+                    raise NotImplementedError()
+        return Vector(vec_dict)
+
+    def __mul__(self, other):
+        """Multplitcation by a UnitVector/Vector on the right.
+        Dyad * v
+
+        Returns a UnitVector / Vector
+        """
+        vec_dict = {}
+        if isinstance(other, (UnitVector, Vector)):
+            for d_term, coeff in self.dict.items():
+                if d_term.is_Mul:
+                    scalar_part = coeff*other.dot(d_term.args[1])
+                    if vec_dict.has_key(d_term.args[1]):
+                        vec_dict[d_term.args[1]] += scalar_part
+                    else:
+                        vec_dict.update({d_term.args[1]: scalar_part})
+                elif d_term.is_Pow:
+                    scalar_part = coeff*other.dot(d_term.args[0])
+                    if vec_dict.has_key(d_term.args[0]):
+                        vec_dict[d_term.args[0]] += scalar_part
+                    else:
+                        vec_dict.update({d_term.args[0]: scalar_part})
+                else:
+                    raise NotImplementedError()
+
+        return Vector(vec_dict)
+
+    def __str__(self):
+        return pydy_str(self)
+
+class Inertia(Dyad):
+    """Inertia dyadic.
+
+    """
+    def __new__(cls, frame, scalars):
+        """Specify frame, scale as:
+        frame - ReferenceFrame
+        scalars - List or tuple of I11, I22, I33, I12, I23, I13 inertia scalars
+        """
+        I11, I22, I33, I12, I23, I13 = scalars
+        return Dyad(I11*frame[1]**2 + I22*frame[2]**2 + I33*frame[3]**2 +
+                I12*frame[1]*frame[2] + I12*frame[2]*frame[1] +
+                I23*frame[2]*frame[3] + I23*frame[3]*frame[2] +
+                I13*frame[1]*frame[3] + I13*frame[3]*frame[1])
 
 class Vector(Basic):
     """
@@ -341,6 +438,12 @@ class Vector(Basic):
         else:
             other_as_Vector = Vector(other)
             return self == other_as_Vector
+
+    def __mul__(self, other):
+        if isinstance(other, Dyad):
+            return NotImplemented
+        else:
+            return Basic.__mul__(self, other)
 
     def __neg__(self):
         n = self.dict.copy()
@@ -1141,6 +1244,9 @@ class PyDyPrinter(StrPrinter):
                         s += self.doprint(a) + '\xC2\xB7'
                     i += 1
                 elif i < N-1:
+                    #if a.is_Pow and a.args[1]<0:
+                    #    s += '\b/' + self.doprint(a.args[0]) + '\xC2\xB7'
+                    #else:
                     s += self.doprint(a) + '\xC2\xB7'
                     i += 1
                 else:
@@ -1148,12 +1254,12 @@ class PyDyPrinter(StrPrinter):
             return s
         else:
             return self.doprint(e_ts)
-
-    #def _print_Pow(self, e):
-    #    s = ''
-    #    if (e.args[1] < 0) and (len(e.args) == 2):
-    #        s = self.doprint(e.args[0]
-
+    """
+    def _print_Pow(self, e):
+        s = ''
+        if (e.args[1] < 0) and (len(e.args) == 2):
+            s = self.doprint(e.args[0]
+    """
     def _print_sin(self, e):
         name = str(e.args[0])
         if name[0] == "q":

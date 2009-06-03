@@ -5,7 +5,7 @@ from sympy import symbols, Function, S, solve, simplify, \
         collect, Matrix, lambdify, trigsimp, expand, Eq, pretty_print
 
 from pydy import ReferenceFrame, cross, dot, dt, express, expression2vector, \
-        coeff, Vector, UnitVector, pydy_str
+        coeff, Vector, UnitVector, pydy_str, Dyad, Inertia
 
 # Constants
 m, g, r1, r2, t, = symbols("m g r1 r2 t")
@@ -47,6 +47,7 @@ N = ReferenceFrame('N')
 A = N.rotate("A", 3, q3)
 B = A.rotate("B", 1, q4)
 C = B.rotate("C", 2, q5)
+
 # Locate the mass center of torus
 CO = N.O.locate('CO', Vector(q1*N[1] + q2*N[2] - r2*N[3] - r1*B[3]))
 
@@ -74,16 +75,21 @@ u_lhs = [Function('u%i'%i)(t) for i in (1,2,3)]
 # velocity of the torus C in N
 u_rhs = [dot(C.get_omega(N), B[i]) for i in (1,2,3)]
 
+# Simplest definition of generalized speeds
+#u_rhs = qdot_list
+
 # Create the equations that define the generalized speeds, then solve them for
 # the time derivatives of the generalized coordinates
 u_definitions = [Eq(u_l, u_r) for u_l, u_r in zip(u_lhs, u_rhs)]
 kindiffs = solve(u_definitions, qdot_list)
-print 'Kinematic differential equations', kindiffs
 
+print 'Kinematic differential equations', kindiffs
 # Replace occurances of q_dots with the corresponding definition from the
 # kinematic differential equations.
 CO.vel = CO.vel.subs(kindiffs)
 C.W[N] = C.W[N].subs(kindiffs)
+print 'v_co_n = ', CO.vel
+print 'w_c_n = ', C.W[N]
 
 # Compute the partial velocity of CO
 partial_v = CO.vel.partials(u_lhs)
@@ -94,19 +100,21 @@ print 'Partial velocities of CO'
 pretty_print([pydy_str(p) for p in partial_v])
 print 'Partial angular velocities of C'
 pretty_print([pydy_str(p) for p in partial_w])
-stop
 
-print 'V_CO_N> =', CO.vel
-print 'W_C_N> = ',C.W[N]
-CO.acc = express(dt(CO.vel, N), B).subs(gen_speeds)
-C.alpha = express(dt(C.W[N], N).subs(gen_speeds), B)
+CO.acc = dt(CO.vel, N).subs(kindiffs)
+C.alpha = dt(C.W[N], N).subs(kindiffs)
 print 'a_co_n =', CO.acc
-print 'a_co_n[b1>] = ', CO.acc.dict[B[1]]
 print 'alf_c_n =', C.alpha
+
+
+CO.force = Vector(m*g*N[3])
+CO.mass = m
+
+C.inertia = Inertia(B, (I, I, J, 0, 0, 0))
+
 stop
 
-print 'alf_c_n.dict.keys()', C.alpha.dict.keys().sort()
-stop
+
 
 
 

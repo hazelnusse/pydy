@@ -34,6 +34,22 @@ q3 = Function('q3')(t)
 A = ReferenceFrame('A')
 B = A.rotate('B', 'BODY312', (q1, q2, q3))
 
+# Testing Dyad
+I1, I2, I3, I12, I13, I23 = symbols('I1 I2 I3 I12 I13 I23')
+
+C.inertia = Dyad(I1*B[1]*B[1] + I2*B[2]*B[2] + I3*B[3]*B[3] + I12*B[1]*B[2] +
+        I13*B[1]*B[3] + I23*B[2]*B[3])
+
+print C.inertia*B[1]
+print C.inertia*B[2]
+print C.inertia*B[3]
+print B[1]*C.inertia
+print B[2]*C.inertia
+print B[3]*C.inertia
+
+stop
+
+
 uv_list = [B[3], B[2], B[1], A[3], A[2], A[1]]
 
 print uv_list
