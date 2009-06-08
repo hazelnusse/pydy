@@ -5,13 +5,14 @@ from sympy import symbols, Function, S, solve, simplify, \
         collect, Matrix, lambdify, trigsimp, expand, Eq, pretty_print
 
 from pydy import ReferenceFrame, cross, dot, dt, express, expression2vector, \
-        coeff, Vector, UnitVector, pydy_str, Dyad, Inertia
+        coeff, Vector, UnitVector, pydy_str, Dyad, Inertia, InertiaForce, \
+        InertiaTorque
 
 # Constants
-m, g, r1, r2, t, = symbols("m g r1 r2 t")
+m, g, r1, r2, t, I, J= symbols("m g r1 r2 t I J")
 
-I = (r1**2/2 + 5*r2**2/8)*m  # Central moment of inertia about any diameter
-J = (r1**2 + 3*r2**2/4)*m    # Central moment of inertia about normal axis
+#I = (r1**2/2 + 5*r2**2/8)*m  # Central moment of inertia about any diameter
+#J = (r1**2 + 3*r2**2/4)*m    # Central moment of inertia about normal axis
 
 # Auxilliary generalized speeds and contact forces
 au1, au2, au3, cf1, cf2, cf3 = symbols("au1 au2 au3 cf1 cf2 cf3")
@@ -102,16 +103,47 @@ print 'Partial angular velocities of C'
 pretty_print([pydy_str(p) for p in partial_w])
 
 CO.acc = dt(CO.vel, N).subs(kindiffs)
-C.alpha = dt(C.W[N], N).subs(kindiffs)
+C.alpha = express(dt(C.W[N], N).subs(kindiffs), B)
 print 'a_co_n =', CO.acc
 print 'alf_c_n =', C.alpha
 
-
+# Force acting at CO, mass of CO
 CO.force = Vector(m*g*N[3])
 CO.mass = m
 
+# Central inertia dyad of C
 C.inertia = Inertia(B, (I, I, J, 0, 0, 0))
 
+# Inertia Force and Inertia Torque
+R_star = InertiaForce(m, CO.acc)
+#print R_star
+C.W[N] = express(C.W[N], B)
+T_star = InertiaTorque(C.inertia, C.W[N], C.alpha)
+
+#print T_star
+
+# Generalized active forces
+GAF = [dot(CO.force, p_v) for p_v in partial_v]
+
+# Generalized inertia forces
+GIF = [dot(p_w, T_star) + dot(p_v, R_star) for p_w, p_v in zip(partial_w,
+    partial_v)]
+
+EOMS = [AF + IF for AF, IF in zip(GAF, GIF)]
+
+#print EOMS
+#print trigsimp(EOMS[0].coeff(u1.diff(t)))
+#print EOMS[1].coeff(u1.diff(t))
+#print EOMS[2].coeff(u1.diff(t))
+#print EOMS[0].coeff(u2.diff(t))
+#print EOMS[1].coeff(u2.diff(t))
+#print trigsimp(EOMS[2].coeff(u2.diff(t)))
+#print EOMS[0].coeff(u3.diff(t))
+#print trigsimp(EOMS[1].coeff(u3.diff(t)))
+#print trigsimp(EOMS[2].coeff(u3.diff(t)))
+
+dyn_eqns = solve(EOMS, u1.diff(t), u2.diff(t), u3.diff(t))
+print dyn_eqns
 stop
 
 

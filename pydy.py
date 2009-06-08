@@ -122,17 +122,19 @@ class UnitVector(Basic):
                 return (self.v['num'].T * c.v['num'])[0]
             elif isinstance(c, Vector):
                 s = S(0)
-                for k in c.dict.keys():
+                for k, coef in c.dict.items(): #.keys():
                     if self == k:
-                        s += c.dict[k]
+                        s += coef #c.dict[k]
                 return trigsimp(s)
             else:
                 raise NotImplementedError()
         elif isinstance(other, Vector):
             s = S(0)
-            for k in other.dict.keys():
-                s += other.dict[k]*self.dot(k)
+            for k, c in other.dict.items():
+                s += c*self.dot(k)
             return trigsimp(s)
+        elif isinstance(other, Dyad):
+            return other.ldot(self)
         else:
             raise NotImplementedError()
 
@@ -230,7 +232,7 @@ class Dyad(Basic):
         else:
             raise NotImplementedError()
 
-    def __rmul__(self, other):
+    def ldot(self, other):
         """Multplitcation by a UnitVector/Vector on the left.
         v * Dyad
 
@@ -255,7 +257,7 @@ class Dyad(Basic):
                     raise NotImplementedError()
         return Vector(vec_dict)
 
-    def __mul__(self, other):
+    def rdot(self, other):
         """Multplitcation by a UnitVector/Vector on the right.
         Dyad * v
 
@@ -519,6 +521,8 @@ class Vector(Basic):
             return s
         elif isinstance(other, Mul) or isinstance(other, Add):
             return self.dot(Vector(other))
+        elif isinstance(other, Dyad):
+            return other.ldot(self)
         else:
             raise NotImplementedError()
 
@@ -1010,13 +1014,29 @@ def express(v, frame):
         raise NotImplementedError()
 
 def dot(v1, v2):
-    if (isinstance(v1, UnitVector) or isinstance(v1, Vector)) and \
-            (isinstance(v2, UnitVector) or isinstance(v2, Vector)):
-                return v1.dot(v2)
+    """Dot product between UnitVector, Vector, and Dyad classes
+
+    Returns a scalar sympy expression in the case of the dot product between
+    two UnitVectors/Vectors.  Returns a UnitVector/Vector in the case of
+    the dot product between a Dyad and a UnitVector/Vector.
+
+    In the scalar dot product, the operation commutes, i.e. dot(v1, v2) dot(v2,
+    v1).  In the vector/dyad dot product, the operation is noncommutative,
+    i.e., dot(v1, v2) != dot(v2, v1)
+
+    """
+
+    if isinstance(v1, (UnitVector, Vector)) and isinstance(v2, (UnitVector,
+        Vector)):
+        return v1.dot(v2)
+    elif isinstance(v1, Dyad) and isinstance(v2, (UnitVector, Vector)):
+        return v1.rdot(v2)
+    elif isinstance(v2, Dyad) and isinstance(v1, (UnitVector, Vector)):
+        return v2.ldot(v1)
     else:
-        if not (isinstance(v1, UnitVector) or isinstance(v1, Vector)):
+        if not isinstance(v1, (UnitVector, Vector)):
             v1 = Vector(v1)
-        if not (isinstance(v2, UnitVector) or isinstance(v2, Vector)):
+        if not isinstance(v2, (UnitVector, Vector)):
             v2 = Vector(v2)
         return v1.dot(v2)
 
@@ -1139,11 +1159,47 @@ def vector2expression(u, frame):
 def dt(v, frame):
     if isinstance(v, UnitVector) or isinstance(v, Vector):
         res = v.dt(frame)
-        #print res
         return res
     else:
         raise NotImplementedError()
 
+def InertiaForce(m, a):
+    """Computes Inertia force, defined as:
+
+    R^* = -m*a
+
+    Equation 4.11.3 or 4.11.6 from Dynamics: Theory and Application
+    """
+    IF_dict = {}
+    if isinstance(a, Vector):
+        for uv, coef in a.dict.items():
+            IF_dict.update({uv: -m*coef})
+    elif isinstance(a, UnitVector):
+        IF_dict = {a: -m}
+    else:
+        raise NotImplementedError()
+    return Vector(IF_dict)
+
+def InertiaTorque(I, omega, alpha):
+    """Computes Inertia torque, defined as:
+
+    T^* = - cross(alpha, I) - cross(omega, dot(I, omega))
+
+    Where I is the central inertia dyadic of the rigid body, omega is the
+    angular velocity of the body, and alpha is the angular acceleration of the
+    body.
+
+    Equation 4.11.8 from Dynamics: Theory and Application
+    """
+    if isinstance(I, Dyad):
+        if isinstance(alpha, (UnitVector, Vector)) and isinstance(omega,
+                (UnitVector, Vector)):
+            return dot(-alpha, I) - cross(omega, dot(I, omega))
+        else:
+            raise NotImplementedError("Alpha and Omega must be UnitVector or \
+                Vector Instances")
+    else:
+        raise NotImplementedError("I must be a Dyad")
 
 class PyDyPrinter(StrPrinter):
     #printmethod = "_pydystr_"
