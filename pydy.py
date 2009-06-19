@@ -583,7 +583,8 @@ class Vector(Basic):
                             self.dict[uv]*uv_in_frame.dict[uv_term]})
 
         for uv in new.keys():
-            new[uv] = trigsimp(expand(trigsimp(new[uv])))
+            new[uv] = expand(trigsimp(new[uv]))
+            #new[uv] = trigsimp(expand(trigsimp(new[uv])))
             if new[uv] == 0: new.pop(uv)
 
         if len(new) == 1 and new.values()[0] == 1:
