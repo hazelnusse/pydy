@@ -712,7 +712,7 @@ class Point:
                 newpoint = Point(s, r)
                 newpoint.NewtonianFrame = self.NewtonianFrame
                 #print 'r', r, 'type(r)', type(r)
-                newpoint.vel = r.dt(newpoint.NewtonianFrame)
+                newpoint.vel = self.vel + r.dt(newpoint.NewtonianFrame)
             elif isinstance(frame, ReferenceFrame):
                 newpoint = Point(s, r)
                 newpoint.NewtonianFrame = self.NewtonianFrame
