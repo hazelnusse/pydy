@@ -122,9 +122,9 @@ class UnitVector(Basic):
                 return (self.v['num'].T * c.v['num'])[0]
             elif isinstance(c, Vector):
                 s = S(0)
-                for k, coef in c.dict.items(): #.keys():
+                for k, coef in c.dict.items():
                     if self == k:
-                        s += coef #c.dict[k]
+                        s += coef
                 return trigsimp(s)
             else:
                 raise NotImplementedError()
@@ -141,17 +141,17 @@ class UnitVector(Basic):
     def cross(self, other):
         def cross_with_Vector(self, c):            # local function
             cp = {}
-            for k in c.dict.keys():
+            for k in c.dict:
                 term = self.cross(k)
                 coef = c.dict[k]
                 if isinstance(term, UnitVector):
-                    if cp.has_key(term):
+                    if term in cp:
                         cp[term] += coef
                     else:
                         cp.update({term : coef})
                 elif isinstance(term, Vector):
-                    for kt in term.dict.keys():
-                        if cp.has_key(kt):
+                    for kt in term.dict:
+                        if kt in cp:
                             cp[kt] += coef*term.dict[kt]
                         else:
                             cp.update({kt : coef*term.dict[kt]})
@@ -243,13 +243,12 @@ class Dyad(Basic):
             for d_term, coeff in self.dict.items():
                 scalar_part = coeff*other.dot(d_term.args[0])
                 if d_term.is_Mul:
-                    if vec_dict.has_key(d_term.args[1]):
+                    if d_term.args[1] in vec_dict:
                         vec_dict[d_term.args[1]] += scalar_part
                     else:
-
                         vec_dict.update({d_term.args[1]: scalar_part})
                 elif d_term.is_Pow:
-                    if vec_dict.has_key(d_term.args[0]):
+                    if d_term.args[0] in vec_dict:
                         vec_dict[d_term.args[0]] += scalar_part
                     else:
                         vec_dict.update({d_term.args[0]: scalar_part})
@@ -268,13 +267,13 @@ class Dyad(Basic):
             for d_term, coeff in self.dict.items():
                 if d_term.is_Mul:
                     scalar_part = coeff*other.dot(d_term.args[1])
-                    if vec_dict.has_key(d_term.args[1]):
+                    if d_term.args[1] in vec_dict:
                         vec_dict[d_term.args[1]] += scalar_part
                     else:
                         vec_dict.update({d_term.args[1]: scalar_part})
                 elif d_term.is_Pow:
                     scalar_part = coeff*other.dot(d_term.args[0])
-                    if vec_dict.has_key(d_term.args[0]):
+                    if d_term.args[0] in vec_dict:
                         vec_dict[d_term.args[0]] += scalar_part
                     else:
                         vec_dict.update({d_term.args[0]: scalar_part})
@@ -472,15 +471,15 @@ class Vector(Basic):
                 for ko in other.dict.keys():
                     kcrossko = k.cross(ko)
                     if isinstance(kcrossko, UnitVector):
-                        if vcp.has_key(kcrossko):
+                        if kcrossko in vcp:
                             vcp[kcrossko] += self.dict[k]*other.dict[ko]
                         else:
                             vcp.update({kcrossko: self.dict[k]*other.dict[ko]})
                     else:
                         for uv_term in kcrossko.dict.keys():
-                            if vcp.has_key(uv_term):
-                                vcp[uv_term] +=\
-                                        self.dict[k]*other.dict[ko]*kcrossko.dict[uv_term]
+                            if uv_term in vcp:
+                                vcp[uv_term] += (
+                                    self.dict[k]*other.dict[ko]*kcrossko.dict[uv_term])
                             else:
                                 vcp.update({uv_term:
                                     self.dict[k]*other.dict[ko]*kcrossko.dict[uv_term]})
@@ -490,13 +489,13 @@ class Vector(Basic):
             for k in self.dict.keys():
                 k_cross_other = k.cross(other)
                 if isinstance(k_cross_other, UnitVector):
-                    if vcp.has_key(k_cross_other):
+                    if k_cross_other in vcp:
                         vcp[k_cross_other] += self.dict[k]
                     else:
                         vcp.update({k_cross_other: self.dict[k]})
                 else:
                     for uv_term in k_cross_other.dict.keys():
-                        if vcp.has_key(uv_term):
+                        if uv_term in vcp:
                             vcp[uv_term] += self.dict[k]*k_cross_other.dict[uv_term]
                         else:
                             vcp.update({uv_term:
@@ -532,20 +531,20 @@ class Vector(Basic):
             for k in self.dict.keys():
                 # First term comes from time differentiating in the frame of
                 # the UnitVector frame of k
-                if dt_self.has_key(k):
+                if k in dt_self:
                     dt_self[k] += (self.dict[k]).diff(t)
                 else:
                     dt_self.update({k: (self.dict[k]).diff(t)})
                 # Second term comes from the omega cross term
                 t2 = k.frame.get_omega(frame).cross(k)
                 if isinstance(t2, UnitVector):
-                    if dt_self.has_key(t2):
+                    if t2 in dt_self:
                         dt_self[k] += self.dict[k]
                     else:
                         dt_self.update({t2: self.dict[k]})
                 else:       # Must be a Vector
                     for term in t2.dict.keys():
-                        if dt_self.has_key(term):
+                        if term in dt_self:
                             dt_self[term] += self.dict[k]*t2.dict[term]
                         else:
                             dt_self.update({term: self.dict[k]*t2.dict[term]})
@@ -567,7 +566,7 @@ class Vector(Basic):
 
             # Case for UnitVectors
             if isinstance(uv_in_frame, UnitVector):
-                if new.has_key(uv_in_frame):
+                if uv_in_frame in new:
                     new[uv_in_frame] += self.dict[uv]
                 else:
                     new.update({uv_in_frame : self.dict[uv]})
@@ -576,7 +575,7 @@ class Vector(Basic):
             elif isinstance(uv_in_frame, Vector):
                 # Go through each term
                 for uv_term in uv_in_frame.dict.keys():
-                    if new.has_key(uv_term):
+                    if uv_term in new:
                         new[uv_term] += self.dict[uv]*uv_in_frame.dict[uv_term]
                     else:
                         new.update({uv_term :
@@ -668,7 +667,7 @@ class Vector(Basic):
                 else:
                     raise NotImplementedError()
                 for k in add_term_dict.keys():
-                    if terms.has_key(k):
+                    if k in terms:
                         terms[k] += add_term_dict[k]
                     else:
                         terms.update(add_term_dict)
@@ -695,9 +694,9 @@ class Point:
         self.name = s
         # When instantiated by ReferenceFrame
         if r == S(0) and isinstance(frame, ReferenceFrame):
-            self.pos = S(0)                # Should only happen for the base
-            self.vel = S(0)                # Newtonian/Inertial Frame
-            self.acc = S(0)
+            self.pos = Vector(0)                # Should only happen for the base
+            self.vel = Vector(0)                # Newtonian/Inertial Frame
+            self.acc = Vector(0)
             self.NewtonianFrame = frame
         elif r != None and frame == None:  # When instantiated by locate method
             self.pos = r
@@ -711,18 +710,12 @@ class Point:
             if frame == None:
                 newpoint = Point(s, r)
                 newpoint.NewtonianFrame = self.NewtonianFrame
-                #print 'r', r, 'type(r)', type(r)
                 newpoint.vel = self.vel + r.dt(newpoint.NewtonianFrame)
             elif isinstance(frame, ReferenceFrame):
                 newpoint = Point(s, r)
                 newpoint.NewtonianFrame = self.NewtonianFrame
                 wn = frame.get_omega(newpoint.NewtonianFrame)
-                #print 'computing vel'
-                #print 'omega', wn
-                #print 'self.vel', self.vel
-                #print 'w x r', cross(wn, r)
                 newpoint.vel = self.vel + cross(wn, r)
-                #print 'self.vel + w x r = ', newpoint.vel
             else:
                 raise NotImplementedError()
         return newpoint
@@ -956,16 +949,16 @@ class ReferenceFrame:
 
     def get_omega(self, frame):
         """
-        Returns the angular velocity of self relative to the frame "frame".
+        Returns the angular velocity of self relative to "frame".
         """
 
-        if self.W.has_key(frame):
+        if frame in self.W:
             return self.W[frame]
         else:
             om = {}
             for term in self.get_omega_list(frame):
                 for k in term.dict.keys():
-                    if om.has_key(k):
+                    if k in om:
                         om[k] += term.dict[k]
                     else:
                         om.update({k: term.dict[k]})
