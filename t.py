@@ -1,3 +1,44 @@
+from sympy import *
+from pydy import *
+import sys
+sys.displayhook == pprint
+t = Symbol('t')
+q1 = Function('q1')(t)
+N = ReferenceFrame('N')
+e = Vector(q1*2*N[1] + 3*N[2])
+print N
+print N[1]
+
+pprint(N[1])
+stop
+
+
+t = Symbol('t')
+q1 = Function('q1')(t)
+
+N = ReferenceFrame('N')
+A = N.rotate('A', 1, q1)
+print 'N[1] =', N[1]
+print 'A[1] =', A[1]
+print 'W_A_N> =',A.get_omega(N)
+print '\n\n\n'
+
+x = Function('x')(t)
+m = Symbol('m')
+print x.diff(t)
+print m.diff(t)
+
+stop
+
+
+
+
+
+
+
+
+
+
 """
 from sympy import Basic
 from sympy.printing.str import StrPrinter
@@ -24,8 +65,8 @@ print MyBreakfast
 stop
 """
 
-from sympy import *
-from pydy import *
+
+
 from sympy.printing.pretty.pretty import PrettyPrinter, xsym
 
 q1 = Function('q1')(t)

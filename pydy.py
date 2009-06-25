@@ -1,14 +1,8 @@
-from sympy import Symbol, symbols, Basic, Derivative, Mul, Pow, Matrix, sin, \
+from sympy import Symbol, Basic, Derivative, Mul, Pow, Matrix, sin, \
         cos, S, eye, Add, trigsimp, expand
-from sympy.printing.pretty.pretty import PrettyPrinter, xsym, pprint, pretty
-# here is how to get a nice symbol for multiplication:
-# print xsym("*")
+from sympy.printing.pretty.pretty import PrettyPrinter
 from sympy.printing.str import StrPrinter
-import sys
-sys.displayhook = pprint
 
-global _compact_trig
-_compact_trig = False
 e1 = Matrix([1, 0, 0])
 e2 = Matrix([0, 1, 0])
 e3 = Matrix([0, 0, 1])
@@ -54,6 +48,9 @@ class UnitVector(Basic):
 
     def __str__(self):
         return pydy_str(self)
+
+    def _sympypretty_(self):
+        return pydy_pretty(self)
 
     def __cmp__(self, other):
         if isinstance(other, UnitVector):
@@ -202,7 +199,6 @@ class UnitVector(Basic):
 
     def dt(self, diff_frame):
         if isinstance(diff_frame, ReferenceFrame):
-            #print 'should be q3.diff(t)*A[3]',self.frame.get_omega(diff_frame)
             return cross(self.frame.get_omega(diff_frame), self)
         else:
             raise NotImplementedError()
@@ -347,12 +343,9 @@ class Vector(Basic):
         v1 + v2   <----> v1.__add__(v2)
         """
         if isinstance(other, Vector):
-            #print '__add__ was called, with', self, 'and', other
             s1 = set(self.dict.keys())
             s2 = set(other.dict.keys())
             sum = {}
-            #print 's1', s1
-            #print 's2', s2
             for k in s1.intersection(s2):
                 sum.update({k: trigsimp(self.dict[k] + other.dict[k])})
             for k in s1.difference(s2):
@@ -690,7 +683,7 @@ class Vector(Basic):
         return Vector(new_dict)
 
 class Point:
-    def __init__(self, s, r=None, frame=None):
+    def __init__(self, s, r=None, frame=None, mass=None, force=None):
         self.name = s
         # When instantiated by ReferenceFrame
         if r == S(0) and isinstance(frame, ReferenceFrame):
@@ -698,11 +691,11 @@ class Point:
             self.vel = Vector(0)                # Newtonian/Inertial Frame
             self.acc = Vector(0)
             self.NewtonianFrame = frame
+            self.ParentPoint = None
         elif r != None and frame == None:  # When instantiated by locate method
             self.pos = r
         else:
             raise NotImplementedError()
-
 
     def locate(self, s, r, frame=None):
         r = Vector(r)
@@ -714,10 +707,11 @@ class Point:
             elif isinstance(frame, ReferenceFrame):
                 newpoint = Point(s, r)
                 newpoint.NewtonianFrame = self.NewtonianFrame
-                wn = frame.get_omega(newpoint.NewtonianFrame)
-                newpoint.vel = self.vel + cross(wn, r)
+                newpoint.vel = self.vel + cross(frame.get_omega(newpoint.NewtonianFrame), r)
             else:
                 raise NotImplementedError()
+        newpoint.NewtonianFrame = self.NewtonianFrame
+        newpoint.ParentPoint = self
         return newpoint
 
 class ReferenceFrame:
@@ -884,6 +878,8 @@ class ReferenceFrame:
                 [sin(angle), cos(angle), 0],
                 [0, 0, 1]])
 
+    def __str__(self):
+        return '<Frame %s>' % self.name
 
     def __repr__(self):
         return "<Frame %s>" % self.name
@@ -1195,11 +1191,125 @@ def InertiaTorque(I, omega, alpha):
     else:
         raise NotImplementedError("I must be a Dyad")
 
-class PyDyPrinter(StrPrinter):
-    #printmethod = "_pydystr_"
+class PyDyStrPrinter(StrPrinter):
+    def _print_UnitVector(self, e):
+        s = str(e.v['sym'])
+        name = s[:-1]
+        index = s[-1]
+        r = "%s%s>" % (name, index)
+        return r
 
-    #def _print_Symbol(self, e):
-    #    return "|%s|" % str(e)
+    def _print_Vector(self, e):
+        s = ''
+        i = 0
+        small_dot = "*"
+        if e.dict.keys() != []:
+            uv_list = e.dict.keys()
+            uv_list.sort(sort_UnitVector)
+            for k in uv_list:
+                # Case when the scalar coefficient is 1 or -1
+                if (e.dict[k] == 1) or (e.dict[k] == -1):
+                    # First term don't print a leading + if positive
+                    if i == 0:
+                        if e.dict[k] == 1: sign = ''
+                        if e.dict[k] == -1: sign = '-'
+                        s += sign + self.doprint(k)
+                        i += 1
+                    # All other terms put the sign and pad with spaces
+                    else:
+                        if e.dict[k] == 1: sign = '+'
+                        if e.dict[k] == -1: sign = '-'
+                        s += ' ' + sign + ' ' + self.doprint(k)
+                else:
+                    # First term
+                    if i == 0:
+                        # Put parenthesis around Add terms
+                        if isinstance(e.dict[k], Add):
+                            s += ('(' + self.doprint(e.dict[k]) +
+                                    ')' + small_dot + self.doprint(k))
+                        else:
+                            s += (self.doprint(e.dict[k]) +
+                                small_dot + self.doprint(k))
+                        i += 1
+                    # All other terms pad with spaces and add parenthesis
+                    else:
+                        if isinstance(e.dict[k], Add):
+                            s += (' + (' + self.doprint(e.dict[k])
+                                + ')' + small_dot + self.doprint(k))
+                        elif isinstance(e.dict[k], (Mul, Pow)):
+                            coef = (self.doprint(e.dict[k]) + small_dot +
+                                    self.doprint(k))
+                            if coef[0] == '-':
+                                s += ' - ' + coef[1:]
+                            else:
+                                s += ' + ' + coef
+                        else:
+                            s += (' + ' + self.doprint(e.dict[k]) + small_dot +
+                                    self.doprint(k))
+
+            return s
+        else:
+            return "0>"
+
+    def _print_Function(self, e):
+        return str(e.func)
+
+    def _print_Derivative(self, e):
+        return "%s'" % str(e.args[0].func)
+
+    """
+    def _print_Mul(self, e):
+        s = ''
+        i = 0
+        e_ts = trigsimp(expand(trigsimp(e)))
+        if e_ts.is_Mul:
+            N = len(e_ts.args)
+            for a in e_ts.args:
+                if i == 0:
+                    if a == -1:
+                        s += '-'
+                    else:
+                        s += self.doprint(a) + '\xC2\xB7'
+                    i += 1
+                elif i < N-1:
+                    #if a.is_Pow and a.args[1]<0:
+                    #    s += '\b/' + self.doprint(a.args[0]) + '\xC2\xB7'
+                    #else:
+                    s += self.doprint(a) + '\xC2\xB7'
+                    i += 1
+                else:
+                    s += self.doprint(a)
+            return s
+        else:
+            return self.doprint(e_ts)
+
+    def _print_sin(self, e):
+        name = str(e.args[0])
+        if name[0] == "q":
+            index = name[1]
+            return "s%s" % index
+        else:
+            return e
+
+    def _print_cos(self, e):
+        name = str(e.args[0])
+        if name[0] == "q":
+            index = name[1]
+            return "c%s" % index
+        else:
+            return str(e)
+
+    def _print_tan(self, e):
+        name = str(e.args[0])
+        if name[0] == "q":
+            index = name[1]
+            return "t%s" % index
+        else:
+            return str(e)
+    """
+
+class PyDyPrettyPrinter(PrettyPrinter):
+    printmethod = "_sympypretty_"
 
     def _print_UnitVector(self, e):
         one = "\xe2\x82\x81"
@@ -1304,12 +1414,7 @@ class PyDyPrinter(StrPrinter):
             return s
         else:
             return self.doprint(e_ts)
-    """
-    def _print_Pow(self, e):
-        s = ''
-        if (e.args[1] < 0) and (len(e.args) == 2):
-            s = self.doprint(e.args[0]
-    """
+
     def _print_sin(self, e):
         name = str(e.args[0])
         if name[0] == "q":
@@ -1335,8 +1440,12 @@ class PyDyPrinter(StrPrinter):
             return str(e)
 
 def pydy_str(e):
-    pp = PyDyPrinter()
-    return pp.doprint(e)
+    p = PyDyStrPrinter()
+    return p.doprint(e)
+
+def pydy_pretty(e):
+    p = PyDyPrettyPrinter()
+    return p.doprint(e)
 
 def sort_UnitVector(a, b):
     if a.frame == b.frame:

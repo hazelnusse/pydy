@@ -106,6 +106,7 @@ CO.acc = dt(CO.vel, N).subs(kindiffs)
 C.alpha = express(dt(C.W[N], N).subs(kindiffs), B)
 print 'a_co_n =', CO.acc
 print 'alf_c_n =', C.alpha
+stop
 
 # Force acting at CO, mass of CO
 CO.force = Vector(m*g*N[3])
