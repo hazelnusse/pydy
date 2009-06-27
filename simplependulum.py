@@ -2,7 +2,7 @@ from math import sin, cos, pi
 
 from numpy import array, arange
 from sympy import symbols, Function, S, solve, simplify, \
-        collect, Matrix, lambdify
+        collect, Matrix, lambdify, ccode
 
 from pydy import * 
 
@@ -77,18 +77,23 @@ dyn_eqns = solve(EOMS, u1.diff(t), cf1)
 print 'Kinematic equations:\n', kindiffs
 print 'Dynamic equations:\n', dyn_eqns
 
+print ccode(kindiffs[q1.diff(t)])
+
+stop
 
 def f(x, t0, args):
+    print args
     sp_dict = {q1: x[0], u1: x[1], m: args[0], g: args[1], l: args[2]}
-    return [kindiffs[q1.diff(t)].subs(sp_dict),
-            dyn_eqns[u1.diff(t)].subs(sp_dict)]
+    return [kindiffs[q1.diff(t)].subs(sp_dict).n(),
+            dyn_eqns[u1.diff(t)].subs(sp_dict).n()]
 
 print f([1,0], 0, (1, 1, 1))
-stop
+#stop
+
 from scipy.integrate import odeint
 from numpy import arange
 t = arange(0,1.1,0.1)
 x0 = [0.1, 0.0]
-x = odeint(f, x0, t)
+x = odeint(f, x0, t, (1, 1, 1))
 print x
 
