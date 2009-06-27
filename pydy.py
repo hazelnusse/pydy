@@ -1,4 +1,4 @@
-from sympy import Symbol, Basic, Derivative, Mul, Pow, Matrix, sin, \
+from sympy import Symbol, Basic, Function, Mul, Pow, Matrix, sin, \
         cos, S, eye, Add, trigsimp, expand
 from sympy.printing.pretty.pretty import PrettyPrinter
 from sympy.printing.str import StrPrinter
@@ -33,15 +33,15 @@ class UnitVector(Basic):
         elif i == 3:
             self.v['sym'] = Symbol(s.lower()+str(i))
             self.v['num'] = e3
-        elif i == -1:
-            self.v['sym'] = Symbol('-'+s.lower()+str(abs(i)))
-            self.v['num'] = e1n
-        elif i == -2:
-            self.v['sym'] = Symbol('-'+s.lower()+str(abs(i)))
-            self.v['num'] = e2n
-        elif i == -3:
-            self.v['sym'] = Symbol('-'+s.lower()+str(abs(i)))
-            self.v['num'] = e3n
+        #elif i == -1:
+        #    self.v['sym'] = Symbol('-'+s.lower()+str(abs(i)))
+        #    self.v['num'] = e1n
+        #elif i == -2:
+        #    self.v['sym'] = Symbol('-'+s.lower()+str(abs(i)))
+        #    self.v['num'] = e2n
+        #elif i == -3:
+        #    self.v['sym'] = Symbol('-'+s.lower()+str(abs(i)))
+        #    self.v['num'] = e3n
         elif i == 0:
             self.v['sym'] = Symbol(s.lower()+str(0))
             self.v['num'] = zero
@@ -49,7 +49,7 @@ class UnitVector(Basic):
     def __str__(self):
         return pydy_str(self)
 
-    def _sympypretty_(self):
+    def __repr__(self):
         return pydy_pretty(self)
 
     def __cmp__(self, other):
@@ -338,6 +338,9 @@ class Vector(Basic):
     def __str__(self):
         return pydy_str(self)
 
+    def __repr__(self):
+        return pydy_str(self)
+
     def __add__(self, other):
         """Adds two Vector objects and return a new Vector object.
         v1 + v2   <----> v1.__add__(v2)
@@ -521,7 +524,7 @@ class Vector(Basic):
     def dt(self, frame):
         if isinstance(frame, ReferenceFrame):
             dt_self = {}
-            for k in self.dict.keys():
+            for k in self.dict:
                 # First term comes from time differentiating in the frame of
                 # the UnitVector frame of k
                 if k in dt_self:
@@ -544,6 +547,8 @@ class Vector(Basic):
             if len(dt_self) == 1:
                 if dt_self.values()[0] == 1:
                     return dt_self.keys()[0]        # Return a UnitVector
+                else:
+                    return Vector(dt_self)
             else:
                 return Vector(dt_self)
 
@@ -810,13 +815,17 @@ class ReferenceFrame:
         to the parent frame (and vice versa) is stored with the new reference
         frame (and the parent reference frame).
         """
+        
         if not isinstance(angle, (list, tuple)):
             if axis in set((1, 2, 3)):
                 matrix = self._rot(axis, angle)
                 omega = Vector(angle.diff(t)*self[axis])
+            elif axis in set((-1, -2, -3)):
+                matrix = self._rot(-axis, -angle)
+                omega = Vector(-angle.diff(t)*self[-axis])
             elif isinstance(axis, (UnitVector, Vector)):
                 raise NotImplementedError("Axis angle rotations not \
-                    implemented")
+                    implemented.")
             else:
                 raise ValueError("Invalid axis")
             return ReferenceFrame(name, matrix, self, omega)
@@ -860,6 +869,9 @@ class ReferenceFrame:
                         newFrame[3]: w3})
                     newFrame.set_omega(omega, self, force=True)
                     return newFrame
+            else:
+                raise NotImplementedError("angle must be a list/tuple of \
+                        length 3")
 
     def _rot(self, axis, angle):
         """Returns direction cosine matrix for simple 1,2,3 rotations
@@ -953,7 +965,7 @@ class ReferenceFrame:
         else:
             om = {}
             for term in self.get_omega_list(frame):
-                for k in term.dict.keys():
+                for k in term.dict:
                     if k in om:
                         om[k] += term.dict[k]
                     else:
@@ -1191,7 +1203,37 @@ def InertiaTorque(I, omega, alpha):
     else:
         raise NotImplementedError("I must be a Dyad")
 
+#class GeneralizedCoordinate(Symbol):
+    #def __init__(self, name, depends_on=Symbol('t'), *args):
+    #    self.dv = depends_on
+
+    #def dt(self):
+    #    return self.diff(Symbol('t'))
+
+    #def diff(self, var):
+    #    if var == Symbol('t'):
+    #        return GeneralizedCoordinate(self.name + "'")
+    #    else:
+    #        return Derivative(self, var)
+
+    #def _eval_derivative(self, s):
+    #    if s == self:
+    #        return S.One
+    #    elif s == self.dv:
+    #        return GeneralizedCoordinate(self.name + "'")
+    #    else:
+    #        return S.Zero
+
+def gcs(s, number=1):
+    gc_list = [Function(s + str(i))(Symbol('t')) for i in
+        range(number + 1)[1:]]
+
+    for i, gc in enumerate(gc_list):
+        gc_list[i].__str__ = lambda x: str(x.func)
+    return gc_list
+
 class PyDyStrPrinter(StrPrinter):
+    #printmethod = '__str__'
     def _print_UnitVector(self, e):
         s = str(e.v['sym'])
         name = s[:-1]
@@ -1257,79 +1299,28 @@ class PyDyStrPrinter(StrPrinter):
     def _print_Derivative(self, e):
         return "%s'" % str(e.args[0].func)
 
-    """
-    def _print_Mul(self, e):
-        s = ''
-        i = 0
-        e_ts = trigsimp(expand(trigsimp(e)))
-        if e_ts.is_Mul:
-            N = len(e_ts.args)
-            for a in e_ts.args:
-                if i == 0:
-                    if a == -1:
-                        s += '-'
-                    else:
-                        s += self.doprint(a) + '\xC2\xB7'
-                    i += 1
-                elif i < N-1:
-                    #if a.is_Pow and a.args[1]<0:
-                    #    s += '\b/' + self.doprint(a.args[0]) + '\xC2\xB7'
-                    #else:
-                    s += self.doprint(a) + '\xC2\xB7'
-                    i += 1
-                else:
-                    s += self.doprint(a)
-            return s
-        else:
-            return self.doprint(e_ts)
-
-    def _print_sin(self, e):
-        name = str(e.args[0])
-        if name[0] == "q":
-            index = name[1]
-            return "s%s" % index
-        else:
-            return e
-
-    def _print_cos(self, e):
-        name = str(e.args[0])
-        if name[0] == "q":
-            index = name[1]
-            return "c%s" % index
-        else:
-            return str(e)
-
-    def _print_tan(self, e):
-        name = str(e.args[0])
-        if name[0] == "q":
-            index = name[1]
-            return "t%s" % index
-        else:
-            return str(e)
-    """
-
 class PyDyPrettyPrinter(PrettyPrinter):
-    printmethod = "_sympypretty_"
-
     def _print_UnitVector(self, e):
-        one = "\xe2\x82\x81"
-        two = "\xe2\x82\x82"
-        three = "\xe2\x82\x83"
-        bold = "\033[1m"
-        reset = "\033[0;0m"
-        s = str(e.v['sym'])
-        name = s[:-1]
-        index = s[-1]
-        r = "%s%s" % (bold, name)
-        if index == "1":
-            r += one
-        elif index == "2":
-            r += two
-        elif index == "3":
-            r += three
-        #print type(r)
-        r += reset
-        return r
+        class Fake(object):
+            def render(self, *args, **kwargs):
+                one = "\xe2\x82\x81"
+                two = "\xe2\x82\x82"
+                three = "\xe2\x82\x83"
+                bold = "\033[1m"
+                reset = "\033[0;0m"
+                s = str(e.v['sym'])
+                name = s[:-1]
+                index = s[-1]
+                r = "%s%s" % (bold, name)
+                if index == "1":
+                    r += one
+                elif index == "2":
+                    r += two
+                elif index == "3":
+                    r += three
+                r += reset
+                return r
+        return Fake()
 
     def _print_Vector(self, e):
         s = ''
@@ -1443,9 +1434,9 @@ def pydy_str(e):
     p = PyDyStrPrinter()
     return p.doprint(e)
 
-def pydy_pretty(e):
+def pprint(e):
     p = PyDyPrettyPrinter()
-    return p.doprint(e)
+    print p.doprint(e)
 
 def sort_UnitVector(a, b):
     if a.frame == b.frame:

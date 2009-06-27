@@ -1,22 +1,49 @@
+'''
+from sympy import Basic
+from sympy.printing.str import StrPrinter
+from sympy.printing.pretty.pretty import PrettyPrinter, xsym, pprint
+
+class GreenEggsAndHam(Basic):
+   def __init__(self, string):
+       self.s = string
+
+   #def _pretty_(self):
+   #    return print_GreenEggsAndHam(self)
+
+class HamPrinter(PrettyPrinter):
+   printmethod = '_pretty_'
+   def _print_GreenEggsAndHam(self, e):
+       class Fake(object):
+           def render(self, *args, **kwargs):
+               return e.s.lower() + xsym('*') + u"\xC2\xB7"
+       return Fake()
+
+def print_GreenEggsAndHam(e):
+   pp = HamPrinter()
+   return pp.doprint(e)
+
+MyBreakfast = GreenEggsAndHam('I LOVE SYMPY')
+#print print_GreenEggsAndHam(MyBreakfast)
+pprint(MyBreakfast)
+
+stop
+'''
 from sympy import *
 from pydy import *
-import sys
-sys.displayhook == pprint
-t = Symbol('t')
-q1 = Function('q1')(t)
+
+q1, q2 = gcs('q', 2)
+print q1
+print q2
+print q2.diff(t)
+print sin(q2).diff(t)
 N = ReferenceFrame('N')
-e = Vector(q1*2*N[1] + 3*N[2])
-print N
-print N[1]
+stop
 
 pprint(N[1])
+pprint(t)
 stop
 
 
-t = Symbol('t')
-q1 = Function('q1')(t)
-
-N = ReferenceFrame('N')
 A = N.rotate('A', 1, q1)
 print 'N[1] =', N[1]
 print 'A[1] =', A[1]
@@ -42,27 +69,42 @@ stop
 """
 from sympy import Basic
 from sympy.printing.str import StrPrinter
-from sympy.printing.pretty.pretty import xsym
+from sympy.printing.pretty.pretty import PrettyPrinter, xsym, pprint
 
 class GreenEggsAndHam(Basic):
     def __init__(self, string):
         self.s = string
 
-    def __str__(self):
+    def _pretty_(self):
         return print_GreenEggsAndHam(self)
 
-class HamPrinter(StrPrinter):
+class HamPrinter(PrettyPrinter):
+    printmethod = '_pretty_'
     def _print_GreenEggsAndHam(self, e):
-        # The xsym('*') causes a UnicodeEncodeError
-        return e.s.lower() + '*' + "\xC2\xB7"
+        return e.s.lower() + xsym('*') + "\xC2\xB7"
 
 def print_GreenEggsAndHam(e):
     pp = HamPrinter()
     return pp.doprint(e)
 
+
 MyBreakfast = GreenEggsAndHam('I LOVE SYMPY')
-print MyBreakfast
+print_GreenEggsAndHam(MyBreakfast)
+pprint(MyBreakfast)
+
+
 stop
+
+stop
+
+
+from pydy import ReferenceFrame, pydy_pretty
+N = ReferenceFrame('N')
+e = N[1]
+pydy_pretty(e)
+stop
+
+
 """
 
 
