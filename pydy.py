@@ -129,7 +129,7 @@ class UnitVector(Basic):
             s = S(0)
             for k, c in other.dict.items():
                 s += c*self.dot(k)
-            return trigsimp(s)
+            return s
         elif isinstance(other, Dyad):
             return other.ldot(self)
         else:
@@ -138,20 +138,13 @@ class UnitVector(Basic):
     def cross(self, other):
         def cross_with_Vector(self, c):            # local function
             cp = {}
-            for k in c.dict:
+            for k, coef in c.dict.items():
                 term = self.cross(k)
-                coef = c.dict[k]
                 if isinstance(term, UnitVector):
-                    if term in cp:
-                        cp[term] += coef
-                    else:
-                        cp.update({term : coef})
+                    cp[term] = cp.get(term, 0) + coef
                 elif isinstance(term, Vector):
                     for kt in term.dict:
-                        if kt in cp:
-                            cp[kt] += coef*term.dict[kt]
-                        else:
-                            cp.update({kt : coef*term.dict[kt]})
+                        cp[kt] = cp.get(kt, 0) + coef*term.dict[kt]
             return Vector(cp)
 
         if isinstance(other, UnitVector):
@@ -239,15 +232,19 @@ class Dyad(Basic):
             for d_term, coeff in self.dict.items():
                 scalar_part = coeff*other.dot(d_term.args[0])
                 if d_term.is_Mul:
-                    if d_term.args[1] in vec_dict:
-                        vec_dict[d_term.args[1]] += scalar_part
-                    else:
-                        vec_dict.update({d_term.args[1]: scalar_part})
+                    vec_dict[d_term.args[1]] = vec_dict.get(d_term.args[1], 0) \
+                            + scalar_part
+                    #if d_term.args[1] in vec_dict:
+                    #    vec_dict[d_term.args[1]] += scalar_part
+                    #else:
+                    #    vec_dict.update({d_term.args[1]: scalar_part})
                 elif d_term.is_Pow:
-                    if d_term.args[0] in vec_dict:
-                        vec_dict[d_term.args[0]] += scalar_part
-                    else:
-                        vec_dict.update({d_term.args[0]: scalar_part})
+                    vec_dict[d_term.args[0]] = (vec_dict.get(d_term.args[0], 0)
+                            + scalar_part)
+                    #if d_term.args[0] in vec_dict:
+                    #    vec_dict[d_term.args[0]] += scalar_part
+                    #else:
+                    #    vec_dict.update({d_term.args[0]: scalar_part})
                 else:
                     raise NotImplementedError()
         return Vector(vec_dict)
@@ -263,16 +260,20 @@ class Dyad(Basic):
             for d_term, coeff in self.dict.items():
                 if d_term.is_Mul:
                     scalar_part = coeff*other.dot(d_term.args[1])
-                    if d_term.args[1] in vec_dict:
-                        vec_dict[d_term.args[1]] += scalar_part
-                    else:
-                        vec_dict.update({d_term.args[1]: scalar_part})
+                    vec_dict[d_term.args[1]] = (vec_dict.get(d_term.args[1], 0)
+                            + scalar_part)
+                    #if d_term.args[1] in vec_dict:
+                    #    vec_dict[d_term.args[1]] += scalar_part
+                    #else:
+                    #    vec_dict.update({d_term.args[1]: scalar_part})
                 elif d_term.is_Pow:
                     scalar_part = coeff*other.dot(d_term.args[0])
-                    if d_term.args[0] in vec_dict:
-                        vec_dict[d_term.args[0]] += scalar_part
-                    else:
-                        vec_dict.update({d_term.args[0]: scalar_part})
+                    vec_dict[d_term.args[0]] = (vec_dict.get(d_term.args[0], 0)
+                            + scalar_part)
+                    #if d_term.args[0] in vec_dict:
+                    #    vec_dict[d_term.args[0]] += scalar_part
+                    #else:
+                    #    vec_dict.update({d_term.args[0]: scalar_part})
                 else:
                     raise NotImplementedError()
 
@@ -346,30 +347,19 @@ class Vector(Basic):
         v1 + v2   <----> v1.__add__(v2)
         """
         if isinstance(other, Vector):
-            s1 = set(self.dict.keys())
-            s2 = set(other.dict.keys())
-            sum = {}
-            for k in s1.intersection(s2):
-                sum.update({k: trigsimp(self.dict[k] + other.dict[k])})
-            for k in s1.difference(s2):
-                sum.update({k: trigsimp(self.dict[k])})
-            for k in s2.difference(s1):
-                sum.update({k: trigsimp(other.dict[k])})
-
-            for k in sum.keys():
-                sum[k] = trigsimp(sum[k])
-                if sum[k] == 0: sum.pop(k)
+            sum = dict([(k, self.dict.get(k, 0) + other.dict.get(k, 0)) for k in
+                    (self.dict.keys() + other.dict.keys())])
 
             if len(sum) == 1 and sum[sum.keys()[0]] == 1:
                 return sum.keys()[0]
             else:
                 return Vector(sum)
         elif isinstance(other, UnitVector):
-            return self + Vector({other: S(1)})
+            return self.__add__(Vector({other: S(1)}))
         elif isinstance(other, Add):
-            return self + Vector(other)
+            return self.__add__(Vector(other))
         elif isinstance(other, Mul):
-            return self + Vector(other)
+            return self.__add__(Vector(other))
         else:
             raise NotImplementedError()
 
