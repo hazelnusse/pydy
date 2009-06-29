@@ -594,12 +594,10 @@ class Vector(Basic):
                 if isinstance(b, UnitVector):
                     return {b: v.coeff(b)}
         elif isinstance(v, Add):
-            #v.expand()
+            v = v.expand()
             terms = {}
             for add_term in v.args:
-                if isinstance(add_term, Mul):
-                    add_term_dict = self.parse_terms(add_term)
-                elif isinstance(add_term, Pow):
+                if isinstance(add_term, (Mul, Pow)):
                     add_term_dict = self.parse_terms(add_term)
                 elif isinstance(add_term, UnitVector):
                     add_term_dict = {add_term: S(1)}
@@ -616,18 +614,11 @@ class Vector(Basic):
     def partials(self, u_list):
         """Computes partial velocities.
         """
-        partials_list = []
-        for u in u_list:
-            partials_list.append(self.coeffv(u))
-        return partials_list
+        return [self.coeffv(u) for u in u_list]
 
     def subs(self, subs_dict):
         return Vector(dict([(k, self.dict[k].subs(subs_dict)) for k in
             self.dict]))
-        #new_dict = {}
-        #for k in self.dict.keys():
-        #    new_dict.update({k: trigsimp(expand(self.dict[k].subs(subs_dict)))})
-        #return Vector(new_dict)
 
 class Point:
     def __init__(self, s, r=None, frame=None, mass=None, force=None):
