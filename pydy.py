@@ -356,9 +356,7 @@ class Vector(Basic):
                 return Vector(sum)
         elif isinstance(other, UnitVector):
             return self.__add__(Vector({other: S(1)}))
-        elif isinstance(other, Add):
-            return self.__add__(Vector(other))
-        elif isinstance(other, Mul):
+        elif isinstance(other, (Add, Mul)):
             return self.__add__(Vector(other))
         else:
             raise NotImplementedError()
@@ -368,27 +366,16 @@ class Vector(Basic):
         v1 - v2   <----> v1.__sub__(v2)
         """
         if isinstance(other, Vector):
-            #print 'v2 is a Vector'
-            s1 = set(self.dict.keys())
-            s2 = set(other.dict.keys())
-            difference = {}
-
-            for k in s1.intersection(s2):
-                difference.update({k: trigsimp(self.dict[k] - other.dict[k])})
-            for k in s1.difference(s2):
-                difference.update({k: trigsimp(self.dict[k])})
-            for k in s2.difference(s1):
-                difference.update({k: -trigsimp(other.dict[k])})
-            if not all(difference.values()):
-                return Vector({})
+            dif = dict([(k, self.dict.get(k, 0) - other.dict.get(k, 0)) for k in
+                    (self.dict.keys() + other.dict.keys())])
+            if len(dif) == 1 and dif[dif.keys()[0]] == 1:
+                return dif.keys()[0]
             else:
-                return Vector(difference)
+                return Vector(dif)
         elif isinstance(other, UnitVector):
-            return self - Vector({other: S(1)})
-        elif isinstance(other, Add):
-            return self - Vector(other)
-        elif isinstance(other, Mul):
-            return self - Vector(other)
+            return self.__sub__(Vector({other: S(1)}))
+        elif isinstance(other, (Add, Mul)):
+            return self.__sub__(Vector(other))
         else:
             raise NotImplementedError()
 
@@ -433,61 +420,44 @@ class Vector(Basic):
             return Basic.__mul__(self, other)
 
     def __neg__(self):
-        n = self.dict.copy()
-        for k in n:
-            n[k] *= -S(1)
-        return Vector(n)
+        return Vector(dict([(k, -self.dict[k]) for k in self.dict]))
 
     def coeffv(self, scalar):
         """Vector coefficient of a scalar
         """
-        c = {}
-        for k in self.dict.keys():
-            s = self.dict[k].coeff(scalar)
-            if s == None:
-                continue
-            else:
-                c.update({k: s})
-        return Vector(c)
+
+        return Vector(dict([(k, self.dict[k].coeff(scalar)) for k in
+            self.dict if self.dict[k].coeff(scalar) != None]))
+
 
     def cross(self, other):
         if isinstance(other, Vector):
             vcp = {}
-            for k in self.dict.keys():
-                for ko in other.dict.keys():
+            for k in self.dict:
+                for ko in other.dict:
                     kcrossko = k.cross(ko)
                     if isinstance(kcrossko, UnitVector):
-                        if kcrossko in vcp:
-                            vcp[kcrossko] += self.dict[k]*other.dict[ko]
-                        else:
-                            vcp.update({kcrossko: self.dict[k]*other.dict[ko]})
+                        vcp[kcrossko] = (vcp.get(kcrossko, 0) +
+                                self.dict[k]*other.dict[ko])
                     else:
-                        for uv_term in kcrossko.dict.keys():
-                            if uv_term in vcp:
-                                vcp[uv_term] += (
-                                    self.dict[k]*other.dict[ko]*kcrossko.dict[uv_term])
-                            else:
-                                vcp.update({uv_term:
-                                    self.dict[k]*other.dict[ko]*kcrossko.dict[uv_term]})
+                        for uv_term in kcrossko.dict:
+                            vcp[uv_term] = (vcp.get(uv_term, 0) +
+                                    self.dict[k]*other.dict[ko]*
+                                    kcrossko.dict[uv_term])
             return Vector(vcp)
         elif isinstance(other, UnitVector):
             vcp = {}
-            for k in self.dict.keys():
+            for k in self.dict:
                 k_cross_other = k.cross(other)
                 if isinstance(k_cross_other, UnitVector):
-                    if k_cross_other in vcp:
-                        vcp[k_cross_other] += self.dict[k]
-                    else:
-                        vcp.update({k_cross_other: self.dict[k]})
+                    vcp[k_cross_other] = (vcp.get(k_cross_other, 0) +
+                        self.dict[k])
                 else:
-                    for uv_term in k_cross_other.dict.keys():
-                        if uv_term in vcp:
-                            vcp[uv_term] += self.dict[k]*k_cross_other.dict[uv_term]
-                        else:
-                            vcp.update({uv_term:
-                                self.dict[k]*k_cross_other.dict[uv_term]})
+                    for uv_term in k_cross_other.dict:
+                        vcp[uv_term] = (vcp.get(uv_term, 0) +
+                            self.dict[k]*k_cross_other.dict[uv_term])
             return Vector(vcp)
-        elif isinstance(other, Mul) or isinstance(other, Add):
+        elif isinstance(other, (Add, Mul)):
             return self.cross(Vector(other))
         else:
             raise NotImplementedError()
@@ -495,16 +465,13 @@ class Vector(Basic):
     def dot(self, other):
         if isinstance(other, Vector):
             s = S(0)
-            for k in self.dict.keys():
-                for ko in other.dict.keys():
-                    s += self.dict[k]*other.dict[ko]*k.dot(ko)
+            for k in self.dict:
+                s += sum([self.dict[k]*other.dict[ko]*k.dot(ko) for ko in
+                    other.dict])
             return s
         elif isinstance(other, UnitVector):
-            s = S(0)
-            for k in self.dict.keys():
-                s += self.dict[k]*k.dot(other)
-            return s
-        elif isinstance(other, Mul) or isinstance(other, Add):
+            return sum([self.dict[k]*k.dot(other) for k in self.dict])
+        elif isinstance(other, (Add, Mul)):
             return self.dot(Vector(other))
         elif isinstance(other, Dyad):
             return other.ldot(self)
@@ -517,23 +484,15 @@ class Vector(Basic):
             for k in self.dict:
                 # First term comes from time differentiating in the frame of
                 # the UnitVector frame of k
-                if k in dt_self:
-                    dt_self[k] += (self.dict[k]).diff(t)
-                else:
-                    dt_self.update({k: (self.dict[k]).diff(t)})
+                dt_self[k] = dt_self.get(k, 0) + (self.dict[k]).diff(t)
                 # Second term comes from the omega cross term
                 t2 = k.frame.get_omega(frame).cross(k)
                 if isinstance(t2, UnitVector):
-                    if t2 in dt_self:
-                        dt_self[k] += self.dict[k]
-                    else:
-                        dt_self.update({t2: self.dict[k]})
+                    dt_self[k] = dt_self.get(k, 0) + self.dict[k]
                 else:       # Must be a Vector
-                    for term in t2.dict.keys():
-                        if term in dt_self:
-                            dt_self[term] += self.dict[k]*t2.dict[term]
-                        else:
-                            dt_self.update({term: self.dict[k]*t2.dict[term]})
+                    for term in t2.dict:
+                        dt_self[term] = (dt_self.get(term, 0) +
+                            self.dict[k]*t2.dict[term])
             if len(dt_self) == 1:
                 if dt_self.values()[0] == 1:
                     return dt_self.keys()[0]        # Return a UnitVector
@@ -554,20 +513,14 @@ class Vector(Basic):
 
             # Case for UnitVectors
             if isinstance(uv_in_frame, UnitVector):
-                if uv_in_frame in new:
-                    new[uv_in_frame] += self.dict[uv]
-                else:
-                    new.update({uv_in_frame : self.dict[uv]})
+                new[uv_in_frame] = new.get(uv_in_frame, 0) + self.dict[uv]
 
             # Case for Vectors
             elif isinstance(uv_in_frame, Vector):
                 # Go through each term
-                for uv_term in uv_in_frame.dict.keys():
-                    if uv_term in new:
-                        new[uv_term] += self.dict[uv]*uv_in_frame.dict[uv_term]
-                    else:
-                        new.update({uv_term :
-                            self.dict[uv]*uv_in_frame.dict[uv_term]})
+                for uv_term, coef in uv_in_frame.dict.items():
+                    new[uv_term] = (new.get(uv_term, 0) +
+                            self.dict[uv]*coef)
 
         for uv in new.keys():
             new[uv] = expand(trigsimp(new[uv]))
@@ -581,13 +534,13 @@ class Vector(Basic):
 
     def mag(self):
         m = 0
-        for k in self.dict.keys():
+        for k in self.dict:
             m += self.dict[k]**S(2)
         return m**(S(1)/S(2))
 
     def mag_sqr(self):
         m = 0
-        for k in self.dict.keys():
+        for k in self.dict:
             m += self.dict[k]**S(2.0)
         return m
 
@@ -605,7 +558,7 @@ class Vector(Basic):
         elif isinstance(v, Vector):
             return v.dict
         elif isinstance(v, Mul):
-            v.expand()  #  Could expand out to an Add instance
+            v = v.expand()  #  Could expand out to an Add instance
             if isinstance(v, Add):
                 return self.parse_terms(v)  # If this happens, reparse
             elif isinstance(v, Mul):   # Otherwise it is still a Mul instance
@@ -632,7 +585,7 @@ class Vector(Basic):
             else:
                 raise NotImplementedError()
         elif isinstance(v, Pow):
-            v.expand()
+            v = v.expand()
             #  I don't think this will ever be entered into.
             #  You would have to have something like A[1]*A[2],
             #  which isn't a valid vector expression.
@@ -655,10 +608,7 @@ class Vector(Basic):
                 else:
                     raise NotImplementedError()
                 for k in add_term_dict.keys():
-                    if k in terms:
-                        terms[k] += add_term_dict[k]
-                    else:
-                        terms.update(add_term_dict)
+                    terms[k] = terms.get(k, 0) + add_term_dict[k]
             return terms
         else:
             return NotImplemented
@@ -672,10 +622,12 @@ class Vector(Basic):
         return partials_list
 
     def subs(self, subs_dict):
-        new_dict = {}
-        for k in self.dict.keys():
-            new_dict.update({k: trigsimp(expand(self.dict[k].subs(subs_dict)))})
-        return Vector(new_dict)
+        return Vector(dict([(k, self.dict[k].subs(subs_dict)) for k in
+            self.dict]))
+        #new_dict = {}
+        #for k in self.dict.keys():
+        #    new_dict.update({k: trigsimp(expand(self.dict[k].subs(subs_dict)))})
+        #return Vector(new_dict)
 
 class Point:
     def __init__(self, s, r=None, frame=None, mass=None, force=None):

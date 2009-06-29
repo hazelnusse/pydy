@@ -4,7 +4,7 @@ from numpy import array, arange
 from sympy import symbols, Function, S, solve, simplify, \
         collect, Matrix, lambdify, ccode
 
-from pydy import * 
+from pydy import *
 
 # Declare parameters
 m, g, l, t = symbols("m, g, l, t")
