@@ -12,6 +12,8 @@ e3n = Matrix([0, 0, -1])
 zero = Matrix([0, 0, 0])
 t = Symbol("t")
 
+
+
 class UnitVector(Basic):
     """A standard unit vector  with a symbolic and a numeric representation"""
 
@@ -234,17 +236,9 @@ class Dyad(Basic):
                 if d_term.is_Mul:
                     vec_dict[d_term.args[1]] = vec_dict.get(d_term.args[1], 0) \
                             + scalar_part
-                    #if d_term.args[1] in vec_dict:
-                    #    vec_dict[d_term.args[1]] += scalar_part
-                    #else:
-                    #    vec_dict.update({d_term.args[1]: scalar_part})
                 elif d_term.is_Pow:
                     vec_dict[d_term.args[0]] = (vec_dict.get(d_term.args[0], 0)
                             + scalar_part)
-                    #if d_term.args[0] in vec_dict:
-                    #    vec_dict[d_term.args[0]] += scalar_part
-                    #else:
-                    #    vec_dict.update({d_term.args[0]: scalar_part})
                 else:
                     raise NotImplementedError()
         return Vector(vec_dict)
@@ -330,6 +324,8 @@ class Vector(Basic):
             for k in v.keys():
                 if v[k] == 0:  v.pop(k)
             self.dict = v
+        elif isinstance(v, Vector):
+            self.dict = v.dict
         else:
             vdict = self.parse_terms(v)
             for k in vdict.keys():
@@ -621,36 +617,133 @@ class Vector(Basic):
             self.dict]))
 
 class Point:
-    def __init__(self, s, r=None, frame=None, mass=None, force=None):
-        self.name = s
+    """
+    A class for keeping track of the relative position, velocity, and
+    acceleration of points.  Points can be created in three ways:
+
+    Method 1:
+    P = Point('P')
+
+    Method 2:
+    Q = P.locate('Q', r)
+
+    Method 3:
+    Q = P.locate('Q', r, frame)
+
+    Methods 2 and 3 automatically form the velocity and acceleration of the new
+    point Q relative to the parent point P.
+
+    Method 1 is used to create the 'base' point from which all other points are
+    derived.  Method 1 is automatically called when a 'base' reference frame is
+    created, this point corresponds to what is commonly known as the inertial
+    origin, and this syntax is typically never used explicitly.  Method 2
+    creates a new point Q, located relative to point P by the Vector r.  Method
+    3 creates a new point Q, located relative to point P by the Vector r, but
+    it is assumed that this point is fixed in frame, so that the velocity of Q
+    relative to P is the velocity of P plus the cross product of the angular
+    velocity of frame relative to the Inertial Frame with r.
+    """
+
+    def __init__(self, s, r=None, point=None, mass=None, force=None, frame=None):
         # When instantiated by ReferenceFrame
-        if r == S(0) and isinstance(frame, ReferenceFrame):
-            self.pos = Vector(0)                # Should only happen for the base
-            self.vel = Vector(0)                # Newtonian/Inertial Frame
-            self.acc = Vector(0)
+        if not any([r, point, mass, force]):
+            self.name = s
+            self.point_list = [self]
+            self.parent = None
+            self.pos = {self: Vector(0)}
+            self.vel = {self: Vector(0)}
             self.NewtonianFrame = frame
-            self.ParentPoint = None
-        elif r != None and frame == None:  # When instantiated by locate method
-            self.pos = r
+        # When instantiated by locate method
+        elif all([s, r, point]) and not any([mass, force]):
+            #print 'locate method instantiation, point.point_list = ', \
+            #    point.point_list
+            r = Vector(r)
+            self.name = s
+            self.pos = {point: -r}
+            point.pos[self] = r
+            self.point_list = [self] + point.point_list
+            self.parent = point
+            self.NewtonianFrame = point.NewtonianFrame
         else:
             raise NotImplementedError()
 
     def locate(self, s, r, frame=None):
         r = Vector(r)
-        if isinstance(r, UnitVector) or isinstance(r, Vector):
-            if frame == None:
-                newpoint = Point(s, r)
-                newpoint.NewtonianFrame = self.NewtonianFrame
-                newpoint.vel = self.vel + r.dt(newpoint.NewtonianFrame)
-            elif isinstance(frame, ReferenceFrame):
-                newpoint = Point(s, r)
-                newpoint.NewtonianFrame = self.NewtonianFrame
-                newpoint.vel = self.vel + cross(frame.get_omega(newpoint.NewtonianFrame), r)
-            else:
-                raise NotImplementedError()
-        newpoint.NewtonianFrame = self.NewtonianFrame
-        newpoint.ParentPoint = self
+        if frame == None:
+            newpoint = Point(s, r, self)
+            newpoint.vel =  {newpoint.NewtonianFrame:
+                    r.dt(newpoint.NewtonianFrame)}
+        elif isinstance(frame, ReferenceFrame):
+            newpoint = Point(s, r, self)
+            newpoint.vel = {newpoint.NewtonianFrame:
+                    cross(frame.get_omega(newpoint.NewtonianFrame), r)}
+        else:
+            raise NotImplementedError()
         return newpoint
+
+    def get_point_list(self, other=None):
+        """
+        Gets the list of Points between Point self and Point other, including both.
+        """
+        if other == None:
+            return self.point_list
+        elif self == other:
+            return [self]
+        else:
+            r2t = [f for f in reversed(other.point_list)]
+
+            if len(self.point_list) == 1:
+                return r2t
+            elif len(r2t) == 1:
+                return self.point_list
+
+            r1t = [f for f in reversed(self.point_list)]
+            i = 1
+
+            while r1t[i] == r2t[i]:
+                del r1t[i-1]
+                del r2t[i-1]
+                if len(r1t)<2 or len(r2t)<2:
+                    break
+
+            r1t.reverse()
+            return r1t[:-1] + r2t
+
+
+            """
+            self_list = [self]
+            other_list = [other]
+            #Build the list from self to top of the tree.
+            while self_list[-1].parent is not None:
+                self_list.append(self_list[-1].parent)
+            #Build the list from top of the tree to other.
+            while other_list[0].parent is not None:
+                other_list.insert(0, other_list[0].parent)
+            print 'self_list: ',self_list
+            print 'other_list: ', other_list
+            if len(self_list) == 1:
+                return other_list
+            elif len(other_list) == 1:
+                return self_list
+            else:
+                i = 0
+                while self_list[-(i+2)] == other_list[i+1]:
+                    del self_list[-(i+1)]
+                    del other_list[i]
+                    if len(self_list)<=2 or len(other_list)<=2:
+                        return self_list[:-1] + other_list[1:]
+                    i += 1
+                return self_list[:-1] + other_list
+            """
+
+
+
+
+    def __str__(self):
+        return self.name
+
+    def __repr__(self):
+        return self.name
 
 class ReferenceFrame:
     """
@@ -666,7 +759,7 @@ class ReferenceFrame:
     axis = 1, 2 or 3
     angle is the radian measure of the rotation.
 
-    Method 1 typically is used to create the 'base'frame from which all other
+    Method 1 typically is used to create the 'base' frame from which all other
     frames are derived.  Method 2 is used to create all subsequent frames.  In
     doing so, circular definitions of frames are avoided and a tree structure
     of reference frames is created.  The first argument is a string and
@@ -681,13 +774,12 @@ class ReferenceFrame:
         ReferenceFrame object.  See rotate() method for details of the optional
         arguments.
         """
-        if frame == None:
+        if not any([frame, matrix, omega]):
             self.ref_frame_list = [self]
-            self.O = Point(s, S(0), self)
+            self.O = Point(s + 'O', frame=self)
             self.point_list = [self.O]
         else:
-            self.ref_frame_list = frame.ref_frame_list[:]
-            self.ref_frame_list.insert(0,self)
+            self.ref_frame_list = [self] + frame.ref_frame_list[:]
 
         self.name = s
         self.triad = [UnitVector(self, i) for i in (1,2,3)]
@@ -748,7 +840,7 @@ class ReferenceFrame:
         to the parent frame (and vice versa) is stored with the new reference
         frame (and the parent reference frame).
         """
-        
+
         if not isinstance(angle, (list, tuple)):
             if axis in set((1, 2, 3)):
                 matrix = self._rot(axis, angle)
@@ -861,7 +953,7 @@ class ReferenceFrame:
             while r1t[i] == r2t[i]:
                 del r1t[i-1]
                 del r2t[i-1]
-                if len(r1t)<=2 or len(r2t)<=2:
+                if len(r1t)<2 or len(r2t)<2:
                     break
 
             r1t.reverse()
@@ -1092,11 +1184,16 @@ def vector2expression(u, frame):
     return u[0]*frame[1] + u[1]*frame[2] + u[2]*frame[3]
 
 def dt(v, frame):
-    if isinstance(v, UnitVector) or isinstance(v, Vector):
-        res = v.dt(frame)
-        return res
+    if isinstance(frame, ReferenceFrame):
+        if isinstance(v, (UnitVector, Vector)):
+            res = v.dt(frame)
+            return res
+        else:
+            raise TypeError('First argument must be a Vector or \
+            UnitVector, instead a %s object was given' % str(type(v)))
     else:
-        raise NotImplementedError()
+        raise TypeError('Second argument must be a ReferenceFrame, \
+                instead a %s object was given' % str(type(v)))
 
 def InertiaForce(m, a):
     """Computes Inertia force, defined as:
@@ -1105,14 +1202,13 @@ def InertiaForce(m, a):
 
     Equation 4.11.3 or 4.11.6 from Dynamics: Theory and Application
     """
-    IF_dict = {}
     if isinstance(a, Vector):
-        for uv, coef in a.dict.items():
-            IF_dict.update({uv: -m*coef})
+        IF_dict = dict([(uv, -m*coef) for uv, coef in a.dict.items()])
     elif isinstance(a, UnitVector):
         IF_dict = {a: -m}
     else:
-        raise NotImplementedError()
+        raise TypeError('The acceleration a must be a Vector or UnitVector, \
+            instead a %s object was given.' % str(type(a)))
     return Vector(IF_dict)
 
 def InertiaTorque(I, omega, alpha):
@@ -1136,6 +1232,19 @@ def InertiaTorque(I, omega, alpha):
     else:
         raise NotImplementedError("I must be a Dyad")
 
+def RigidBody(point, frame, mass, inertia):
+    """
+    Assign mass and inertia to a Point and a Reference frame, effectively
+    creating a Rigid Body.
+
+    """
+    point.mass = mass
+    frame.inertia = inertia
+
+def Particle(point, mass):
+    """
+    Assign mass to a Point, effectively creating a particle
+    """
 #class GeneralizedCoordinate(Symbol):
     #def __init__(self, name, depends_on=Symbol('t'), *args):
     #    self.dv = depends_on
@@ -1166,7 +1275,7 @@ def gcs(s, number=1):
     return gc_list
 
 class PyDyStrPrinter(StrPrinter):
-    #printmethod = '__str__'
+    #printmethod = '_sympystr_'
     def _print_UnitVector(self, e):
         s = str(e.v['sym'])
         name = s[:-1]
@@ -1229,8 +1338,12 @@ class PyDyStrPrinter(StrPrinter):
     def _print_Function(self, e):
         return str(e.func)
 
-    def _print_Derivative(self, e):
-        return "%s'" % str(e.args[0].func)
+    #def _print_Derivative(self, e):
+    #    return "%s'" % str(e.args[0].func)
+
+    def _print_Derivative(self, expr):
+        return "%s'" % str(expr.args[0].func)
+
 
 class PyDyPrettyPrinter(PrettyPrinter):
     def _print_UnitVector(self, e):

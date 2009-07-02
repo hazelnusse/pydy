@@ -1,14 +1,152 @@
-'''
-from sympy import Basic
+from sympy import *
+from pydy import *
+t = Symbol('t')
+x = Function('x')(t)
+l1, l2, l3 = symbols('l1 l2 l3')
+N = ReferenceFrame("N")
+A = N.rotate('A', 1, x)
+P1 = N.O.locate('P1', l1*N[1])
+P2 = N.O.locate('P2', l2*A[2])
+P3 = P2.locate('P3', l3*A[3])
+P4 = P3.locate('P4', 2*A[2] + 3*A[1])
+P5 = P3.locate('P5', 6*N[1] + 4*A[2])
+assert P1.get_point_list(N.O) == [P1, N.O]
+assert P1.get_point_list(P1) == [P1]
+assert P1.get_point_list(P2) == [P1, N.O, P2]
+assert P1.get_point_list(P3) == [P1, N.O, P2, P3]
+assert P1.get_point_list(P4) == [P1, N.O, P2, P3, P4]
+assert P1.get_point_list(P5) == [P1, N.O, P2, P3, P5]
+assert P2.get_point_list(N.O) == [P2, N.O]
+assert P2.get_point_list(P1) == [P2, N.O, P1]
+assert P2.get_point_list(P2) == [P2]
+assert P2.get_point_list(P3) == [P2, P3]
+assert P2.get_point_list(P4) == [P2, P3, P4]
+assert P2.get_point_list(P5) == [P2, P3, P5]
+assert P3.get_point_list(N.O) == [P3, P2, N.O]
+assert P3.get_point_list(P1) == [P3, P2, N.O, P1]
+assert P3.get_point_list(P2) == [P3, P2]
+assert P3.get_point_list(P3) == [P3]
+assert P3.get_point_list(P4) == [P3, P4]
+assert P3.get_point_list(P5) == [P3, P5]
+assert P4.get_point_list(N.O) == [P4, P3, P2, N.O]
+assert P4.get_point_list(P1) == [P4, P3, P2, N.O, P1]
+assert P4.get_point_list(P2) == [P4, P3, P2]
+assert P4.get_point_list(P3) == [P4, P3]
+assert P4.get_point_list(P4) == [P4]
+assert P4.get_point_list(P5) == [P4, P3, P5]
+assert P5.get_point_list(N.O) == [P5, P3, P2, N.O]
+assert P5.get_point_list(P1) == [P5, P3, P2, N.O, P1]
+assert P5.get_point_list(P2) == [P5, P3, P2]
+assert P5.get_point_list(P3) == [P5, P3]
+assert P5.get_point_list(P4) == [P5, P3, P4]
+assert P5.get_point_list(P5) == [P5]
+stop
+
+
+
+print N.O
+print N.O.get_point_list(N.O)
+print N.O.get_point_list(P1)
+print N.O.get_point_list(P2)
+print N.O.get_point_list(P3)
+print P1
+print P1.get_point_list(N.O)
+print P1.get_point_list(P1)
+print P1.get_point_list(P2)
+print P1.get_point_list(P3)
+print P2
+print P2.get_point_list(N.O)
+print P2.get_point_list(P1)
+print P2.get_point_list(P2)
+print P2.get_point_list(P3)
+print P2.get_point_list(P4)
+print P2.get_point_list(P5)
+print P3
+print P3.get_point_list(N.O)
+print P3.get_point_list(P1)
+print P3.get_point_list(P2)
+print P3.get_point_list(P3)
+stop
+
+
+
+
+
+from sympy import Symbol, Function, Basic
 from sympy.printing.str import StrPrinter
-from sympy.printing.pretty.pretty import PrettyPrinter, xsym, pprint
 
-class GreenEggsAndHam(Basic):
-   def __init__(self, string):
-       self.s = string
+# Overide the __str__ method of to use CustromStrPrinter
+Basic.__str__ = lambda self: CustomStrPrinter().doprint(self)
 
-   #def _pretty_(self):
-   #    return print_GreenEggsAndHam(self)
+class MyClass(Basic):
+    """
+    An very useless subclass of the Sympy Basic
+    """
+    def __init__(self, s):
+        self.s = str(s)
+
+class CustomStrPrinter(StrPrinter):
+    """
+    Example of how to customize the StrPrinter for both a Sympy class and a
+    user defined class subclassed from Sympy Basic.
+    """
+
+    def _print_Derivative(self, expr):
+        """
+        Custom printing of the Sympy Derivative class.
+
+        Instead of:
+
+        D(x(t), t) or D(x(t), t, t)
+
+        We will print:
+
+        x'     or     x''
+
+        In this example, expr.args == (x(t), t), and expr.args[0] == x(t), and
+        expr.args[0].func == x
+        """
+        return str(expr.args[0].func) + "'"*len(expr.args[1:])
+
+    def _print_MyClass(self, expr):
+        """
+        Print the characters of MyClass.s alternatively lower case and upper
+        case
+        """
+        s = ""
+        i = 0
+        for char in expr.s:
+            if i % 2 == 0:
+                s += char.lower()
+            else:
+                s += char.upper()
+            i += 1
+        return s
+
+###############################################################################
+# Demonstration of CustomStrPrinter
+###############################################################################
+t = Symbol('t')
+x = Function('x')(t)
+dxdt = x.diff(t)
+d2xdt2 = dxdt.diff(t)
+print dxdt
+print d2xdt2
+
+ex = MyClass('I like both lowercase and upper case')
+print ex
+stop
+
+# Output:
+"""
+x'
+x''
+Traceback (most recent call last):
+      File "t.py", line 37, in <module>
+          stop
+          NameError: name 'stop' is not defined
+"""
+
 
 class HamPrinter(PrettyPrinter):
    printmethod = '_pretty_'
@@ -28,16 +166,16 @@ pprint(MyBreakfast)
 
 stop
 '''
-from sympy import *
 from pydy import *
 
 q1, q2 = gcs('q', 2)
 print q1
 print q2
-print q2.diff(t)
-print sin(q2).diff(t)
-N = ReferenceFrame('N')
+print type(q2.diff(t))
+print pydy_str(q2.diff(t))
+#print sin(q2).diff(t)
 stop
+N = ReferenceFrame('N')
 
 pprint(N[1])
 pprint(t)
@@ -56,7 +194,7 @@ print x.diff(t)
 print m.diff(t)
 
 stop
-
+'''
 
 
 

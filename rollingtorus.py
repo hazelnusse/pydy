@@ -50,10 +50,10 @@ B = A.rotate("B", 1, q4)
 C = B.rotate("C", 2, q5)
 
 # Locate the mass center of torus
-CO = N.O.locate('CO', Vector(q1*N[1] + q2*N[2] - r2*N[3] - r1*B[3]))
+CO = N.O.locate('CO', q1*N[1] + q2*N[2] - r2*N[3] - r1*B[3])
 
 # Contact point, taken to be fixed on C
-CN = CO.locate('CN', Vector(r1*B[3] + r2*N[3]), C)
+CN = CO.locate('CN', r1*B[3] + r2*N[3], C)
 
 # Nonholonomic rolling constraints, imposing the requirement that the velocity
 # of the point fixed to C, instantaneously in contact with the ground, must be

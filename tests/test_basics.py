@@ -470,21 +470,119 @@ def test_get_frames_list3():
     D = A.rotate('D', 2, q3)
     E = D.rotate('E', 2, q3)
     F = E.rotate('F', 2, q3)
+    G = E.rotate('G', 3, q1)
+    H = G.rotate('H', 2, q3)
+    I = N.rotate('I', 2, q2)
+
     assert N.get_frames_list(N) == [N]
     assert N.get_frames_list(A) == [N, A]
-    assert A.get_frames_list(A) == [A]
-    assert A.get_frames_list(N) == [A, N]
-    assert B.get_frames_list(B) == [B]
-    assert B.get_frames_list(A) == [B, A]
-    assert B.get_frames_list(N) == [B, A, N]
-    assert A.get_frames_list(B) == [A, B]
     assert N.get_frames_list(B) == [N, A, B]
+    assert N.get_frames_list(C) == [N, A, B, C]
+    assert N.get_frames_list(D) == [N, A, D]
+    assert N.get_frames_list(E) == [N, A, D, E]
+    assert N.get_frames_list(F) == [N, A, D, E, F]
+    assert N.get_frames_list(G) == [N, A, D, E, G]
+    assert N.get_frames_list(H) == [N, A, D, E, G, H]
+    assert N.get_frames_list(I) == [N, I]
+
+    assert A.get_frames_list(N) == [A, N]
+    assert A.get_frames_list(A) == [A]
+    assert A.get_frames_list(B) == [A, B]
+    assert A.get_frames_list(C) == [A, B, C]
+    assert A.get_frames_list(D) == [A, D]
+    assert A.get_frames_list(E) == [A, D, E]
+    assert A.get_frames_list(F) == [A, D, E, F]
+    assert A.get_frames_list(G) == [A, D, E, G]
+    assert A.get_frames_list(H) == [A, D, E, G, H]
+    assert A.get_frames_list(I) == [A, N, I]
+
+    assert B.get_frames_list(N) == [B, A, N]
+    assert B.get_frames_list(A) == [B, A]
+    assert B.get_frames_list(B) == [B]
+    assert B.get_frames_list(C) == [B, C]
+    assert B.get_frames_list(D) == [B, A, D]
+    assert B.get_frames_list(E) == [B, A, D, E]
+    assert B.get_frames_list(F) == [B, A, D, E, F]
+    assert B.get_frames_list(G) == [B, A, D, E, G]
+    assert B.get_frames_list(H) == [B, A, D, E, G, H]
+    assert B.get_frames_list(I) == [B, A, N, I]
+
+    assert C.get_frames_list(N) == [C, B, A, N]
+    assert C.get_frames_list(A) == [C, B, A]
+    assert C.get_frames_list(B) == [C, B]
+    assert C.get_frames_list(C) == [C]
     assert C.get_frames_list(D) == [C, B, A, D]
     assert C.get_frames_list(E) == [C, B, A, D, E]
     assert C.get_frames_list(F) == [C, B, A, D, E, F]
+    assert C.get_frames_list(G) == [C, B, A, D, E, G]
+    assert C.get_frames_list(H) == [C, B, A, D, E, G, H]
+    assert C.get_frames_list(I) == [C, B, A, N, I]
+
+    assert D.get_frames_list(N) == [D, A, N]
+    assert D.get_frames_list(A) == [D, A]
+    assert D.get_frames_list(B) == [D, A, B]
     assert D.get_frames_list(C) == [D, A, B, C]
+    assert D.get_frames_list(D) == [D]
+    assert D.get_frames_list(E) == [D, E]
+    assert D.get_frames_list(F) == [D, E, F]
+    assert D.get_frames_list(G) == [D, E, G]
+    assert D.get_frames_list(H) == [D, E, G, H]
+    assert D.get_frames_list(I) == [D, A, N, I]
+
+    assert E.get_frames_list(N) == [E, D, A, N]
+    assert E.get_frames_list(A) == [E, D, A]
+    assert E.get_frames_list(B) == [E, D, A, B]
     assert E.get_frames_list(C) == [E, D, A, B, C]
+    assert E.get_frames_list(D) == [E, D]
+    assert E.get_frames_list(E) == [E]
+    assert E.get_frames_list(F) == [E, F]
+    assert E.get_frames_list(G) == [E, G]
+    assert E.get_frames_list(H) == [E, G, H]
+    assert E.get_frames_list(I) == [E, D, A, N, I]
+
+    assert F.get_frames_list(N) == [F, E, D, A, N]
+    assert F.get_frames_list(A) == [F, E, D, A]
+    assert F.get_frames_list(B) == [F, E, D, A, B]
     assert F.get_frames_list(C) == [F, E, D, A, B, C]
+    assert F.get_frames_list(D) == [F, E, D]
+    assert F.get_frames_list(E) == [F, E]
+    assert F.get_frames_list(F) == [F]
+    assert F.get_frames_list(G) == [F, E, G]
+    assert F.get_frames_list(H) == [F, E, G, H]
+    assert F.get_frames_list(I) == [F, E, D, A, N, I]
+
+    assert G.get_frames_list(N) == [G, E, D, A, N]
+    assert G.get_frames_list(A) == [G, E, D, A]
+    assert G.get_frames_list(B) == [G, E, D, A, B]
+    assert G.get_frames_list(C) == [G, E, D, A, B, C]
+    assert G.get_frames_list(D) == [G, E, D]
+    assert G.get_frames_list(E) == [G, E]
+    assert G.get_frames_list(F) == [G, E, F]
+    assert G.get_frames_list(G) == [G]
+    assert G.get_frames_list(H) == [G, H]
+    assert G.get_frames_list(I) == [G, E, D, A, N, I]
+
+    assert H.get_frames_list(N) == [H, G, E, D, A, N]
+    assert H.get_frames_list(A) == [H, G, E, D, A]
+    assert H.get_frames_list(B) == [H, G, E, D, A, B]
+    assert H.get_frames_list(C) == [H, G, E, D, A, B, C]
+    assert H.get_frames_list(D) == [H, G, E, D]
+    assert H.get_frames_list(E) == [H, G, E]
+    assert H.get_frames_list(F) == [H, G, E, F]
+    assert H.get_frames_list(G) == [H, G]
+    assert H.get_frames_list(H) == [H]
+    assert H.get_frames_list(I) == [H, G, E, D, A, N, I]
+
+    assert I.get_frames_list(N) == [I, N]
+    assert I.get_frames_list(A) == [I, N, A]
+    assert I.get_frames_list(B) == [I, N, A, B]
+    assert I.get_frames_list(C) == [I, N, A, B, C]
+    assert I.get_frames_list(D) == [I, N, A, D]
+    assert I.get_frames_list(E) == [I, N, A, D, E]
+    assert I.get_frames_list(F) == [I, N, A, D, E, F]
+    assert I.get_frames_list(G) == [I, N, A, D, E, G]
+    assert I.get_frames_list(H) == [I, N, A, D, E, G, H]
+    assert I.get_frames_list(I) == [I]
 
 def test_get_frames_list4():
     q1, q2, q3 = symbols('q1 q2 q3')
@@ -736,3 +834,45 @@ def test_rotate_Euler_Space():
     print R132_Space
     assert B.get_rot_matrices(A)[0] == R132_Space
 
+
+def test_Point_get_point_list():
+    t = Symbol('t')
+    x = Function('x')(t)
+    l1, l2, l3 = symbols('l1 l2 l3')
+    N = ReferenceFrame("N")
+    A = N.rotate('A', 1, x)
+    P1 = N.O.locate('P1', l1*N[1])
+    P2 = N.O.locate('P2', l2*A[2])
+    P3 = P2.locate('P3', l3*A[3])
+    P4 = P3.locate('P4', 2*A[2] + 3*A[1])
+    P5 = P3.locate('P5', 6*N[1] + 4*A[2])
+    assert P1.get_point_list(N.O) == [P1, N.O]
+    assert P1.get_point_list(P1) == [P1]
+    assert P1.get_point_list(P2) == [P1, N.O, P2]
+    assert P1.get_point_list(P3) == [P1, N.O, P2, P3]
+    assert P1.get_point_list(P4) == [P1, N.O, P2, P3, P4]
+    assert P1.get_point_list(P5) == [P1, N.O, P2, P3, P5]
+    assert P2.get_point_list(N.O) == [P2, N.O]
+    assert P2.get_point_list(P1) == [P2, N.O, P1]
+    assert P2.get_point_list(P2) == [P2]
+    assert P2.get_point_list(P3) == [P2, P3]
+    assert P2.get_point_list(P4) == [P2, P3, P4]
+    assert P2.get_point_list(P5) == [P2, P3, P5]
+    assert P3.get_point_list(N.O) == [P3, P2, N.O]
+    assert P3.get_point_list(P1) == [P3, P2, N.O, P1]
+    assert P3.get_point_list(P2) == [P3, P2]
+    assert P3.get_point_list(P3) == [P3]
+    assert P3.get_point_list(P4) == [P3, P4]
+    assert P3.get_point_list(P5) == [P3, P5]
+    assert P4.get_point_list(N.O) == [P4, P3, P2, N.O]
+    assert P4.get_point_list(P1) == [P4, P3, P2, N.O, P1]
+    assert P4.get_point_list(P2) == [P4, P3, P2]
+    assert P4.get_point_list(P3) == [P4, P3]
+    assert P4.get_point_list(P4) == [P4]
+    assert P4.get_point_list(P5) == [P4, P3, P5]
+    assert P5.get_point_list(N.O) == [P5, P3, P2, N.O]
+    assert P5.get_point_list(P1) == [P5, P3, P2, N.O, P1]
+    assert P5.get_point_list(P2) == [P5, P3, P2]
+    assert P5.get_point_list(P3) == [P5, P3]
+    assert P5.get_point_list(P4) == [P5, P3, P4]
+    assert P5.get_point_list(P5) == [P5]
