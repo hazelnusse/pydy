@@ -52,7 +52,7 @@ class UnitVector(Basic):
         return pydy_str(self)
 
     def __repr__(self):
-        return pydy_pretty(self)
+        return pydy_str(self)
 
     def __cmp__(self, other):
         if isinstance(other, UnitVector):
@@ -1335,8 +1335,8 @@ class PyDyStrPrinter(StrPrinter):
         else:
             return "0>"
 
-    def _print_Function(self, e):
-        return str(e.func)
+    #def _print_Function(self, e):
+    #    return str(e.func)
 
     #def _print_Derivative(self, e):
     #    return "%s'" % str(e.args[0].func)
@@ -1421,8 +1421,8 @@ class PyDyPrettyPrinter(PrettyPrinter):
             return "\033[1m" + "0" + "\033[0;0m"
 
 
-    def _print_Function(self, e):
-        return "%s" % str(e.func)
+    #def _print_Function(self, e):
+    #    return "%s" % str(e.func)
 
     def _print_Derivative(self, e):
         return "%s'" % str(e.args[0].func)
@@ -1452,29 +1452,29 @@ class PyDyPrettyPrinter(PrettyPrinter):
         else:
             return self.doprint(e_ts)
 
-    def _print_sin(self, e):
-        name = str(e.args[0])
-        if name[0] == "q":
-            index = name[1]
-            return "s%s" % index
-        else:
-            return e
+    #def _print_sin(self, e):
+    #    name = str(e.args[0])
+    #    if name[0] == "q":
+    #        index = name[1]
+    #        return "s%s" % index
+    #    else:
+    #        return e
 
-    def _print_cos(self, e):
-        name = str(e.args[0])
-        if name[0] == "q":
-            index = name[1]
-            return "c%s" % index
-        else:
-            return str(e)
+    #def _print_cos(self, e):
+    #    name = str(e.args[0])
+    #    if name[0] == "q":
+    #        index = name[1]
+    #        return "c%s" % index
+    #    else:
+    #        return str(e)
 
-    def _print_tan(self, e):
-        name = str(e.args[0])
-        if name[0] == "q":
-            index = name[1]
-            return "t%s" % index
-        else:
-            return str(e)
+    #def _print_tan(self, e):
+    #    name = str(e.args[0])
+    #    if name[0] == "q":
+    #        index = name[1]
+    #        return "t%s" % index
+    #    else:
+    #        return str(e)
 
 def pydy_str(e):
     p = PyDyStrPrinter()
