@@ -2,6 +2,23 @@ from sympy import *
 from pydy import *
 
 
+t = Symbol('t')
+q1 = Function('q1')(t)
+q2 = Function('q2')(t)
+
+print sin(q1)
+print sin(q2)
+print cos(q1)
+print cos(q2)
+print tan(q1)
+print tan(q2)
+print q1.diff(t, 2)
+print q2.diff(t)
+
+
+stop
+
+
 from sympy import Symbol, Function, Basic
 from sympy.printing.str import StrPrinter
 

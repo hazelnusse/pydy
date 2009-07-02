@@ -12,7 +12,7 @@ e3n = Matrix([0, 0, -1])
 zero = Matrix([0, 0, 0])
 t = Symbol("t")
 
-
+Basic.__str__ = lambda self: PyDyStrPrinter().doprint(self)
 
 class UnitVector(Basic):
     """A standard unit vector  with a symbolic and a numeric representation"""
@@ -1335,14 +1335,36 @@ class PyDyStrPrinter(StrPrinter):
         else:
             return "0>"
 
-    #def _print_Function(self, e):
-    #    return str(e.func)
+    def _print_sin(self, e):
+        """
+        Print sin(qi(t)) as si, where i is any number.
+        """
+        if str(e.args[0].func)[0] == 'q':
+            return 's' + str(e.args[0].func)[1:]
+        else:
+            return StrPrinter().doprint(e)
 
-    #def _print_Derivative(self, e):
-    #    return "%s'" % str(e.args[0].func)
+    def _print_cos(self, e):
+        """
+        Print cos(qi(t)) as si, where i is any number.
+        """
+        if str(e.args[0].func)[0] == 'q':
+            return 'c' + str(e.args[0].func)[1:]
+        else:
+            return StrPrinter().doprint(e)
+
+    def _print_tan(self, e):
+        """
+        Print tan(qi(t)) as si, where i is any number.
+        """
+        if str(e.args[0].func)[0] == 'q':
+            return 't' + str(e.args[0].func)[1:]
+        else:
+            return StrPrinter().doprint(e)
 
     def _print_Derivative(self, expr):
-        return "%s'" % str(expr.args[0].func)
+        #return "%s'" % str(expr.args[0].func)
+        return str(expr.args[0].func) + "'"*len(expr.args[1:])
 
 
 class PyDyPrettyPrinter(PrettyPrinter):
