@@ -3,10 +3,21 @@ from pydy import *
 
 
 t = Symbol('t')
-q1 = Function('q1')(t)
+q1 = Function('q100')(t)
 q2 = Function('q2')(t)
+x = Function('x')(t)
+N = ReferenceFrame('N')
+pprint(N[1])
+pprint(sin(q1))
+pprint(sin(x))
+pprint(cos(q1))
+pprint(cos(x))
+pprint(tan(x))
+pprint(tan(q1))
 
-print sin(q1)
+stop
+
+pprint(sin(q1))
 print sin(q2)
 print cos(q1)
 print cos(q2)

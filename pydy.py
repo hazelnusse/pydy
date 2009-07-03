@@ -1363,7 +1363,6 @@ class PyDyStrPrinter(StrPrinter):
             return StrPrinter().doprint(e)
 
     def _print_Derivative(self, expr):
-        #return "%s'" % str(expr.args[0].func)
         return str(expr.args[0].func) + "'"*len(expr.args[1:])
 
 
@@ -1443,11 +1442,8 @@ class PyDyPrettyPrinter(PrettyPrinter):
             return "\033[1m" + "0" + "\033[0;0m"
 
 
-    #def _print_Function(self, e):
-    #    return "%s" % str(e.func)
-
-    def _print_Derivative(self, e):
-        return "%s'" % str(e.args[0].func)
+    def _print_Derivative(self, expr):
+        return str(expr.args[0].func) + "'"*len(expr.args[1:])
 
     def _print_Mul(self, e):
         s = ''
@@ -1474,37 +1470,66 @@ class PyDyPrettyPrinter(PrettyPrinter):
         else:
             return self.doprint(e_ts)
 
-    #def _print_sin(self, e):
-    #    name = str(e.args[0])
-    #    if name[0] == "q":
-    #        index = name[1]
-    #        return "s%s" % index
-    #    else:
-    #        return e
+    def _print_sin(self, e):
+        """
+        Print sin(qi(t)) as si, where i is any number.
+        """
+        class Fake(object):
+            def render(self, *args, **kwargs):
+                if str(e.args[0].func)[0] == 'q':
+                    return u's' + unicode_subscript(str(e.args[0].func)[1:])
+                else:
+                    return PrettyPrinter().doprint(e)
+        return Fake()
 
-    #def _print_cos(self, e):
-    #    name = str(e.args[0])
-    #    if name[0] == "q":
-    #        index = name[1]
-    #        return "c%s" % index
-    #    else:
-    #        return str(e)
+    def _print_cos(self, e):
+        """
+        Print cos(qi(t)) as si, where i is any number.
+        """
+        class Fake(object):
+            def render(self, *args, **kwargs):
+                if str(e.args[0].func)[0] == 'q':
+                    return u'c' + unicode_subscript(str(e.args[0].func)[1:])
+                else:
+                    return PrettyPrinter().doprint(e)
+        return Fake()
 
-    #def _print_tan(self, e):
-    #    name = str(e.args[0])
-    #    if name[0] == "q":
-    #        index = name[1]
-    #        return "t%s" % index
-    #    else:
-    #        return str(e)
+    def _print_tan(self, e):
+        """
+        Print tan(qi(t)) as si, where i is any number.
+        """
+        class Fake(object):
+            def render(self, *args, **kwargs):
+                if str(e.args[0].func)[0] == 'q':
+                    return u't' + unicode_subscript(str(e.args[0].func)[1:])
+                else:
+                    return PrettyPrinter().doprint(e)
+        return Fake()
 
-def pydy_str(e):
-    p = PyDyStrPrinter()
-    return p.doprint(e)
+def unicode_subscript(num):
+    """
+    Converts an integer to the unicode subscript representation of that
+    integer.
+    """
+    n = str(num)
+    subscript_dict = {
+            '0': u'\u2080',
+            '1': u'\u2081',
+            '2': u'\u2082',
+            '3': u'\u2083',
+            '4': u'\u2084',
+            '5': u'\u2085',
+            '6': u'\u2086',
+            '7': u'\u2087',
+            '8': u'\u2088',
+            '9': u'\u2089'}
+    uni = u""
+    for u in n:
+        uni += subscript_dict[u]
+    return uni
 
 def pprint(e):
-    p = PyDyPrettyPrinter()
-    print p.doprint(e)
+    print PyDyPrettyPrinter().doprint(e)
 
 def sort_UnitVector(a, b):
     if a.frame == b.frame:
