@@ -1,5 +1,5 @@
 from sympy import Symbol, Basic, Function, Mul, Pow, Matrix, sin, \
-        cos, S, eye, Add, trigsimp, expand
+        cos, S, eye, Add, trigsimp, expand, pretty
 from sympy.printing.pretty.pretty import PrettyPrinter
 from sympy.printing.str import StrPrinter
 
@@ -333,10 +333,10 @@ class Vector(Basic):
             self.dict = vdict
 
     def __str__(self):
-        return pydy_str(self)
+        return PyDyStrPrinter().doprint(self)
 
     def __repr__(self):
-        return pydy_str(self)
+        return PyDyStrPrinter().doprint(self)
 
     def __add__(self, other):
         """Adds two Vector objects and return a new Vector object.
@@ -1245,6 +1245,16 @@ def Particle(point, mass):
     """
     Assign mass to a Point, effectively creating a particle
     """
+    point.mass = mass
+
+def GeneralizedCoordinate(s):
+    gc = Symbol(s)(Symbol('t'))
+    gc.is_gc = True
+    gc.__repr__ = lambda self: PyDyStrPrinter().doprint(self)
+    gc.__str__ = lambda self: PyDyStrPrinter().doprint(self)
+    return gc
+
+
 #class GeneralizedCoordinate(Symbol):
     #def __init__(self, name, depends_on=Symbol('t'), *args):
     #    self.dv = depends_on
@@ -1267,12 +1277,11 @@ def Particle(point, mass):
     #        return S.Zero
 
 def gcs(s, number=1):
-    gc_list = [Function(s + str(i))(Symbol('t')) for i in
-        range(number + 1)[1:]]
-
-    for i, gc in enumerate(gc_list):
-        gc_list[i].__str__ = lambda x: str(x.func)
-    return gc_list
+    gc_list = [GeneralizedCoordinate(s[0]+str(i)) for i in range(1, number + 1)]
+    if number == 1:
+        return gc_list[0]
+    else:
+        return gc_list
 
 class PyDyStrPrinter(StrPrinter):
     #printmethod = '_sympystr_'
@@ -1335,6 +1344,26 @@ class PyDyStrPrinter(StrPrinter):
         else:
             return "0>"
 
+    def _print_Function(self, e):
+        """
+        Print ui(t) as ui, where is i is an index number of the generalized
+        speed.
+        """
+        if hasattr(e, 'is_gc'):
+            return str(e.func)
+        else:
+            return StrPrinter().doprint(e)
+
+    def _print_Symbol(self, e):
+        """
+        Print ui(t) as ui, where is i is an index number of the generalized
+        speed.
+        """
+        if hasattr(e, 'is_gc'):
+            return str(e.func)
+        else:
+            return StrPrinter().doprint(e)
+
     def _print_sin(self, e):
         """
         Print sin(qi(t)) as si, where i is any number.
@@ -1369,6 +1398,7 @@ class PyDyStrPrinter(StrPrinter):
 class PyDyPrettyPrinter(PrettyPrinter):
     def _print_UnitVector(self, e):
         class Fake(object):
+            baseline = 0
             def render(self, *args, **kwargs):
                 one = "\xe2\x82\x81"
                 two = "\xe2\x82\x82"
@@ -1390,57 +1420,59 @@ class PyDyPrettyPrinter(PrettyPrinter):
         return Fake()
 
     def _print_Vector(self, e):
-        s = ''
-        i = 0
-        small_dot = "\xC2\xB7"
-        if e.dict.keys() != []:
-            uv_list = e.dict.keys()
-            uv_list.sort(sort_UnitVector)
-            for k in uv_list:
-                # Case when the scalar coefficient is 1 or -1
-                if (e.dict[k] == 1) or (e.dict[k] == -1):
-                    # First term don't print a leading + if positive
-                    if i == 0:
-                        if e.dict[k] == 1: sign = ''
-                        if e.dict[k] == -1: sign = '-'
-                        s += sign + self.doprint(k)
-                        i += 1
-                    # All other terms put the sign and pad with spaces
-                    else:
-                        if e.dict[k] == 1: sign = '+'
-                        if e.dict[k] == -1: sign = '-'
-                        s += ' ' + sign + ' ' + self.doprint(k)
-                else:
-                    # First term
-                    if i == 0:
-                        # Put parenthesis around Add terms
-                        if isinstance(e.dict[k], Add):
-                            s += ('(' + self.doprint(e.dict[k]) +
-                                    ')' + small_dot + self.doprint(k))
-                        else:
-                            s += (self.doprint(e.dict[k]) +
-                                small_dot + self.doprint(k))
-                        i += 1
-                    # All other terms pad with spaces and add parenthesis
-                    else:
-                        if isinstance(e.dict[k], Add):
-                            s += (' + (' + self.doprint(e.dict[k])
-                                + ')' + small_dot + self.doprint(k))
-                        elif isinstance(e.dict[k], (Mul, Pow)):
-                            coef = (self.doprint(e.dict[k]) + small_dot +
-                                    self.doprint(k))
-                            if coef[0] == '-':
-                                s += ' - ' + coef[1:]
+        class Fake(object):
+            def render(self, *args, **kwargs):
+                s = ''
+                i = 0
+                small_dot = "\xC2\xB7"
+                if e.dict.keys() != []:
+                    uv_list = e.dict.keys()
+                    uv_list.sort(sort_UnitVector)
+                    for k in uv_list:
+                        # Case when the scalar coefficient is 1 or -1
+                        if (e.dict[k] == 1) or (e.dict[k] == -1):
+                            # First term don't print a leading + if positive
+                            if i == 0:
+                                if e.dict[k] == 1: sign = ''
+                                if e.dict[k] == -1: sign = '-'
+                                s += sign + ppuv(k)
+                                i += 1
+                            # All other terms put the sign and pad with spaces
                             else:
-                                s += ' + ' + coef
+                                if e.dict[k] == 1: sign = '+'
+                                if e.dict[k] == -1: sign = '-'
+                                s += ' ' + sign + ' ' + ppuv(k)
                         else:
-                            s += (' + ' + self.doprint(e.dict[k]) + small_dot +
-                                    self.doprint(k))
+                            # First term
+                            if i == 0:
+                                # Put parenthesis around Add terms
+                                if isinstance(e.dict[k], Add):
+                                    s += ('(' + pretty(e.dict[k]) +
+                                            ')' + small_dot + ppuv(k))
+                                else:
+                                    s += (pretty(e.dict[k]) +
+                                        small_dot + ppuv(k))
+                                i += 1
+                            # All other terms pad with spaces and add parenthesis
+                            else:
+                                if isinstance(e.dict[k], Add):
+                                    s += (' + (' + pretty(e.dict[k])
+                                        + ')' + small_dot + ppuv(k))
+                                elif isinstance(e.dict[k], (Mul, Pow)):
+                                    coef = (pretty(e.dict[k]) + small_dot +
+                                            ppuv(k))
+                                    if coef[0] == '-':
+                                        s += ' - ' + coef[1:]
+                                    else:
+                                        s += ' + ' + coef
+                                else:
+                                    s += (' + ' + pretty(e.dict[k]) + small_dot +
+                                            ppuv(k))
 
-            return s
-        else:
-            return "\033[1m" + "0" + "\033[0;0m"
-
+                    return s
+                else:
+                    return "\033[1m" + "0" + "\033[0;0m"
+        return Fake()
 
     def _print_Derivative(self, expr):
         return str(expr.args[0].func) + "'"*len(expr.args[1:])
@@ -1530,6 +1562,25 @@ def unicode_subscript(num):
 
 def pprint(e):
     print PyDyPrettyPrinter().doprint(e)
+
+def ppuv(e):
+    one = "\xe2\x82\x81"
+    two = "\xe2\x82\x82"
+    three = "\xe2\x82\x83"
+    bold = "\033[1m"
+    reset = "\033[0;0m"
+    s = str(e.v['sym'])
+    name = s[:-1]
+    index = s[-1]
+    r = "%s%s" % (bold, name)
+    if index == "1":
+        r += one
+    elif index == "2":
+        r += two
+    elif index == "3":
+        r += three
+    r += reset
+    return r
 
 def sort_UnitVector(a, b):
     if a.frame == b.frame:

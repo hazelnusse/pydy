@@ -7,6 +7,9 @@ q1 = Function('q100')(t)
 q2 = Function('q2')(t)
 x = Function('x')(t)
 N = ReferenceFrame('N')
+print(unicode(u"\u010B"+u"c\u02D9  c\u034e"))
+stop
+
 pprint(N[1])
 pprint(sin(q1))
 pprint(sin(x))

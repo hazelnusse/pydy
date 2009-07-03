@@ -2,21 +2,21 @@ from math import sin, cos, pi
 
 from numpy import array, arange
 from sympy import symbols, Function, S, solve, simplify, \
-        collect, Matrix, lambdify, ccode
+        collect, Matrix, lambdify, ccode, pretty
 
 from pydy import *
 
 # Declare parameters
-m, g, l, t = symbols("m, g, l, t")
-# Declare generalized coordinate speed as implicit functions of time
-q1 = Function("q1")(t)
-u1 = Function("u1")(t)
+m, g, l, t = symbols('m, g, l, t')
+# Declare generalized coordinate and speed as implicit functions of time
+q1 = GeneralizedCoordinate('q1')
+u1 = GeneralizedCoordinate('u1')
+q1 = gcs('q1')
+u1 = gcs('u1')
 # Declare a symbols for:
-# u1p:  Time derivative of generalized speed (u1p = d(u1)/dt)
 # au1:  Auxilliary generalized speed (For determination of constraint force)
-# cf1:  Constraint Force the time derivative of the generalized speed
-au1, cf1 = symbols("au1, cf1")
-
+# cf1:  Constraint Force along direction of rod
+au1, cf1 = symbols('au1, cf1')
 
 # Declare an inertial ("Newtonian") reference frame
 N = ReferenceFrame("N")
@@ -30,7 +30,7 @@ N = ReferenceFrame("N")
 #         |  \
 #         |   O    <-- PO (point mass)
 
-A = N.rotate("A", 2, q1)
+A = N.rotate('A', 2, q1)
 # Define the position from the hinge (taken to be the inertial origin) to the point
 P = N.O.locate('P', l*A[3])
 
@@ -38,47 +38,44 @@ P = N.O.locate('P', l*A[3])
 
 kindiffs = {q1.diff(t): u1}
 
-P.vel = P.vel.subs(kindiffs) + au1*A[3]
+P.vel[N] = P.vel[N].subs(kindiffs) + au1*A[3]
 A.W[N] = A.W[N].subs(kindiffs)
 
-print "W_A_N> = ", A.W[N]
-print "V_P_N> = ", P.vel
+print 'W_A_N> =', A.W[N]
+print 'V_P_N> =', P.vel[N]
 
-partial_v = P.vel.partials([u1, au1])
+partial_v = P.vel[N].partials([u1, au1])
 print partial_v
 
 # Velocity of PO relative to N, with the au1*P[3] term representing
 # a component of velocity which it cannot actually posess.  This is for
 # computation of the constraint force acting along the length of the rod.
 # Now set the auxilliary speed to zero
-P.vel = P.vel.subs({au1: 0})
+P.vel[N] = P.vel[N].subs({au1: 0})
 
 # Determine the acceleration of PO in N
-P.acc = dt(P.vel, N).subs(kindiffs)
+P.acc = dt(P.vel[N], N).subs(kindiffs)
 A.alf = dt(A.W[N], N)
-print "A_P_N> = ", P.acc
-print "W_A_N> = ", A.alf
+print 'A_P_N> =', P.acc
+print 'W_A_N> =', A.alf
 
 # Forces acting at point PO
 P.force = Vector(cf1*A[3] + m*g*N[3])
-print "F_PO> = ", P.force
+print 'F_PO> =', P.force
 
 # Inertia Force acting at PO
 R_star = InertiaForce(m, P.acc)
-print "RSTAR_PO>", R_star
+print 'RSTAR_PO> =', R_star
 
 GAF = [dot(vp, P.force) for vp in partial_v]
 GIF = [dot(vp, R_star) for vp in partial_v]
-print "Generalized Active Forces:\n", GAF
-print "Generalized Inertia Forces:\n", GIF
+print 'Generalized Active Forces:\n', GAF[0], ' ', GAF[1]
+print 'Generalized Inertia Forces:\n', GIF[0], ' ',  GAF[1]
 
 EOMS = [AF + IF for AF, IF in zip(GAF, GIF)]
 dyn_eqns = solve(EOMS, u1.diff(t), cf1)
 print 'Kinematic equations:\n', kindiffs
 print 'Dynamic equations:\n', dyn_eqns
-
-print ccode(kindiffs[q1.diff(t)])
-
 stop
 
 def f(x, t0, args):
