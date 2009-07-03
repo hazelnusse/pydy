@@ -35,15 +35,6 @@ class UnitVector(Basic):
         elif i == 3:
             self.v['sym'] = Symbol(s.lower()+str(i))
             self.v['num'] = e3
-        #elif i == -1:
-        #    self.v['sym'] = Symbol('-'+s.lower()+str(abs(i)))
-        #    self.v['num'] = e1n
-        #elif i == -2:
-        #    self.v['sym'] = Symbol('-'+s.lower()+str(abs(i)))
-        #    self.v['num'] = e2n
-        #elif i == -3:
-        #    self.v['sym'] = Symbol('-'+s.lower()+str(abs(i)))
-        #    self.v['num'] = e3n
         elif i == 0:
             self.v['sym'] = Symbol(s.lower()+str(0))
             self.v['num'] = zero
@@ -925,13 +916,11 @@ class ReferenceFrame:
         """
         Returns a list of frames from "self" to "frame", including both.
 
-        Example:
+        Example::
 
         N - A - D - E - F
-            |
-            B
-            |
-            C
+             \
+              B - C
 
         Then:
 
