@@ -1,0 +1,7 @@
+PyDy
+====
+
+PyDy Classes
+------------
+.. autoclass:: pydy
+   :members: UnitVector, Vector, ReferenceFrame, Point, dt, cross, express
