@@ -2,12 +2,25 @@ from sympy import *
 from pydy import *
 
 
-t = Symbol('t')
-q1 = Function('q100')(t)
+t, l1, l2, l3 = symbols('t l1 l2 l3')
+q1 = Function('q1')(t)
 q2 = Function('q2')(t)
+
 x = Function('x')(t)
 N = ReferenceFrame('N')
-print(unicode(u"\u010B"+u"c\u02D9  c\u034e"))
+A = N.rotate('A', 1, q1)
+B = A.rotate('B', 2, q2)
+P1 = N.O.locate('P1', l1*N[1])
+P2 = P1.locate('P2', l2*A[1])
+print N.O.rel(N.O)
+print N.O.rel(P1)
+print N.O.rel(P2)
+print P1.rel(N.O)
+print P1.rel(P1)
+print P1.rel(P2)
+print P2.rel(N.O)
+print P2.rel(P1)
+print P2.rel(P2)
 stop
 
 pprint(N[1])

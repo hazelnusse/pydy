@@ -4,8 +4,8 @@ from numpy import array, arange
 from sympy import symbols, Function, S, solve, simplify, \
         collect, Matrix, lambdify, trigsimp, expand, Eq, pretty_print
 
-from pydy import ReferenceFrame, cross, dot, dt, express, expression2vector, \
-        coeff, Vector, UnitVector, pydy_str, Dyad, Inertia, InertiaForce, \
+from pydy import ReferenceFrame, cross, dot, dt, express, \
+        Vector, UnitVector, Dyad, Inertia, InertiaForce, \
         InertiaTorque
 
 # Constants

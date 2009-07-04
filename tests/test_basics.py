@@ -1,12 +1,9 @@
-from pydy import ReferenceFrame, dot, cross, UnitVector, identify, express, \
-        coeff, Vector, dt
-
+from pydy import ReferenceFrame, dot, cross, UnitVector, express, \
+        Vector, dt
 
 from sympy import symbols, S, Symbol, Function, sin, cos, tan, Matrix, eye, \
     Rational, pprint, trigsimp, expand
 
-
-#import numpy as N
 zero = Vector({})
 
 def test_Mul_order():
@@ -59,24 +56,6 @@ def test_expressions():
     assert e == x+x*A[1]+y+A[2]
     assert e != x+x*A[1]+x+A[2]
 
-def test_coeff():
-    A = ReferenceFrame('A')
-    x, y = symbols('x y')
-    e = y+x*A[1]+x+A[2]
-    #assert e.coeff(x) == 1+A[1]
-    #assert e.coeff(y) == 1
-    #print e.coeff(A[1])
-    #assert e.coeff(A[1]) == x
-    #assert e.coeff(A[2]) == 1
-    #assert coeff(e,[x,y]) == [A[1]+1, 1]
-
-def test_identify():
-    A = ReferenceFrame('A')
-    x = symbols("x")
-    #assert set(identify(A[1]*A[2])) == set((S(1), A[1], A[2]))
-    #assert set(identify(x*A[1]*A[2])) == set((x, A[1], A[2]))
-    #assert set(identify(x*A[1]*A[1])) == set((x, A[1], A[1]))
-
 def test_ReferenceFrame():
     A = ReferenceFrame('A')
     phi = Symbol("phi")
@@ -102,7 +81,6 @@ def test_cross_different_frames1():
     assert cross(N[3], A[2]) == -A[1]
     assert cross(N[3], A[3]) == 0
     assert cross(u1*N[1], A[1]) == sin(q1)*u1*A[3]
-
 
 def test_cross_method():
     q1, q2, q3, t = symbols('q1, q2, q3 t')
@@ -133,8 +111,6 @@ def test_cross_method():
     assert N[1].cross(B[1]) == Vector(sin(q2)*N[2])
     assert N[1].cross(B[2]) == N[3]
     assert N[1].cross(B[3]) == Vector(-cos(q2)*N[2])
-
-
 
 def test_cross_different_frames3():
     q1, q2, q3 = symbols('q1 q2 q3')
@@ -795,11 +771,11 @@ def test_rotate_Euler_Space():
     #print R123_Body
     assert B.get_rot_matrices(A)[0] == R123_Body
     #print W_B_A
-    #print 'b1>', dot(B.get_omega(A), B[1])
-    #print 'b2>', dot(B.get_omega(A), B[2])
-    #print 'b3>', dot(B.get_omega(A), B[3])
+    #print 'b1>', dot(B.ang_vel(A), B[1])
+    #print 'b2>', dot(B.ang_vel(A), B[2])
+    #print 'b3>', dot(B.ang_vel(A), B[3])
     # Currently trigsimp can't handle this kind of thing...
-    #assert B.get_omega(A) == W_B_A
+    #assert B.ang_vel(A) == W_B_A
 
     #### Body 1-3-2
     B = A.rotate('B', 'BODY132', (q1, q2, q3))
@@ -809,11 +785,11 @@ def test_rotate_Euler_Space():
     W_B_A = Vector((q1p*c2*c3 - q2p*s3)*B[1] + (-q1p*s2+q3p)*B[2] + (q1p*c2*s3
         + q2p*c3)*B[3])
     #print W_B_A
-    #print B.get_omega(A)
+    #print B.ang_vel(A)
     #print B.get_rot_matrices(A)[0]
     #print R132_Body
     assert B.get_rot_matrices(A)[0] == R132_Body
-    #assert B.get_omega(A) == W_B_A
+    #assert B.ang_vel(A) == W_B_A
 
     #### Space Fixed rotations ####
     #### Space 1-2-3

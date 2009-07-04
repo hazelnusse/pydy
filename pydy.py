@@ -1,4 +1,4 @@
-from sympy import Symbol, Basic, Function, Mul, Pow, Matrix, sin, \
+from sympy import Symbol, symbols, Basic, Function, Mul, Pow, Matrix, sin, \
         cos, S, eye, Add, trigsimp, expand, pretty
 from sympy.printing.pretty.pretty import PrettyPrinter
 from sympy.printing.str import StrPrinter
@@ -15,12 +15,9 @@ t = Symbol("t")
 Basic.__str__ = lambda self: PyDyStrPrinter().doprint(self)
 
 class UnitVector(Basic):
-    """A standard unit vector  with a symbolic and a numeric representation"""
+    """A standard unit vector  with a symbolic and a numeric representation.
+    """
 
-    # XXX: UnitVector should be noncommutative in Mul, but currently it is
-    # probably commutative. However, we haven't found any case, where this
-    # actually fails, so until we find some, let's leave it as is and keep this
-    # in mind.
     def __init__(self, frame, i=0): #=-1,num=None):
         self.frame = frame    # Parent reference frame
         self.i = i
@@ -71,7 +68,7 @@ class UnitVector(Basic):
                 return (self.v['num'] == other_selfframe.v['num'])
             else:
                 return False
-        elif isinstance(other, Mul) or isinstance(other, Add):
+        elif isinstance(other, (Add, Mul)):
             other_as_Vector = Vector(other)
             return (self == other_as_Vector)
         else:
@@ -87,7 +84,7 @@ class UnitVector(Basic):
         return Vector({self: -1})
 
     def express(self, frame):
-        """Expresses a UnitVector with UnitVectors fixed in the specified frame.
+        """Express a UnitVector in a different reference frame.
         """
 
         if self.frame == frame:
@@ -100,12 +97,11 @@ class UnitVector(Basic):
                 u = self.v['num']
                 for m in reversed(matrices):
                     u = m*u
-                #u[0] = trigsimp(u[0])
-                #u[1] = trigsimp(u[1])
-                #u[2] = trigsimp(u[2])
                 return Vector(u[0]*frame[1] + u[1]*frame[2] + u[2]*frame[3])
 
     def dot(self, other):
+        """UnitVector dot product.
+        """
         if isinstance(other, UnitVector):
             c = other.express(self.frame)
             if isinstance(c, UnitVector):
@@ -129,6 +125,8 @@ class UnitVector(Basic):
             raise NotImplementedError()
 
     def cross(self, other):
+        """UnitVector cross product.
+        """
         def cross_with_Vector(self, c):            # local function
             cp = {}
             for k, coef in c.dict.items():
@@ -184,14 +182,19 @@ class UnitVector(Basic):
             raise NotImplementedError()
 
     def dt(self, diff_frame):
+        """UnitVector time derivative.
+        """
         if isinstance(diff_frame, ReferenceFrame):
-            return cross(self.frame.get_omega(diff_frame), self)
+            if self == diff_frame:
+                return Vector(0)
+            else:
+                return cross(self.frame.ang_vel(diff_frame), self)
         else:
-            raise NotImplementedError()
+            raise TypeError("Must provide a ReferenceFrame to take the \
+                derivative in")
 
 class Dyad(Basic):
-    """
-    General dyad expression
+    """General dyad expression.
     """
     def __init__(self, v):
         """ v should be an additive expression of the form:
@@ -247,18 +250,10 @@ class Dyad(Basic):
                     scalar_part = coeff*other.dot(d_term.args[1])
                     vec_dict[d_term.args[1]] = (vec_dict.get(d_term.args[1], 0)
                             + scalar_part)
-                    #if d_term.args[1] in vec_dict:
-                    #    vec_dict[d_term.args[1]] += scalar_part
-                    #else:
-                    #    vec_dict.update({d_term.args[1]: scalar_part})
                 elif d_term.is_Pow:
                     scalar_part = coeff*other.dot(d_term.args[0])
                     vec_dict[d_term.args[0]] = (vec_dict.get(d_term.args[0], 0)
                             + scalar_part)
-                    #if d_term.args[0] in vec_dict:
-                    #    vec_dict[d_term.args[0]] += scalar_part
-                    #else:
-                    #    vec_dict.update({d_term.args[0]: scalar_part})
                 else:
                     raise NotImplementedError()
 
@@ -269,10 +264,9 @@ class Dyad(Basic):
 
 class Inertia(Dyad):
     """Inertia dyadic.
-
     """
     def __new__(cls, frame, scalars):
-        """Specify frame, scale as:
+        """Specify frame, scalars as:
         frame - ReferenceFrame
         scalars - List or tuple of I11, I22, I33, I12, I23, I13 inertia scalars
         """
@@ -283,32 +277,53 @@ class Inertia(Dyad):
                 I13*frame[1]*frame[3] + I13*frame[3]*frame[1])
 
 class Vector(Basic):
-    """
-    General vector expression.  Internally represented as a dictionary whose
-    keys are UnitVectors and whose key values are the corresponding coefficient
-    of that UnitVector.  For example:
-    N = ReferenceFrame("N")
-    x, y, z = symbols('x y z')
-    v = Vector(x*N[1]+y*N[2] + z*N[3])
-    then v would be represented internally as:
-    {N[1]: x, N[2]: y, N[3]: z}
+    """Symbolic vector expression.
+
+    Internally represented as a dictionary whose keys are UnitVectors and whose
+    values are the corresponding coefficient of that UnitVector.
+
+    Example
+    =======
+
+    ::
+
+        >>> N = ReferenceFrame("N")
+        >>> x, y, z = symbols('x y z')
+        >>> v = Vector(x*N[1] + y*N[2] + z*N[3])
+        >>> v.dict == {N[1]: x, N[2]: y, N[3]: z}
+        True
+
     """
 
     def __init__(self, v):
-        """
-        Initialize a Vector in two ways:
-        Method 1 (dictionary way):
-        v = Vector({UnitVectors : Coefficients})
-        for example:
-        v = Vector({A[1] : sin(q1)})
-        or
-        Method 2 (sympy expression way):
-        v = Vector(sin(q1)*A[1])
+        """Initialize a Vector object.
 
-        Vector objects are internally represented as dictionaries whose keys
-        are the UnitVectors and whose values are the coefficients of those
-        UnitVectors.  In the above example, this would imply:
-        v.dict == {A[1] : sin(q1)}
+        Example
+        =======
+
+        Method 1:
+        ---------
+
+        ::
+
+            >>> N = ReferenceFrame("N")
+            >>> x, y, z = symbols('x y z')
+            >>> v = Vector(x*N[1] + y*N[2] + z*N[3])
+            >>> v
+            x*n1> + y*n2> + z*n3>
+
+        Method 2:
+        ---------
+
+        ::
+
+            >>> v = Vector({N[1]: x, N[2]: y, N[3]: z})
+            >>> v
+            x*n1> + y*n2> + z*n3>
+
+        See also
+        ========
+        L{UnitVector}
         """
 
         if isinstance(v, dict):
@@ -330,8 +345,24 @@ class Vector(Basic):
         return PyDyStrPrinter().doprint(self)
 
     def __add__(self, other):
-        """Adds two Vector objects and return a new Vector object.
-        v1 + v2   <----> v1.__add__(v2)
+        """Add two Vector objects.
+
+        Example
+        =======
+
+        ::
+
+            >>> N = ReferenceFrame('N')
+            >>> v1 = Vector(2*N[1])
+            >>> v2 = Vector(N[1] + 3*N[2])
+            >>> v3 = v1 + v2
+            >>> v3
+            3*n1> + 3*n2>
+
+        See Also
+        ========
+
+        L{__sub__}
         """
         if isinstance(other, Vector):
             sum = dict([(k, self.dict.get(k, 0) + other.dict.get(k, 0)) for k in
@@ -349,8 +380,24 @@ class Vector(Basic):
             raise NotImplementedError()
 
     def __sub__(self, other):
-        """Subtracts two Vector objects and return a new Vector object.
-        v1 - v2   <----> v1.__sub__(v2)
+        """Subtract two Vector objects.
+
+        Example
+        =======
+
+        ::
+
+            >>> N = ReferenceFrame('N')
+            >>> v1 = Vector(2*N[1])
+            >>> v2 = Vector(N[1] + 3*N[2])
+            >>> v3 = v1 - v2
+            >>> v3
+            n1> - 3*n2>
+
+        See Also
+        ========
+
+        L{__add__}
         """
         if isinstance(other, Vector):
             dif = dict([(k, self.dict.get(k, 0) - other.dict.get(k, 0)) for k in
@@ -473,7 +520,7 @@ class Vector(Basic):
                 # the UnitVector frame of k
                 dt_self[k] = dt_self.get(k, 0) + (self.dict[k]).diff(t)
                 # Second term comes from the omega cross term
-                t2 = k.frame.get_omega(frame).cross(k)
+                t2 = k.frame.ang_vel(frame).cross(k)
                 if isinstance(t2, UnitVector):
                     dt_self[k] = dt_self.get(k, 0) + self.dict[k]
                 else:       # Must be a Vector
@@ -607,7 +654,7 @@ class Vector(Basic):
         return Vector(dict([(k, self.dict[k].subs(subs_dict)) for k in
             self.dict]))
 
-class Point:
+class Point(object):
     """
     A class for keeping track of the relative position, velocity, and
     acceleration of points.  Points can be created in three ways:
@@ -646,8 +693,6 @@ class Point:
             self.NewtonianFrame = frame
         # When instantiated by locate method
         elif all([s, r, point]) and not any([mass, force]):
-            #print 'locate method instantiation, point.point_list = ', \
-            #    point.point_list
             r = Vector(r)
             self.name = s
             self.pos = {point: -r}
@@ -659,6 +704,26 @@ class Point:
             raise NotImplementedError()
 
     def locate(self, s, r, frame=None):
+        """
+        Returns a new point s, located relative to self by the position vector r.
+
+        Also computes the contribution of the points velocity that comes from
+        its position relative to the parent point in two ways::
+
+        Method 1:
+        P1 = N.O.locate('P1', r)
+
+        Method 2:
+        P2 = N.O.locate('P1', r, frame)
+
+        Both methods assign the relative position vector r in an identical way,
+        they differ in how the velocity of the point is determined.  Method 1
+        takes the time derivative of the supplied vector r in the
+        NewtonianFrame.  Method 2 treats the new point as fixed in the supplied
+        frame, so the velocity is calculated as the cross product of the
+        angular velocity of frame relative to the NewtonianFrame with the
+        supplied position vector r.
+        """
         r = Vector(r)
         if frame == None:
             newpoint = Point(s, r, self)
@@ -667,10 +732,22 @@ class Point:
         elif isinstance(frame, ReferenceFrame):
             newpoint = Point(s, r, self)
             newpoint.vel = {newpoint.NewtonianFrame:
-                    cross(frame.get_omega(newpoint.NewtonianFrame), r)}
+                    cross(frame.ang_vel(newpoint.NewtonianFrame), r)}
         else:
             raise NotImplementedError()
         return newpoint
+
+    def rel(self, other):
+        """
+        Returns the position from Point other to Point self, i.e., the position
+        of self relative to other.
+        """
+        if isinstance(other, Point):
+            pl = self.get_point_list(other)
+            pos = Vector(0)
+            for i, p in enumerate(pl[:-1]):
+                pos -= pl[i].pos[pl[i+1]]
+            return pos
 
     def get_point_list(self, other=None):
         """
@@ -681,14 +758,14 @@ class Point:
         elif self == other:
             return [self]
         else:
-            r2t = [f for f in reversed(other.point_list)]
+            r2t = list(reversed(other.point_list))
 
             if len(self.point_list) == 1:
                 return r2t
             elif len(r2t) == 1:
                 return self.point_list
 
-            r1t = [f for f in reversed(self.point_list)]
+            r1t = list(reversed(self.point_list))
             i = 1
 
             while r1t[i] == r2t[i]:
@@ -700,43 +777,13 @@ class Point:
             r1t.reverse()
             return r1t[:-1] + r2t
 
-
-            """
-            self_list = [self]
-            other_list = [other]
-            #Build the list from self to top of the tree.
-            while self_list[-1].parent is not None:
-                self_list.append(self_list[-1].parent)
-            #Build the list from top of the tree to other.
-            while other_list[0].parent is not None:
-                other_list.insert(0, other_list[0].parent)
-            print 'self_list: ',self_list
-            print 'other_list: ', other_list
-            if len(self_list) == 1:
-                return other_list
-            elif len(other_list) == 1:
-                return self_list
-            else:
-                i = 0
-                while self_list[-(i+2)] == other_list[i+1]:
-                    del self_list[-(i+1)]
-                    del other_list[i]
-                    if len(self_list)<=2 or len(other_list)<=2:
-                        return self_list[:-1] + other_list[1:]
-                    i += 1
-                return self_list[:-1] + other_list
-            """
-
-
-
-
     def __str__(self):
         return self.name
 
     def __repr__(self):
         return self.name
 
-class ReferenceFrame:
+class ReferenceFrame(object):
     """
     A standard reference frame with 3 mutually perpendicular unit vectors.
     Reference frames can be created in two ways:
@@ -930,14 +977,14 @@ class ReferenceFrame:
         if self == frame:
             return [self]
         else:
-            r2t = [f for f in reversed(frame.ref_frame_list)]
+            r2t = list(reversed(frame.ref_frame_list))
 
             if len(self.ref_frame_list) == 1:
                 return r2t
             elif len(r2t) == 1:
                 return self.ref_frame_list
 
-            r1t = [f for f in reversed(self.ref_frame_list)]
+            r1t = list(reversed(self.ref_frame_list))
             i = 1
             while r1t[i] == r2t[i]:
                 del r1t[i-1]
@@ -962,16 +1009,15 @@ class ReferenceFrame:
         return result
 
     def set_omega(self, omega, frame, force=False):
-        """Sets the angular velocity of self relative to frame.
+        """Sets the angular velocity relative to another frame.
         """
         if self.W == {} or force:
             self.W[frame] = omega
         else:
             raise ValueError("set_omega has already been called.")
 
-    def get_omega(self, frame):
-        """
-        Returns the angular velocity of self relative to "frame".
+    def ang_vel(self, frame):
+        """Angular velocity relative to another frame.
         """
 
         if frame in self.W:
@@ -980,13 +1026,9 @@ class ReferenceFrame:
             om = {}
             for term in self.get_omega_list(frame):
                 for k in term.dict:
-                    if k in om:
-                        om[k] += term.dict[k]
-                    else:
-                        om.update({k: term.dict[k]})
+                    om[k] = om.get(k, 0) + term.dict[k]
             self.W.update({frame: Vector(om)})
             return self.W[frame]
-            #return sum(self.get_omega_list(frame))
 
     def get_omega_list(self, frame):
         """
@@ -994,7 +1036,6 @@ class ReferenceFrame:
         """
         frames = self.get_frames_list(frame)
         if frames == [self]:
-            #return [S(0)]
             return [Vector({})]
         result = []
         for i, f in enumerate(frames[:-1]):
@@ -1022,6 +1063,9 @@ class ReferenceFrame:
 #    def __getitem__(self, i):
 #        return self.triad[i-1]
 
+
+
+
 def express(v, frame):
     if (isinstance(v, UnitVector) or isinstance(v, Vector)) and \
             (isinstance(frame, ReferenceFrame)):
@@ -1030,7 +1074,9 @@ def express(v, frame):
         raise NotImplementedError()
 
 def dot(v1, v2):
-    """Dot product between UnitVector, Vector, and Dyad classes
+    """Vector dot product.
+
+    between UnitVector, Vector, and Dyad classes
 
     Returns a scalar sympy expression in the case of the dot product between
     two UnitVectors/Vectors.  Returns a UnitVector/Vector in the case of
@@ -1057,6 +1103,21 @@ def dot(v1, v2):
         return v1.dot(v2)
 
 def cross(v1, v2):
+    """Vector cross product.
+
+    Parameters
+    ----------
+    v1, v2: PyDy UnitVector or Vector objects.
+
+    Returns
+    -------
+    A UnitVector or Vector object.
+
+    See Also
+    --------
+    L{dot}, L{express}
+    """
+
     if (isinstance(v1, UnitVector) or isinstance(v1, Vector)) and \
             (isinstance(v2, UnitVector) or isinstance(v2, Vector)):
                 return v1.cross(v2)
@@ -1067,112 +1128,17 @@ def cross(v1, v2):
             v2 = Vector(v2)
         return v1.cross(v2)
 
-def identify(a):
-    """
-    Takes a Mul instance and parses it as
-
-    a = c * UnitVector() * UnitVector()
-
-    and returns c, v1, v2, where v1 and v2 are the UnitVectors.
-    """
-    if isinstance(a, Mul):
-        unit_vectors = []
-        for b in a.args:
-            if isinstance(b, UnitVector):
-                unit_vectors.append(b)
-            if isinstance(b, Pow):
-                if isinstance(b.args[0], UnitVector):
-                    unit_vectors.append(b.args[0])
-                    unit_vectors.append(b.args[0])
-        if len(unit_vectors) == 2:
-            v1 = unit_vectors[0]
-            v2 = unit_vectors[1]
-            c = coeff(a, v1*v2)
-            #XXX here is a bug, if a=B[1]*Derivative()*B[1] and we do coeff for
-            #B[1]**2
-            #print "identify, coeff", a, v1*v2, c
-            return c, v1, v2
-
-    return a, None, None
-
-def identify_v1(a):
-    """
-    Takes a Mul instance and parses it as
-
-    a = c * UnitVector()
-
-    and returns c, v1 where v1 is the UnitVector.
-    """
-    if isinstance(a, UnitVector):
-        return S(1), a
-    elif isinstance(a, Mul):
-        unit_vectors = []
-        for b in a.args:
-            if isinstance(b, UnitVector):
-                unit_vectors.append(b)
-            if isinstance(b, Pow):
-                if isinstance(b.args[0], UnitVector):
-                    unit_vectors.append(b.args[0])
-                    unit_vectors.append(b.args[0])
-        if len(unit_vectors) == 1:
-            v1 = unit_vectors[0]
-            c = a.coeff(v1)
-            return c, v1
-
-    return a, None
-
-def cross_vectors(u, v):
-    c1 = u[1]*v[2] - u[2]*v[1]
-    c2 = -(u[0]*v[2] - u[2]*v[0])
-    c3 = u[0]*v[1] - u[1]*v[0]
-    return c1, c2, c3
-
-def dot_vectors(u, v):
-    return u[0]*v[0]+u[1]*v[1]+u[2]*v[2]
-
-def coeff(e, x):
-    """
-    Workaround the bug in sympy.
-    """
-    if isinstance(x, list):
-        r = []
-        for xi in x:
-            ri = e.coeff(xi)
-            if ri is None:
-                r.append(S(0))
-            else:
-                r.append(ri)
-        return r
-    else:
-        r = e.coeff(x)
-        if r is None:
-            return S(0)
-        else:
-            return r
-
 def coeffv(v, scalar):
     if isinstance(v, Vector):
         return v.coeffv(scalar)
     else:
         raise NotImplementedError()
 
-
-def expression2vector(e, frame):
-    """
-    Converts a sympy expression "e" to a coefficients vector in the frame "frame".
-    """
-    u1 = coeff(e, frame[1])
-    u2 = coeff(e, frame[2])
-    u3 = coeff(e, frame[3])
-    return u1, u2, u3
-
-def vector2expression(u, frame):
-    """
-    Converts a coefficients vector to a sympy expression in the frame "frame".
-    """
-    return u[0]*frame[1] + u[1]*frame[2] + u[2]*frame[3]
-
 def dt(v, frame):
+    """Time derivative of a vector as viewed by an observer fixed in a frame.
+
+    
+    """
     if isinstance(frame, ReferenceFrame):
         if isinstance(v, (UnitVector, Vector)):
             res = v.dt(frame)
@@ -1302,6 +1268,7 @@ class PyDyStrPrinter(StrPrinter):
                         if e.dict[k] == 1: sign = '+'
                         if e.dict[k] == -1: sign = '-'
                         s += ' ' + sign + ' ' + self.doprint(k)
+                # Case when the scalar coefficient is a Sympy expression
                 else:
                     # First term
                     if i == 0:
@@ -1318,17 +1285,13 @@ class PyDyStrPrinter(StrPrinter):
                         if isinstance(e.dict[k], Add):
                             s += (' + (' + self.doprint(e.dict[k])
                                 + ')' + small_dot + self.doprint(k))
-                        elif isinstance(e.dict[k], (Mul, Pow)):
-                            coef = (self.doprint(e.dict[k]) + small_dot +
-                                    self.doprint(k))
-                            if coef[0] == '-':
-                                s += ' - ' + coef[1:]
-                            else:
-                                s += ' + ' + coef
                         else:
-                            s += (' + ' + self.doprint(e.dict[k]) + small_dot +
-                                    self.doprint(k))
-
+                            if e.dict[k].could_extract_minus_sign():
+                                s += ' - ' + (self.doprint(-e.dict[k]) + small_dot +
+                                        self.doprint(k))
+                            else:
+                                s += ' + ' + (self.doprint(e.dict[k]) + small_dot +
+                                        self.doprint(k))
             return s
         else:
             return "0>"
@@ -1528,9 +1491,12 @@ class PyDyPrettyPrinter(PrettyPrinter):
         return Fake()
 
 def unicode_subscript(num):
-    """
-    Converts an integer to the unicode subscript representation of that
+    """Converts an integer to the unicode subscript representation of that
     integer.
+
+    Reference
+    ---------
+
     """
     n = str(num)
     subscript_dict = {
@@ -1553,6 +1519,8 @@ def pprint(e):
     print PyDyPrettyPrinter().doprint(e)
 
 def ppuv(e):
+    """Pretty print a UnitVector.
+    """
     one = "\xe2\x82\x81"
     two = "\xe2\x82\x82"
     three = "\xe2\x82\x83"
@@ -1572,8 +1540,21 @@ def ppuv(e):
     return r
 
 def sort_UnitVector(a, b):
+    """Sort UnitVector objects by how many rotations their reference frame is away from
+    the Newtonian frame.
+    """
     if a.frame == b.frame:
         return cmp(a.i, b.i)
     else:
         return cmp(len(a.frame.ref_frame_list),
                len(b.frame.ref_frame_list))
+
+if __name__ == "__main__":
+        import doctest
+        g = {'ReferenceFrame': ReferenceFrame,
+                 'Vector': Vector,
+                 'UnitVector': UnitVector,
+                 'Point': Point,
+                 'symbols': symbols,
+                 'Symbol': Symbol}
+        doctest.testmod(globs=g)
