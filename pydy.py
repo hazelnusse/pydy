@@ -744,6 +744,15 @@ class Point(object):
                 pos -= pl[i].pos[pl[i+1]]
             return pos
 
+    def get_vel(self, point_frame_tuple = None):
+        if point_frame_tuple == None:
+            print ("Should get the velocity of self, relative to the inertial \
+                    origin")
+        else:
+            print ("Should get the position from the point \
+                    point_frame_tuple.point to self, then take the time \
+                    derivative of that Vector in the")
+
     def get_point_list(self, other=None):
         """
         Gets the list of Points between Point self and Point other, including both.
