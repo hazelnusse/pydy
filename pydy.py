@@ -283,7 +283,6 @@ class Vector(Basic):
     values are the corresponding coefficient of that UnitVector.
 
     Example
-    =======
 
     ::
 
@@ -299,10 +298,9 @@ class Vector(Basic):
         """Initialize a Vector object.
 
         Example
-        =======
+
 
         Method 1:
-        ---------
 
         ::
 
@@ -312,8 +310,8 @@ class Vector(Basic):
             >>> v
             x*n1> + y*n2> + z*n3>
 
+
         Method 2:
-        ---------
 
         ::
 
@@ -322,8 +320,6 @@ class Vector(Basic):
             x*n1> + y*n2> + z*n3>
 
         See also
-        ========
-        L{UnitVector}
         """
 
         if isinstance(v, dict):
@@ -348,7 +344,7 @@ class Vector(Basic):
         """Add two Vector objects.
 
         Example
-        =======
+
 
         ::
 
@@ -360,7 +356,6 @@ class Vector(Basic):
             3*n1> + 3*n2>
 
         See Also
-        ========
 
         L{__sub__}
         """
@@ -383,7 +378,6 @@ class Vector(Basic):
         """Subtract two Vector objects.
 
         Example
-        =======
 
         ::
 
@@ -395,7 +389,6 @@ class Vector(Basic):
             n1> - 3*n2>
 
         See Also
-        ========
 
         L{__add__}
         """
@@ -708,13 +701,15 @@ class Point(object):
         Returns a new point s, located relative to self by the position vector r.
 
         Also computes the contribution of the points velocity that comes from
-        its position relative to the parent point in two ways::
+        its position relative to the parent point in two ways:
 
-        Method 1:
-        P1 = N.O.locate('P1', r)
+        Method 1::
 
-        Method 2:
-        P2 = N.O.locate('P1', r, frame)
+            P1 = N.O.locate('P1', r)
+
+        Method 2::
+
+            P2 = N.O.locate('P1', r, frame)
 
         Both methods assign the relative position vector r in an identical way,
         they differ in how the velocity of the point is determined.  Method 1
@@ -965,9 +960,9 @@ class ReferenceFrame(object):
 
         Example::
 
-        N - A - D - E - F
-             \
-              B - C
+            N - A - D - E - F
+                 \
+                  B - C
 
         Then:
 
@@ -1106,15 +1101,12 @@ def cross(v1, v2):
     """Vector cross product.
 
     Parameters
-    ----------
     v1, v2: PyDy UnitVector or Vector objects.
 
     Returns
-    -------
     A UnitVector or Vector object.
 
     See Also
-    --------
     L{dot}, L{express}
     """
 
@@ -1495,7 +1487,6 @@ def unicode_subscript(num):
     integer.
 
     Reference
-    ---------
 
     """
     n = str(num)

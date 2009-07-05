@@ -3,5 +3,5 @@ PyDy
 
 PyDy Classes
 ------------
-.. autoclass:: pydy
+.. automodule:: pydy
    :members: UnitVector, Vector, ReferenceFrame, Point, dt, cross, express

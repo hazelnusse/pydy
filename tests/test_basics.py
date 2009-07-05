@@ -852,3 +852,24 @@ def test_Point_get_point_list():
     assert P5.get_point_list(P3) == [P5, P3]
     assert P5.get_point_list(P4) == [P5, P3, P4]
     assert P5.get_point_list(P5) == [P5]
+
+def test_point_rel():
+    t, l1, l2, l3 = symbols('t l1 l2 l3')
+    q1 = Function('q1')(t)
+    q2 = Function('q2')(t)
+
+    x = Function('x')(t)
+    N = ReferenceFrame('N')
+    A = N.rotate('A', 1, q1)
+    B = A.rotate('B', 2, q2)
+    P1 = N.O.locate('P1', l1*N[1])
+    P2 = P1.locate('P2', l2*A[1])
+    assert N.O.rel(N.O) == zero 
+    assert N.O.rel(P1) == Vector(-l1*N[1])
+    assert N.O.rel(P2) == Vector(-l1*N[1] - l2*A[1])
+    assert P1.rel(N.O) == Vector(l1*N[1])
+    assert P1.rel(P1) == zero
+    assert P1.rel(P2) == Vector(-l2*A[1])
+    assert P2.rel(N.O) == Vector(l1*N[1] + l2*A[1])
+    assert P2.rel(P1) == Vector(l2*A[1])
+    assert P2.rel(P2) == zero
