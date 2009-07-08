@@ -2,6 +2,16 @@ from sympy import *
 from pydy import *
 
 
+N = NewtonianReferenceFrame('N')
+
+print N[1]
+print N[2]
+print N[3]
+print diN.O
+stop
+
+
+
 t, l1, l2, l3, r1, r2 = symbols('t l1 l2 l3 r1 r2')
 q1, q2, q3, q4, q5 = [Function('q%i' % i)(t) for i in (1, 2, 3, 4, 5)]
 N = ReferenceFrame('N')
@@ -19,94 +29,6 @@ print('NO', N.O.vel(), 'P1', P1.vel(), 'P2', P2.vel(), 'CP', CP.vel())
 #print(N.O.vel(P1, A), N.O.vel(P2, A), N.O.vel(CP, A))
 #print(N.O.vel(P1, B), N.O.vel(P2, B), N.O.vel(CP, B))
 #print(N.O.vel(P1, C), N.O.vel(P2, C), N.O.vel(CP, C))
-
-assert N.O.vel(N.O, N) == Vector(0)
-assert N.O.vel(P1, N) == -P1.vel(N.O, N)
-assert N.O.vel(P2, N) == -P2.vel(N.O, N)
-assert N.O.vel(CP, N) == -CP.vel(N.O, N)
-assert N.O.vel(N.O, A) == Vector(0)
-assert N.O.vel(P1, A) == -P1.vel(N.O, A)
-assert N.O.vel(P2, A) == -P2.vel(N.O, A)
-assert N.O.vel(CP, A) == -CP.vel(N.O, A)
-assert N.O.vel(N.O, B) == Vector(0)
-assert N.O.vel(P1, B) == -P1.vel(N.O, B)
-assert N.O.vel(P2, B) == -P2.vel(N.O, B)
-assert N.O.vel(CP, B) == -CP.vel(N.O, B)
-assert N.O.vel(N.O, C) == Vector(0)
-assert N.O.vel(P1, C) == -P1.vel(N.O, C)
-assert N.O.vel(P2, C) == -P2.vel(N.O, C)
-assert N.O.vel(CP, C) == -CP.vel(N.O, C)
-
-assert P1.vel(N.O, N) == -N.O.vel(P1, N)
-assert P1.vel(P1, N) == Vector(0)
-assert P1.vel(P2, N) == -P2.vel(P1, N)
-assert P1.vel(CP, N) == -CP.vel(P1, N)
-assert P1.vel(N.O, A) == -N.O.vel(P1, A)
-assert P1.vel(P1, A) == Vector(0)
-assert P1.vel(P2, A) == -P2.vel(P1, A)
-assert P1.vel(CP, A) == -CP.vel(P1, A)
-assert P1.vel(N.O, B) == -N.O.vel(P1, B)
-assert P1.vel(P1, B) == Vector(0)
-assert P1.vel(P2, B) == -P2.vel(P1, B)
-assert P1.vel(CP, B) == -CP.vel(P1, B)
-assert P1.vel(N.O, C) == -N.O.vel(P1, C)
-assert P1.vel(P1, C) == Vector(0)
-assert P1.vel(P2, C) == -P2.vel(P1, C)
-assert P1.vel(CP, C) == -CP.vel(P1, C)
-
-
-assert P2.vel(N.O, N) == -N.O.vel(P2, N)
-assert P2.vel(P1, N) == -P1.vel(P2, N)
-assert P2.vel(P2, N) == Vector(0)
-assert P2.vel(CP, N) == -CP.vel(P2, N)
-assert P2.vel(N.O, A) == -N.O.vel(P2, A)
-assert P2.vel(P1, A) == -P1.vel(P2, A)
-assert P2.vel(P2, A) == Vector(0)
-assert P2.vel(CP, A) == -CP.vel(P2, A)
-assert P2.vel(N.O, B) == -N.O.vel(P2, B)
-assert P2.vel(P1, B) == -P1.vel(P2, B)
-assert P2.vel(P2, B) == Vector(0)
-assert P2.vel(CP, B) == -CP.vel(P2, B)
-assert P2.vel(N.O, C) == -N.O.vel(P2, C)
-assert P2.vel(P1, C) == -P1.vel(P2, C)
-assert P2.vel(P2, C) == Vector(0)
-assert P2.vel(CP, C) == -CP.vel(P2, C)
-
-assert CP.vel(N.O, N) == -N.O.vel(CP, N)
-assert CP.vel(P1, N) == -P1.vel(CP, N)
-assert CP.vel(P2, N) == -P2.vel(CP, N)
-assert CP.vel(CP, N) == Vector(0)
-assert CP.vel(N.O, A) == -N.O.vel(CP, A)
-assert CP.vel(P1, A) == -P1.vel(CP, A)
-assert CP.vel(P2, A) == -P2.vel(CP, A)
-assert CP.vel(CP, A) == -CP.vel(P2, A)
-assert CP.vel(N.O, B) == -N.O.vel(P2, B)
-assert CP.vel(P1, B) == -P1.vel(P2, B)
-assert CP.vel(P2, B) == Vector(0)
-assert CP.vel(CP, B) == -CP.vel(P2, B)
-assert CP.vel(N.O, C) == -N.O.vel(P2, C)
-assert CP.vel(P1, C) == -P1.vel(P2, C)
-assert CP.vel(P2, C) == Vector(0)
-assert CP.vel(CP, C) == -CP.vel(P2, C)
-stop
-
-print P1.vel()
-print P2.vel()
-print CP.vel()
-stop
-
-stop
-
-
-print N.O.rel(N.O)
-print N.O.rel(P1)
-print N.O.rel(P2)
-print P1.rel(N.O)
-print P1.rel(P1)
-print P1.rel(P2)
-print P2.rel(N.O)
-print P2.rel(P1)
-print P2.rel(P2)
 stop
 
 pprint(N[1])

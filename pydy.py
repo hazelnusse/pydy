@@ -37,10 +37,10 @@ class UnitVector(Basic):
             self.v['num'] = zero
 
     def __str__(self):
-        return pydy_str(self)
+        return PyDyStrPrinter().doprint(self)
 
     def __repr__(self):
-        return pydy_str(self)
+        return PyDyStrPrinter().doprint(self)
 
     def __cmp__(self, other):
         if isinstance(other, UnitVector):
@@ -260,7 +260,8 @@ class Dyad(Basic):
         return Vector(vec_dict)
 
     def __str__(self):
-        return pydy_str(self)
+        return PyDyStrPrinter().doprint(self)
+        #return pydy_str(self)
 
 class Inertia(Dyad):
     """Inertia dyadic.
@@ -716,16 +717,15 @@ class Point(object):
             raise NotImplementedError()
 
     def locate(self, name, r, frame=None):
-        """Returns a new point, located relative to the parent point.
+        """Returns a new Point located relative to the parent point.
 
-        Also computes the contribution of the points velocity that comes from
-        its position relative to the parent point in two ways:
+        Introduces the concept of a point fixed in a frame.
 
-        Method 1::
+        Method 1:
 
             P1 = N.O.locate('P1', r)
 
-        Method 2::
+        Method 2:
 
             P2 = N.O.locate('P1', r, frame)
 
@@ -816,10 +816,10 @@ class Point(object):
             return r1t[:-1] + r2t
 
     def __str__(self):
-        return self.name
+        return '<Point %s>' % self.name
 
     def __repr__(self):
-        return self.name
+        return '<Point %s>' % self.name
 
 class ReferenceFrame(object):
     """
@@ -1102,9 +1102,29 @@ class ReferenceFrame(object):
 #        return self.triad[i-1]
 
 
+class NewtonianReferenceFrame(ReferenceFrame):
+    """A Newtonian Reference Frame class.
 
+    Includes a dextral set of UnitVectors and an origin:
+
+    >>> from pydy import *
+    >>> N = NewtonianReferenceFrame('N')
+    >>> N[1]
+    n1>
+    >>> N[2]
+    n2>
+    >>> N[3]
+    n3>
+    >>> N.O
+    <Point NO>
+    >>>
+    """
+    def __init__(self, s):
+        ReferenceFrame.__init__(self, s)
 
 def express(v, frame):
+    """Expresses a vector in terms of UnitVectors fixed in a specified frame.
+    """
     v = Vector(v)
     if (isinstance(v, UnitVector) or isinstance(v, Vector)) and \
             (isinstance(frame, ReferenceFrame)):
@@ -1172,8 +1192,6 @@ def coeffv(v, scalar):
 
 def dt(v, frame):
     """Time derivative of a vector as viewed by an observer fixed in a frame.
-
-
     """
     v = Vector(v)
     if isinstance(frame, ReferenceFrame):
