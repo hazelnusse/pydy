@@ -675,30 +675,48 @@ class Point(object):
     velocity of frame relative to the Inertial Frame with r.
     """
 
-    def __init__(self, s, r=None, point=None, mass=None, force=None, frame=None):
+    def __init__(self, name, relativeposition=None, parentpoint=None, fixedinframe=None):
         # When instantiated by ReferenceFrame
-        if not any([r, point, mass, force]):
-            self.name = s
+        if not any([relativeposition, parentpoint]):
+            self.name = name
             self.point_list = [self]
-            self.parent = None
             self.pos = {self: Vector(0)}
-            self.vel = {self: Vector(0)}
-            self.NewtonianFrame = frame
+            self._vrel = Vector(0)
+            self.NewtonianFrame = fixedinframe
+            self._fixedin = [fixedinframe]
         # When instantiated by locate method
-        elif all([s, r, point]) and not any([mass, force]):
-            r = Vector(r)
-            self.name = s
-            self.pos = {point: -r}
-            point.pos[self] = r
-            self.point_list = [self] + point.point_list
-            self.parent = point
-            self.NewtonianFrame = point.NewtonianFrame
+        elif all([name, relativeposition, parentpoint]):
+            relativeposition = Vector(relativeposition)
+            self.name = name
+            # Initialize the inertial velocity, relative to the parent point
+            self._vrel = {}
+            # Assign the vector pointing back to the parent to the new point's
+            # position
+            self.pos = {parentpoint: -relativeposition}
+            # Add the position vector pointing from the parent to the new point
+            # to the parent's pos dictionary
+            parentpoint.pos[self] = relativeposition
+            # Add self to the begin of the parent's point list
+            self.point_list = [self] + parentpoint.point_list
+            # Copy the Newtonian frame from the parent point.
+            self.NewtonianFrame = parentpoint.NewtonianFrame
+            # If an optional frame argument is specified, append it to the
+            # _fixedin list of the parent and create the list for the new point
+            if isinstance(fixedinframe, ReferenceFrame):
+                parentpoint._fixedin.append(fixedinframe)
+                self._fixedin = [fixedinframe]
+                self._vrel = cross(fixedinframe.ang_vel(self.NewtonianFrame),
+                        relativeposition)
+            elif fixedinframe==None:
+                self._fixedin = []
+                self._vrel = relativeposition.dt(self.NewtonianFrame)
+            else:
+                raise TypeError('fixedinframe must be a ReferenceFrame type')
         else:
             raise NotImplementedError()
 
-    def locate(self, s, r, frame=None):
-        """
-        Returns a new point s, located relative to self by the position vector r.
+    def locate(self, name, r, frame=None):
+        """Returns a new point, located relative to the parent point.
 
         Also computes the contribution of the points velocity that comes from
         its position relative to the parent point in two ways:
@@ -720,16 +738,8 @@ class Point(object):
         supplied position vector r.
         """
         r = Vector(r)
-        if frame == None:
-            newpoint = Point(s, r, self)
-            newpoint.vel =  {newpoint.NewtonianFrame:
-                    r.dt(newpoint.NewtonianFrame)}
-        elif isinstance(frame, ReferenceFrame):
-            newpoint = Point(s, r, self)
-            newpoint.vel = {newpoint.NewtonianFrame:
-                    cross(frame.ang_vel(newpoint.NewtonianFrame), r)}
-        else:
-            raise NotImplementedError()
+        newpoint = Point(name, relativeposition=r, \
+                parentpoint=self, fixedinframe=frame)
         return newpoint
 
     def rel(self, other):
@@ -744,14 +754,38 @@ class Point(object):
                 pos -= pl[i].pos[pl[i+1]]
             return pos
 
-    def get_vel(self, point_frame_tuple = None):
-        if point_frame_tuple == None:
-            print ("Should get the velocity of self, relative to the inertial \
-                    origin")
-        else:
-            print ("Should get the position from the point \
-                    point_frame_tuple.point to self, then take the time \
-                    derivative of that Vector in the")
+    def vel(self, point=None, frame=None):
+        """Calculate the velocity of a point.
+
+        Used without arguments, vel() returns the velocity of self
+        relative to the Newtonian Frame, taking into account whether points
+        have been declared as fixed in a frame or not.
+
+        Used with arguments, .vel(point, frame) returns the velocity of self
+        relative to point, as view by an observer fixed in frame.
+        """
+
+        v = Vector(0)
+        if point == frame == None:
+            for p in self.point_list:
+                v += p._vrel
+        elif isinstance(point, Point) and isinstance(frame, ReferenceFrame):
+            # Get the point list from point to self
+            point_list = point.get_point_list(self)
+            for i, pa in enumerate(point_list[:-1]):
+                pb = point_list[i+1]
+                set_intersect = set(pa._fixedin) & set(pb._fixedin)
+                # Case when the two points are not fixed in the same frame
+                if len(set_intersect) == 0:
+                    v += dt(pb.rel(pa), frame)
+                # Case when the two points are fixed in the same frame
+                elif len(set_intersect) == 1:
+                    v += cross(set_intersect.pop().ang_vel(frame),
+                            pb.rel(pa))
+                else:
+                    raise NotImplementedError('Somehow these two points are \
+                        both fixed in 2 or more of the same frames')
+        return v
 
     def get_point_list(self, other=None):
         """
@@ -818,7 +852,7 @@ class ReferenceFrame(object):
         """
         if not any([frame, matrix, omega]):
             self.ref_frame_list = [self]
-            self.O = Point(s + 'O', frame=self)
+            self.O = Point(s + 'O', fixedinframe=self)
             self.point_list = [self.O]
         else:
             self.ref_frame_list = [self] + frame.ref_frame_list[:]
@@ -1071,6 +1105,7 @@ class ReferenceFrame(object):
 
 
 def express(v, frame):
+    v = Vector(v)
     if (isinstance(v, UnitVector) or isinstance(v, Vector)) and \
             (isinstance(frame, ReferenceFrame)):
         return v.express(frame)
@@ -1138,8 +1173,9 @@ def coeffv(v, scalar):
 def dt(v, frame):
     """Time derivative of a vector as viewed by an observer fixed in a frame.
 
-    
+
     """
+    v = Vector(v)
     if isinstance(frame, ReferenceFrame):
         if isinstance(v, (UnitVector, Vector)):
             res = v.dt(frame)
