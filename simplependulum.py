@@ -19,7 +19,8 @@ u1 = gcs('u1')
 au1, cf1 = symbols('au1, cf1')
 
 # Declare an inertial ("Newtonian") reference frame
-N = ReferenceFrame("N")
+N = NewtonianReferenceFrame("N")
+
 # N[3] is aligned with the local gravitational field, i.e., downward as drawn below
 # N[2] is parallel to the axis of rotation of the hinge and comes out of the page as drawn below
 # N[1] is to the right if N[2] is pointed out of the page as you would draw it:
@@ -28,7 +29,7 @@ N = ReferenceFrame("N")
 #         |\
 #         | \
 #         |  \
-#         |   O    <-- PO (point mass)
+#         |   O    <-- P (point mass)
 
 A = N.rotate('A', 2, q1)
 # Define the position from the hinge (taken to be the inertial origin) to the point
@@ -36,7 +37,18 @@ P = N.O.locate('P', l*A[3])
 
 # Create a dictionary whose keys are symbols to be replaced with the values
 
-kindiffs = {q1.diff(t): u1}
+kode = {q1.diff(t): u1}
+
+N.subkindiffs(kode)
+
+print N._wrel
+print N._wrel_children
+print N.children
+print N.O.children
+print N.O._vrel
+print A._wrel_children
+print A._wrel
+stop
 
 P.vel[N] = P.vel[N].subs(kindiffs) + au1*A[3]
 A.W[N] = A.W[N].subs(kindiffs)

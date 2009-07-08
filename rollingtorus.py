@@ -22,27 +22,6 @@ u3p, u4p, u5p = symbols("u3p u4p u5p")
 q1, q2, q3, q4, q5 = [Function("q%i"%j)(t) for j in range(1, 6)]
 u1, u2, u3 = [Function("u%i"%j)(t) for j in (1,2,3)]
 
-def eval(a):
-    subs_dict = {
-        u3.diff(t): u3p,
-        u4.diff(t): u4p,
-        u5.diff(t): u5p,
-        r1:1,
-        r2:0,
-        m:1,
-        g:1,
-        I:1,
-        J:1,
-        }
-    r = a.subs(subs_dict)
-    state = {
-        q4: pi/6,
-        u3: 1,
-        u4: 0,
-        u5: 2,
-            }
-    r = r.subs(state)
-    return r
 
 N = ReferenceFrame('N')
 A = N.rotate("A", 3, q3)
@@ -58,7 +37,7 @@ CN = CO.locate('CN', r1*B[3] + r2*N[3], C)
 # Nonholonomic rolling constraints, imposing the requirement that the velocity
 # of the point fixed to C, instantaneously in contact with the ground, must be
 # zero.
-nh1, nh2 = dot(CN.vel, N[1]), dot(CN.vel, N[2])
+nh1, nh2 = dot(CN.vel(), N[1]), dot(CN.vel(), N[2])
 dependent_rates = solve([nh1,nh2], (q1.diff(t), q2.diff(t)))
 print 'Dependent rates', dependent_rates
 
@@ -147,6 +126,27 @@ dyn_eqns = solve(EOMS, u1.diff(t), u2.diff(t), u3.diff(t))
 print dyn_eqns
 stop
 
+def eval(a):
+    subs_dict = {
+        u3.diff(t): u3p,
+        u4.diff(t): u4p,
+        u5.diff(t): u5p,
+        r1:1,
+        r2:0,
+        m:1,
+        g:1,
+        I:1,
+        J:1,
+        }
+    r = a.subs(subs_dict)
+    state = {
+        q4: pi/6,
+        u3: 1,
+        u4: 0,
+        u5: 2,
+            }
+    r = r.subs(state)
+    return r
 
 
 

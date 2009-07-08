@@ -339,6 +339,54 @@ def test_express3():
     assert C[1] == express(Vector(cos(q5)*B[1] - sin(q5)*B[3]), C)
     assert C[3] == express(Vector(sin(q5)*B[1] + cos(q5)*B[3]), C)
 
+def test_ang_vel():
+    t = Symbol('t')
+
+    q3 = Function('q3')(t)
+    q4 = Function('q4')(t)
+    q5 = Function('q5')(t)
+    q6 = Function('q6')(t)
+
+    N = ReferenceFrame('N')
+    A = N.rotate('A', 3, q3)
+    B = A.rotate('B', 1, q4)
+    C = B.rotate('C', 2, q5)
+    A2 = N.rotate('A2', 2, q6)
+
+    q3p = q3.diff(t)
+    q4p = q4.diff(t)
+    q5p = q5.diff(t)
+    q6p = q6.diff(t)
+
+    assert N.ang_vel(N) == Vector(0)
+    assert N.ang_vel(A) == -q3p*N[3]
+    assert N.ang_vel(B) == -q3p*A[3] - q4p*B[1]
+    assert N.ang_vel(C) == -q3p*A[3] - q4p*B[1] - q5p*B[2]
+    assert N.ang_vel(A2) == -q6p*N[2]
+
+    assert A.ang_vel(N) == q3p*N[3]
+    assert A.ang_vel(A) == Vector(0)
+    assert A.ang_vel(B) == - q4p*B[1]
+    assert A.ang_vel(C) == - q4p*B[1] - q5p*B[2]
+    assert A.ang_vel(A2) == q3p*N[3] - q6p*N[2]
+
+    assert B.ang_vel(N) == q3p*A[3] + q4p*A[1]
+    assert B.ang_vel(A) == q4p*A[1]
+    assert B.ang_vel(B) == Vector(0)
+    assert B.ang_vel(C) == -q5p*B[2]
+    assert B.ang_vel(A2) == q3p*A[3] + q4p*A[1] - q6p*N[2]
+
+    assert C.ang_vel(N) == q3p*A[3] + q4p*A[1] + q5p*B[2]
+    assert C.ang_vel(A) == q4p*A[1] + q5p*C[2]
+    assert C.ang_vel(B) == q5p*B[2]
+    assert C.ang_vel(C) == Vector(0)
+    assert C.ang_vel(A2) == q3p*A[3] + q4p*A[1] + q5p*B[2] - q6p*N[2]
+
+    assert A2.ang_vel(N) == q6p*A2[2]
+    assert A2.ang_vel(A) == q6p*A2[2] - q3p*N[3]
+    assert A2.ang_vel(B) == q6p*N[2] - q3p*A[3] - q4p*A[1]
+    assert A2.ang_vel(C) == q6p*N[2] - q3p*A[3] - q4p*A[1] - q5p*B[2]
+    assert A2.ang_vel(A2) == Vector(0)
 
 def test_dt():
     t = Symbol('t')
@@ -349,6 +397,10 @@ def test_dt():
     q4 = Function('q4')(t)
     q5 = Function('q5')(t)
 
+    q3p = q3.diff(t)
+    q4p = q4.diff(t)
+    q5p = q5.diff(t)
+
     N = ReferenceFrame('N')
     A = N.rotate('A', 3, q3)
     B = A.rotate('B', 1, q4)
@@ -356,53 +408,47 @@ def test_dt():
     assert dt(N[1], N) == Vector({})
     assert dt(N[2], N) == Vector({})
     assert dt(N[3], N) == Vector({})
-    assert dt(N[1], A) == Vector(-q3.diff(t)*N[2])
-    assert dt(N[2], A) == Vector(q3.diff(t)*N[1])
+    assert dt(N[1], A) == Vector(-q3p*N[2])
+    assert dt(N[2], A) == Vector(q3p*N[1])
     assert dt(N[3], A) == Vector({})
-    assert dt(N[1], B) == Vector(-q3.diff(t)*N[2] + sin(q3)*q4.diff(t)*N[3])
-    assert dt(N[2], B) == Vector(q3.diff(t)*N[1] - cos(q3)*q4.diff(t)*N[3])
-    assert dt(N[3], B) == Vector(q4.diff(t)*A[2])
-    assert express(dt(N[1], C), N) == Vector((-q3.diff(t) -
-        sin(q4)*q5.diff(t))*N[2] + (sin(q3)*q4.diff(t) +
-            cos(q3)*cos(q4)*q5.diff(t))*N[3])
+    assert dt(N[1], B) == Vector(-q3p*N[2] + sin(q3)*q4p*N[3])
+    assert dt(N[2], B) == Vector(q3p*N[1] - cos(q3)*q4p*N[3])
+    assert dt(N[3], B) == Vector(q4p*A[2])
+    assert express(dt(N[1], C), N) == Vector((-q3p -
+        sin(q4)*q5p)*N[2] + (sin(q3)*q4p +
+            cos(q3)*cos(q4)*q5p)*N[3])
 
-    #print express(dt(N[2], C), N)
-    #print Vector((q3.diff(t) +
-    #    sin(q4)*q5.diff(t))*N[1] + (sin(q3)*cos(q4)*q5.diff(t) -
-    #        cos(q3)*q4.diff(t))*N[3])
-    assert express(dt(N[2], C), N) == Vector((q3.diff(t) +
-        sin(q4)*q5.diff(t))*N[1] + (sin(q3)*cos(q4)*q5.diff(t) -
-            cos(q3)*q4.diff(t))*N[3])
+    assert express(dt(N[2], C), N) == Vector((q3p +
+        sin(q4)*q5p)*N[1] + (sin(q3)*cos(q4)*q5p -
+            cos(q3)*q4p)*N[3])
 
-    assert dt(N[3], C) == Vector(q4.diff(t)*A[2] - cos(q4)*q5.diff(t)*B[1])
+    assert dt(N[3], C) == Vector(q4p*A[2] - cos(q4)*q5p*B[1])
 
-    #print dt(A[1],N)
-    #print Vector(q3.diff(t)*A[2])
-    assert dt(A[1], N) == Vector(q3.diff(t)*A[2]) == q3.diff(t)*A[2]
-    assert dt(A[2], N) == Vector(-q3.diff(t)*A[1]) == -q3.diff(t)*A[1]
+    assert dt(A[1], N) == Vector(q3p*A[2]) == q3p*A[2]
+    assert dt(A[2], N) == Vector(-q3p*A[1]) == -q3p*A[1]
     assert dt(A[3], N) == Vector({}) == 0
     assert dt(A[1], A) == Vector({}) == 0
     assert dt(A[2], A) == Vector({}) == 0
     assert dt(A[3], A) == Vector({}) == 0
     assert dt(A[1], B) == Vector({}) == 0
-    assert dt(A[2], B) == Vector(-q4.diff(t)*A[3]) == -q4.diff(t)*A[3]
-    assert dt(A[3], B) == Vector(q4.diff(t)*A[2]) == q4.diff(t)*A[2]
-    assert dt(A[1], C) == Vector(q5.diff(t)*B[3]) == q5.diff(t)*B[3]
-    assert dt(A[2], C) == Vector(sin(q4)*q5.diff(t)*A[1] - q4.diff(t)*A[3]) ==\
-            sin(q4)*q5.diff(t)*A[1] - q4.diff(t)*A[3]
-    assert dt(A[3], C) == Vector(-cos(q4)*q5.diff(t)*A[1] + q4.diff(t)*A[2]) \
-            == -cos(q4)*q5.diff(t)*A[1] + q4.diff(t)*A[2]
+    assert dt(A[2], B) == Vector(-q4p*A[3]) == -q4p*A[3]
+    assert dt(A[3], B) == Vector(q4p*A[2]) == q4p*A[2]
+    assert dt(A[1], C) == Vector(q5p*B[3]) == q5p*B[3]
+    assert dt(A[2], C) == Vector(sin(q4)*q5p*A[1] - q4p*A[3]) ==\
+            sin(q4)*q5p*A[1] - q4p*A[3]
+    assert dt(A[3], C) == Vector(-cos(q4)*q5p*A[1] + q4p*A[2]) \
+            == -cos(q4)*q5p*A[1] + q4p*A[2]
 
-    assert dt(B[1], N) == Vector(cos(q4)*q3.diff(t)*B[2] -
-            sin(q4)*q3.diff(t)*B[3]) == cos(q4)*q3.diff(t)*B[2] - \
-                    sin(q4)*q3.diff(t)*B[3]
-    assert dt(B[2], N) == Vector(-cos(q4)*q3.diff(t)*B[1] + q4.diff(t)*B[3]) \
-            == -cos(q4)*q3.diff(t)*B[1] + q4.diff(t)*B[3]
-    assert dt(B[3], N) == Vector(sin(q4)*q3.diff(t)*B[1] - q4.diff(t)*B[2]) ==\
-            sin(q4)*q3.diff(t)*B[1] - q4.diff(t)*B[2]
+    assert dt(B[1], N) == Vector(cos(q4)*q3p*B[2] -
+            sin(q4)*q3p*B[3]) == cos(q4)*q3p*B[2] - \
+                    sin(q4)*q3p*B[3]
+    assert dt(B[2], N) == Vector(-cos(q4)*q3p*B[1] + q4p*B[3]) \
+            == -cos(q4)*q3p*B[1] + q4p*B[3]
+    assert dt(B[3], N) == Vector(sin(q4)*q3p*B[1] - q4p*B[2]) ==\
+            sin(q4)*q3p*B[1] - q4p*B[2]
     assert dt(B[1], A) == Vector({}) == 0
-    assert dt(B[2], A) == Vector(q4.diff(t)*B[3]) == q4.diff(t)*B[3]
-    assert dt(B[3], A) == Vector(-q4.diff(t)*B[2]) == -q4.diff(t)*B[2]
+    assert dt(B[2], A) == Vector(q4p*B[3]) == q4p*B[3]
+    assert dt(B[3], A) == Vector(-q4p*B[2]) == -q4p*B[2]
 
 
 def test_cross_different_frames2():

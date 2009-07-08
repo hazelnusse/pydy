@@ -13,6 +13,7 @@ zero = Matrix([0, 0, 0])
 t = Symbol("t")
 
 Basic.__str__ = lambda self: PyDyStrPrinter().doprint(self)
+Basic.__repr__ = lambda self: PyDyStrPrinter().doprint(self)
 
 class UnitVector(Basic):
     """A standard unit vector  with a symbolic and a numeric representation.
@@ -185,9 +186,12 @@ class UnitVector(Basic):
         """UnitVector time derivative.
         """
         if isinstance(diff_frame, ReferenceFrame):
-            if self == diff_frame:
+            if self.frame == diff_frame:
+                print '1'
                 return Vector(0)
             else:
+                print '2', 'diff_frame', diff_frame
+                print self.frame.ang_vel(diff_frame)
                 return cross(self.frame.ang_vel(diff_frame), self)
         else:
             raise TypeError("Must provide a ReferenceFrame to take the \
@@ -685,10 +689,15 @@ class Point(object):
             self._vrel = Vector(0)
             self.NewtonianFrame = fixedinframe
             self._fixedin = [fixedinframe]
+            self.parentpoint = None
+            self.children = []
         # When instantiated by locate method
         elif all([name, relativeposition, parentpoint]):
             relativeposition = Vector(relativeposition)
             self.name = name
+            self.parentpoint = parentpoint
+            self.children = []
+            parentpoint.children.append(self)
             # Initialize the inertial velocity, relative to the parent point
             self._vrel = {}
             # Assign the vector pointing back to the parent to the new point's
@@ -857,16 +866,24 @@ class ReferenceFrame(object):
         else:
             self.ref_frame_list = [self] + frame.ref_frame_list[:]
 
+        self.children = []
         self.name = s
         self.triad = [UnitVector(self, i) for i in (1,2,3)]
         self.transforms = {}
-        self.parent = frame
-        self.W = {}
+        self.parentframe = frame
+        #self.W = {}
         if omega != None:
-            self.set_omega(omega, self.parent)
-            frame.set_omega(-omega, self, force=True)
+            #self.set_omega(omega, self.parentframe)
+            #frame.set_omega(-omega, self, force=True)
+            self._wrel = omega
+            self._wrel_children = {}
+            frame._wrel_children[self] = -omega
+        else:
+            self._wrel = Vector(0)
+            self._wrel_children = {}
 
         if frame is not None:
+            frame.children.append(self)
             self.append_transform(frame, matrix)
             frame.append_transform(self, matrix.T)
 
@@ -1049,8 +1066,10 @@ class ReferenceFrame(object):
     def set_omega(self, omega, frame, force=False):
         """Sets the angular velocity relative to another frame.
         """
-        if self.W == {} or force:
-            self.W[frame] = omega
+        if self._wrel == Vector(0) or force:
+            self._wrel = omega
+        #if self.W == {} or force:
+        #    self.W[frame] = omega
         else:
             raise ValueError("set_omega has already been called.")
 
@@ -1058,15 +1077,28 @@ class ReferenceFrame(object):
         """Angular velocity relative to another frame.
         """
 
-        if frame in self.W:
-            return self.W[frame]
+        #if frame in self.W:
+        #    return self.W[frame]
+        #else:
+        if frame == self:
+            return Vector(0)
         else:
-            om = {}
-            for term in self.get_omega_list(frame):
-                for k in term.dict:
-                    om[k] = om.get(k, 0) + term.dict[k]
-            self.W.update({frame: Vector(om)})
-            return self.W[frame]
+            om = Vector(0)
+            fl = frame.get_frames_list(self)
+            n = len(fl)
+            for i, f in enumerate(fl[:-1]):
+                if f == fl[i+1].parentframe:
+                    om += fl[i+1]._wrel
+                else:
+                    om -= fl[i]._wrel
+        return om
+
+        #for term in self.get_omega_list(frame):
+        #    for k in term.dict:
+        #        om[k] = om.get(k, 0) + term.dict[k]
+        #self.W.update({frame: Vector(om)})
+        #return self.W[frame]
+        #return Vector(om)
 
     def get_omega_list(self, frame):
         """
@@ -1077,7 +1109,8 @@ class ReferenceFrame(object):
             return [Vector({})]
         result = []
         for i, f in enumerate(frames[:-1]):
-            result.append(f.W[frames[i+1]])
+            #result.append(f.W[frames[i+1]])
+            result.append(f._wrel)
         return result
 
 
@@ -1121,6 +1154,32 @@ class NewtonianReferenceFrame(ReferenceFrame):
     """
     def __init__(self, s):
         ReferenceFrame.__init__(self, s)
+
+    def subkindiffs(self, expr_dict):
+        self.recursive_subs(self, expr_dict)
+        self.recursive_subs(self.O, expr_dict)
+
+    def recursive_subs(self, PorF, expr_dict):
+        # Substitute into appropriate velocity/angular velocity
+        if isinstance(PorF, Point):
+            PorF._vrel.subs(expr_dict)
+        elif isinstance(PorF, ReferenceFrame):
+            PorF._wrel.subs(expr_dict)
+            for k in PorF._wrel_children:
+                print '1',PorF._wrel_children
+                PorF._wrel_children[k] = PorF._wrel_children[k].subs(expr_dict)
+                print '2',PorF._wrel_children
+        else:
+            raise NotImplementedError()
+
+        #  Initiate recursion
+        if PorF.children == []:
+            return
+        else:
+            for child in PorF.children:
+                self.recursive_subs(child, expr_dict)
+
+
 
 def express(v, frame):
     """Expresses a vector in terms of UnitVectors fixed in a specified frame.
