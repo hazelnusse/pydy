@@ -7,16 +7,16 @@ from sympy import symbols, Function, S, solve, simplify, \
 from pydy import *
 
 # Declare parameters
+# au1:  Auxilliary generalized speed (For determination of constraint force)
+# cf1:  Constraint Force measure number in A[3] direction acting on particle P
 m, g, l, t = symbols('m, g, l, t')
+au1, cf1 = symbols('au1, cf1')
+
 # Declare generalized coordinate and speed as implicit functions of time
 q1 = GeneralizedCoordinate('q1')
 u1 = GeneralizedCoordinate('u1')
-q1 = gcs('q1')
-u1 = gcs('u1')
-# Declare a symbols for:
-# au1:  Auxilliary generalized speed (For determination of constraint force)
-# cf1:  Constraint Force along direction of rod
-au1, cf1 = symbols('au1, cf1')
+
+u_list = [u1, au1]
 
 # Declare an inertial ("Newtonian") reference frame
 N = NewtonianReferenceFrame("N")
@@ -33,28 +33,18 @@ N = NewtonianReferenceFrame("N")
 
 A = N.rotate('A', 2, q1)
 # Define the position from the hinge (taken to be the inertial origin) to the point
-P = N.O.locate('P', l*A[3])
+P = N.O.locate('P', l*A[3], mass=m, force=m*g*N[3])
 
 # Create a dictionary whose keys are symbols to be replaced with the values
 
 kode = {q1.diff(t): u1}
 
 N.subkindiffs(kode)
+N.setgenspeeds(u_list)
 
-print N._wrel
-print N._wrel_children
-print N.children
-print N.O.children
-print N.O._vrel
-print A._wrel_children
-print A._wrel
+print 'W_A_N> =', A.ang_vel(N)
+print 'V_P_N> =', P.vel()
 stop
-
-P.vel[N] = P.vel[N].subs(kindiffs) + au1*A[3]
-A.W[N] = A.W[N].subs(kindiffs)
-
-print 'W_A_N> =', A.W[N]
-print 'V_P_N> =', P.vel[N]
 
 partial_v = P.vel[N].partials([u1, au1])
 print partial_v

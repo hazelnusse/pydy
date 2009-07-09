@@ -725,7 +725,7 @@ class Point(object):
         else:
             raise NotImplementedError()
 
-    def locate(self, name, r, frame=None):
+    def locate(self, name, r, frame=None, mass=None, force=None):
         """Returns a new Point located relative to the parent point.
 
         Introduces the concept of a point fixed in a frame.
@@ -749,6 +749,8 @@ class Point(object):
         r = Vector(r)
         newpoint = Point(name, relativeposition=r, \
                 parentpoint=self, fixedinframe=frame)
+        if mass is not None: newpoint.mass = mass
+        if force is not None: newpoint.force = Vector(force)
         return newpoint
 
     def rel(self, other):
@@ -1162,13 +1164,11 @@ class NewtonianReferenceFrame(ReferenceFrame):
     def recursive_subs(self, PorF, expr_dict):
         # Substitute into appropriate velocity/angular velocity
         if isinstance(PorF, Point):
-            PorF._vrel.subs(expr_dict)
+            PorF._vrel = PorF._vrel.subs(expr_dict)
         elif isinstance(PorF, ReferenceFrame):
-            PorF._wrel.subs(expr_dict)
+            PorF._wrel = PorF._wrel.subs(expr_dict)
             for k in PorF._wrel_children:
-                print '1',PorF._wrel_children
                 PorF._wrel_children[k] = PorF._wrel_children[k].subs(expr_dict)
-                print '2',PorF._wrel_children
         else:
             raise NotImplementedError()
 
@@ -1179,7 +1179,44 @@ class NewtonianReferenceFrame(ReferenceFrame):
             for child in PorF.children:
                 self.recursive_subs(child, expr_dict)
 
+    def setgenspeeds(self, u_list):
+        # Set class attribute for the list of independent generalized speeds
+        self._ulist = u_list
 
+def kinematic_chain(point1, point2, r):
+    """Close a kinematic loop and form the associated constraint equations.
+
+    point1: begin point
+    point2: end point
+    r: vector from point2 to point1 which closes the loop kinematic loop
+
+    Returns the kinematic constraint equations, along with the time derivatives
+    of those equations.
+    """
+    loop = point2.rel(point1) + r
+    frames = {}
+    for uv in loop.dict:
+        frames[uv.frame] = frames.get(uv.frame, 0) + 1
+    frame = max([(d[x], x) for x in d])[1]
+    kc_eqs = []
+    # Generate the scalar holonomic constraint equations
+    for i in (1, 2, 3):
+        kc = dot(frame[i], loop)
+        if kc != 0:
+            kc_eqs.append(Eq(kc, 0))
+    # Differentiate with respect to time to put them in differential form
+    dkc_eqs = []
+    for kc in kc_eqs:
+        dkc_eqs.append(Eq(kc.diff(t), 0))
+
+    # Assign the constraints to the Newtonian Reference frame so they can be
+    # tracked
+    point1.NewtonianFrame.kc_eqs = kc_eqs
+    point1.NewtonianFrame.dkc_eqs = dkc_eqs
+
+    # Return the constraint equations so the user can look at them if they
+    # want.
+    return kc_eqs, dkc_eqs
 
 def express(v, frame):
     """Expresses a vector in terms of UnitVectors fixed in a specified frame.
