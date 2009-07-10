@@ -1,5 +1,5 @@
 from sympy import Symbol, symbols, Basic, Function, Mul, Pow, Matrix, sin, \
-        cos, S, eye, Add, trigsimp, expand, pretty
+        cos, S, eye, Add, trigsimp, expand, pretty, Eq, collect
 from sympy.printing.pretty.pretty import PrettyPrinter
 from sympy.printing.str import StrPrinter
 
@@ -1197,26 +1197,30 @@ def kinematic_chain(point1, point2, r):
     frames = {}
     for uv in loop.dict:
         frames[uv.frame] = frames.get(uv.frame, 0) + 1
-    frame = max([(d[x], x) for x in d])[1]
+    frame = max([(frames[x], x) for x in frames])[1]
     kc_eqs = []
+    dkc_eqs = []
     # Generate the scalar holonomic constraint equations
     for i in (1, 2, 3):
         kc = dot(frame[i], loop)
         if kc != 0:
-            kc_eqs.append(Eq(kc, 0))
-    # Differentiate with respect to time to put them in differential form
-    dkc_eqs = []
-    for kc in kc_eqs:
-        dkc_eqs.append(Eq(kc.diff(t), 0))
-
+            kc_eqs.append(kc)
+            dkc_eqs.append(expand(kc.diff(t)))
+    qd_list = point1.NewtonianFrame.qdot_list
+    qdot_symbols = [Symbol(str(q.args[0].func)+"'") for q in qd_list]
+    subsdict = dict(zip(qd_list, qdot_symbols))
+    subs_dkc_eqs = [collect(eq.subs(subsdict), qdot_symbols) for eq in dkc_eqs]
+    rsubsdict = dict(zip(qdot_symbols, qd_list))
+    dkc_eqs = [eq.subs(rsubsdict) for eq in subs_dkc_eqs]
     # Assign the constraints to the Newtonian Reference frame so they can be
     # tracked
     point1.NewtonianFrame.kc_eqs = kc_eqs
+    #point1.NewtonianFrame.dkc_eqs = dkc_eqs
     point1.NewtonianFrame.dkc_eqs = dkc_eqs
 
     # Return the constraint equations so the user can look at them if they
     # want.
-    return kc_eqs, dkc_eqs
+    return kc_eqs, subs_dkc_eqs
 
 def express(v, frame):
     """Expresses a vector in terms of UnitVectors fixed in a specified frame.
@@ -1382,12 +1386,16 @@ def GeneralizedCoordinate(s):
     #    else:
     #        return S.Zero
 
-def gcs(s, number=1):
+def gcs(s, number=1, list=False):
     gc_list = [GeneralizedCoordinate(s[0]+str(i)) for i in range(1, number + 1)]
-    if number == 1:
-        return gc_list[0]
-    else:
-        return gc_list
+    if list == False:
+        if number == 1:
+            return gc_list[0]
+        else:
+            return gc_list
+    elif list == True:
+        gcd_list = [gc.diff(t) for gc in gc_list]
+        return (gc_list, gc_list, gcd_list)
 
 class PyDyStrPrinter(StrPrinter):
     #printmethod = '_sympystr_'
