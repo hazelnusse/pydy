@@ -281,7 +281,8 @@ class Inertia(Dyad):
                 I23*frame[2]*frame[3] + I23*frame[3]*frame[2] +
                 I13*frame[1]*frame[3] + I13*frame[3]*frame[1])
 
-class Vector(Basic):
+#class Vector(Basic):
+class Vector(object):
     """Symbolic vector expression.
 
     Internally represented as a dictionary whose keys are UnitVectors and whose
