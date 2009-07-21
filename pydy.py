@@ -1,5 +1,5 @@
 from sympy import Symbol, symbols, Basic, Function, Mul, Pow, Matrix, sin, \
-        cos, S, eye, Add, trigsimp, expand, pretty, Eq, collect
+        cos, S, eye, Add, trigsimp, expand, pretty, Eq, collect, sqrt, sympify
 from sympy.printing.pretty.pretty import PrettyPrinter
 from sympy.printing.str import StrPrinter
 
@@ -187,10 +187,10 @@ class UnitVector(Basic):
         """
         if isinstance(diff_frame, ReferenceFrame):
             if self.frame == diff_frame:
-                print '1'
+                #print '1'
                 return Vector(0)
             else:
-                print '2', 'diff_frame', diff_frame
+                #print '2', 'diff_frame', diff_frame
                 print self.frame.ang_vel(diff_frame)
                 return cross(self.frame.ang_vel(diff_frame), self)
         else:
@@ -329,13 +329,15 @@ class Vector(Basic):
 
         if isinstance(v, dict):
             for k in v.keys():
+                v[k] = sympify(v[k])
                 if v[k] == 0:  v.pop(k)
             self.dict = v
         elif isinstance(v, Vector):
             self.dict = v.dict
         else:
             vdict = self.parse_terms(v)
-            for k in vdict.keys():
+            for k in vdict:
+                vdict[k] = sympify(vdict[k])
                 if vdict[k] == 0:  vdict.pop(k)
             self.dict = vdict
 
@@ -444,12 +446,25 @@ class Vector(Basic):
         else:
             other_as_Vector = Vector(other)
             return self == other_as_Vector
-
+    """
     def __mul__(self, other):
         if isinstance(other, Dyad):
             return NotImplemented
         else:
             return Basic.__mul__(self, other)
+
+    def __lmul__(self, other):
+        if isinstance(other, Dyad):
+            return NotImplemented
+        elif isinstance(other, Symbol):
+            print 'hi'
+            prod = {}
+            for k in self.dict:
+                prod[k] = other*self.dict[k]
+        else:
+            print 'else'
+            return Basic.__mul__(self, other)
+    """
 
     def __neg__(self):
         return Vector(dict([(k, -self.dict[k]) for k in self.dict]))
@@ -567,14 +582,27 @@ class Vector(Basic):
     def mag(self):
         m = 0
         for k in self.dict:
-            m += self.dict[k]**S(2)
-        return m**(S(1)/S(2))
+            if self.dict[k].could_extract_minus_sign():
+                m += (-self.dict[k])**S(2)
+            else:
+                m += self.dict[k]**S(2)
+        return sqrt(m)
 
     def mag_sqr(self):
         m = 0
         for k in self.dict:
-            m += self.dict[k]**S(2.0)
+            if self.dict[k].could_extract_minus_sign():
+                m += (-self.dict[k])**S(2)
+            else:
+                m += self.dict[k]**S(2)
         return m
+
+    def normalized(self):
+        v = Vector(0)
+        m = self.mag()
+        for k in self.dict:
+            v.dict[k] = self.dict[k] / m
+        return v
 
     def parse_terms(self, v):
         """
@@ -634,10 +662,11 @@ class Vector(Basic):
                 elif isinstance(add_term, UnitVector):
                     add_term_dict = {add_term: S(1)}
                 elif isinstance(add_term, Vector):
+                    #print 'vector term'
                     add_term_dict = add_term.dict
                 else:
                     raise NotImplementedError()
-                for k in add_term_dict.keys():
+                for k in add_term_dict:
                     terms[k] = terms.get(k, 0) + add_term_dict[k]
             return terms
         else:
@@ -1446,7 +1475,17 @@ class PyDyStrPrinter(StrPrinter):
                                 + ')' + small_dot + self.doprint(k))
                         else:
                             if e.dict[k].could_extract_minus_sign():
-                                s += ' - ' + (self.doprint(-e.dict[k]) + small_dot +
+                                if e.dict[k].is_Mul:
+                                    mulcoef = S(1)
+                                    for arg in e.dict[k].args:
+                                        if arg.could_extract_minus_sign():
+                                            mulcoef *= -arg
+                                        else:
+                                            mulcoef *= arg
+                                    s += ' - ' + (self.doprint(mulcoef) + small_dot +
+                                            self.doprint(k))
+                                else:
+                                    s += ' - ' + (self.doprint(-e.dict[k]) + small_dot +
                                         self.doprint(k))
                             else:
                                 s += ' + ' + (self.doprint(e.dict[k]) + small_dot +
