@@ -281,8 +281,8 @@ class Inertia(Dyad):
                 I23*frame[2]*frame[3] + I23*frame[3]*frame[2] +
                 I13*frame[1]*frame[3] + I13*frame[3]*frame[1])
 
-#class Vector(Basic):
-class Vector(object):
+class Vector(Basic):
+#class Vector(object):
     """Symbolic vector expression.
 
     Internally represented as a dictionary whose keys are UnitVectors and whose
@@ -337,7 +337,7 @@ class Vector(object):
             self.dict = v.dict
         else:
             vdict = self.parse_terms(v)
-            for k in vdict:
+            for k in vdict.keys():
                 vdict[k] = sympify(vdict[k])
                 if vdict[k] == 0:  vdict.pop(k)
             self.dict = vdict
@@ -447,7 +447,19 @@ class Vector(object):
         else:
             other_as_Vector = Vector(other)
             return self == other_as_Vector
+
     """
+    def __rmul__(self, other):
+        if isinstance(other, Dyad):
+            return NotImplemented
+        elif isinstance(other, Basic) and not isinstance(other, UnitVector):
+            product = {}
+            for k in self.dict:
+                product[k] = other*self.dict[k]
+            return Vector(product)
+        else:
+            return NotImplemented
+
     def __mul__(self, other):
         if isinstance(other, Dyad):
             return NotImplemented
@@ -623,6 +635,18 @@ class Vector(object):
             if isinstance(v, Add):
                 return self.parse_terms(v)  # If this happens, reparse
             elif isinstance(v, Mul):   # Otherwise it is still a Mul instance
+                """if v.atoms(Vector):
+                    i = v.args.index(list(v.atoms(Vector))[0])
+                    scalarpart = S(1)
+                    for j, term in enumerate(v.args):
+                        if j == i: continue
+                        else:
+                            scalarpart *= term
+                    newvdict = {}
+                    for k in v.args[i].dict:
+                        newvdict[k] = scalarpart*v.args[i].dict[k]
+                    return newvdict
+                """
                 args = v.args
                 term_types_list = [type(terms) for terms in args]
                 if UnitVector in term_types_list:
@@ -1086,6 +1110,33 @@ class ReferenceFrame(object):
         """
         Returns a list of matrices to get from self to frame.
         """
+        """
+        # local function
+        def shrink(rm_list):
+            new_list = []
+            for i, rm in enumerate(rm_list[:-1]):
+                rmn = rm_list[i+1]
+                # All true if simple rotation about 1 axis
+                cmp1 = [rm[0,0]==rmn[0,0], rm[0,1]==rmn[0,1], rm[0,2]==rmn[0,2],
+                        rm[1,0]==rmn[1,0], rm[2,0]==rmn[2,0]]
+                # All true if simple rotation about 2 axis
+                cmp2 = [rm[0,1]==rmn[0,1], rm[1,0]==rmn[1,0], rm[1,1]==rmn[1,1],
+                        rm[1,2]==rmn[1,2], rm[2,1]==rmn[2,1]]
+                # All true if simple rotation about 3 axis
+                cmp3 = [rm[0,2]==rmn[0,2], rm[1,2]==rmn[1,2], rm[2,0]==rmn[2,0],
+                        rm[2,1]==rmn[2,1], rm[2,2]==rmn[2,2]]
+                if all(cmp1):
+                    # create the matrix
+                    break
+                elif all(cmp2):
+                    # create the matrix
+                    break
+                elif all(cmp3):
+                    # create the matrix
+                    break
+                new_list.append(rm)
+        """
+
         frames = self.get_frames_list(frame)
         if frames == [self]:
             return [eye(3)]
@@ -1472,25 +1523,30 @@ class PyDyStrPrinter(StrPrinter):
                     # All other terms pad with spaces and add parenthesis
                     else:
                         if isinstance(e.dict[k], Add):
-                            s += (' + (' + self.doprint(e.dict[k])
-                                + ')' + small_dot + self.doprint(k))
-                        else:
                             if e.dict[k].could_extract_minus_sign():
-                                if e.dict[k].is_Mul:
-                                    mulcoef = S(1)
-                                    for arg in e.dict[k].args:
-                                        if arg.could_extract_minus_sign():
-                                            mulcoef *= -arg
-                                        else:
-                                            mulcoef *= arg
-                                    s += ' - ' + (self.doprint(mulcoef) + small_dot +
-                                            self.doprint(k))
+                                s += (' - (' + self.doprint(-e.dict[k])
+                                    + ')' + small_dot + self.doprint(k))
+                            else:
+                                s += (' + (' + self.doprint(e.dict[k])
+                                    + ')' + small_dot + self.doprint(k))
+                        elif isinstance(e.dict[k], Mul):
+                            mulcoef = S(1)
+                            sign_counter = 0
+                            for arg in e.dict[k].args:
+                                if arg.could_extract_minus_sign():
+                                    mulcoef *= -arg
+                                    sign_counter += 1
                                 else:
-                                    s += ' - ' + (self.doprint(-e.dict[k]) + small_dot +
+                                    mulcoef *= arg
+                            if sign_counter % 2 == 0:
+                                s += ' + ' + (self.doprint(mulcoef) + small_dot +
                                         self.doprint(k))
                             else:
-                                s += ' + ' + (self.doprint(e.dict[k]) + small_dot +
+                                s += ' - ' + (self.doprint(mulcoef) + small_dot +
                                         self.doprint(k))
+                        else:
+                            s += ' + ' + (self.doprint(e.dict[k]) + small_dot +
+                                self.doprint(k))
             return s
         else:
             return "0>"
