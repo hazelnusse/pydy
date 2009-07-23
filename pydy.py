@@ -1520,7 +1520,7 @@ class PyDyStrPrinter(StrPrinter):
                             s += (self.doprint(e.dict[k]) +
                                 small_dot + self.doprint(k))
                         i += 1
-                    # All other terms pad with spaces and add parenthesis
+                    # All subsequent terms pad with spaces and add parenthesis
                     else:
                         if isinstance(e.dict[k], Add):
                             if e.dict[k].could_extract_minus_sign():
@@ -1544,6 +1544,9 @@ class PyDyStrPrinter(StrPrinter):
                             else:
                                 s += ' - ' + (self.doprint(mulcoef) + small_dot +
                                         self.doprint(k))
+                        elif e.dict[k].is_negative:
+                            s += ' - ' + (self.doprint(-e.dict[k]) + small_dot
+                                    + self.doprint(k))
                         else:
                             s += ' + ' + (self.doprint(e.dict[k]) + small_dot +
                                 self.doprint(k))
@@ -1805,10 +1808,4 @@ def sort_UnitVector(a, b):
 
 if __name__ == "__main__":
         import doctest
-        g = {'ReferenceFrame': ReferenceFrame,
-                 'Vector': Vector,
-                 'UnitVector': UnitVector,
-                 'Point': Point,
-                 'symbols': symbols,
-                 'Symbol': Symbol}
-        doctest.testmod(globs=g)
+        doctest.testmod()
