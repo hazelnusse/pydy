@@ -1,5 +1,6 @@
-from sympy import Symbol, symbols, Basic, Function, Mul, Pow, Matrix, sin, \
-        cos, S, eye, Add, trigsimp, expand, pretty, Eq, collect, sqrt, sympify
+from sympy import (Symbol, symbols, Basic, Function, Mul, Pow, Matrix, sin,
+        cos, S, eye, Add, trigsimp, expand, pretty, Eq, collect, sqrt,
+        sympify, factor)
 from sympy.printing.pretty.pretty import PrettyPrinter
 from sympy.printing.str import StrPrinter
 
@@ -593,21 +594,49 @@ class Vector(Basic):
             return Vector(new)
 
     def mag(self):
-        m = 0
-        for k in self.dict:
-            if self.dict[k].could_extract_minus_sign():
-                m += (-self.dict[k])**S(2)
-            else:
-                m += self.dict[k]**S(2)
-        return sqrt(m)
+        """Magnitude of a Vector.
+        """
+        return sqrt(self.mag_sqr())
 
     def mag_sqr(self):
+        """Magnitude squared of a Vector.
+        """
+        frame = most_frequent_frame(self)
         m = 0
-        for k in self.dict:
-            if self.dict[k].could_extract_minus_sign():
-                m += (-self.dict[k])**S(2)
+        s = set([])
+        for k1, k2 in ((x,y) for x in self.dict for y in self.dict):
+            if (k2, k1) in s:
+                continue
             else:
-                m += self.dict[k]**S(2)
+                s.add((k1, k2))
+        for k1, k2 in s:
+            if k1 == k2:
+                    m += expand(self.dict[k1]**2)
+            else:
+                    m += 2*expand(self.dict[k1]*self.dict[k2]*dot(k1, k2))
+
+        if isinstance(m, Add):
+            trigterms = m.atoms(sin, cos)
+            replacements = []
+            for i, t in enumerate(trigterms):
+                replacements.append(Symbol('Trig%d' % i, dummy=True))
+            subsdict = dict(zip(trigterms, replacements))
+            rsubsdict = dict(zip(replacements, trigterms))
+            trigadd = []
+            otheradd = []
+            for arg in m.args:
+                if arg.atoms(sin, cos):
+                    trigadd.append(arg)
+                else:
+                    otheradd.append(arg)
+            trigexpr = S(0)
+            otherexpr = S(0)
+            for term in trigadd: trigexpr += term
+            for term in otheradd: otherexpr += term
+            trigexprs = trigexpr.subs(subsdict)
+            trigexprsf = factor(trigexprs)
+            trigexprf = trigexprsf.subs(rsubsdict)
+            m = trigexprf + otherexpr
         return m
 
     def normalized(self):
@@ -1264,6 +1293,14 @@ class NewtonianReferenceFrame(ReferenceFrame):
         # Set class attribute for the list of independent generalized speeds
         self._ulist = u_list
 
+def most_frequent_frame(vector):
+    """Determines the most frequent frame of all unitvector terms in a vector.
+    """
+    frame_counter = {}
+    for uv in vector.dict:
+        frame_counter[uv.frame] = frame_counter.get(uv.frame, 0) + 1
+    return max([(frame_counter[x], x) for x in frame_counter])[1]
+
 def kinematic_chain(point1, point2, r):
     """Close a kinematic loop and form the associated constraint equations.
 
@@ -1275,10 +1312,7 @@ def kinematic_chain(point1, point2, r):
     of those equations.
     """
     loop = point2.rel(point1) + r
-    frames = {}
-    for uv in loop.dict:
-        frames[uv.frame] = frames.get(uv.frame, 0) + 1
-    frame = max([(frames[x], x) for x in frames])[1]
+    frame = most_frequent_frame(loop)
     kc_eqs = []
     dkc_eqs = []
     # Generate the scalar holonomic constraint equations
@@ -1801,10 +1835,10 @@ def sort_UnitVector(a, b):
     the Newtonian frame.
     """
     if a.frame == b.frame:
-        return cmp(a.i, b.i)
+        return (a.i > b.i) - (a.i < b.i)
     else:
-        return cmp(len(a.frame.ref_frame_list),
-               len(b.frame.ref_frame_list))
+        return (len(a.frame.ref_frame_list) > len(b.frame.ref_frame_list)) -\
+            (len(a.frame.ref_frame_list) < len(b.frame.ref_frame_list))
 
 if __name__ == "__main__":
         import doctest
