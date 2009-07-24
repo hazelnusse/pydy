@@ -17,9 +17,9 @@ CD = BC.locate('CD', lc*C[1])
 
 kinematic_chain(CD, N.O, -ln*N[2])
 
-for kc, dkc in (N.kc_eqs, N.dkc_eqs):
+for kc, dkc in (N.hc_eqns, N.dhc_eqns):
     print kc
     print dkc
 
-#kindiffs = solve(N.dkc_eqs, q2.diff(t), q3.diff(t))
-#print kindiffs
+kindiffs = solve(N.dhc_eqns, q2.diff(t), q3.diff(t))
+print kindiffs

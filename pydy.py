@@ -1,6 +1,6 @@
 from sympy import (Symbol, symbols, Basic, Function, Mul, Pow, Matrix, sin,
         cos, S, eye, Add, trigsimp, expand, pretty, Eq, collect, sqrt,
-        sympify, factor)
+        sympify, factor, zeros)
 from sympy.printing.pretty.pretty import PrettyPrinter
 from sympy.printing.str import StrPrinter
 
@@ -615,6 +615,7 @@ class Vector(Basic):
             else:
                     m += 2*expand(self.dict[k1]*self.dict[k2]*dot(k1, k2))
 
+        # Try to factor things if possible
         if isinstance(m, Add):
             trigterms = m.atoms(sin, cos)
             replacements = []
@@ -800,7 +801,7 @@ class Point(object):
                 self._fixedin = [fixedinframe]
                 self._vrel = cross(fixedinframe.ang_vel(self.NewtonianFrame),
                         relativeposition)
-            elif fixedinframe==None:
+            elif fixedinframe == None:
                 self._fixedin = []
                 self._vrel = relativeposition.dt(self.NewtonianFrame)
             else:
@@ -957,15 +958,21 @@ class ReferenceFrame(object):
         self.transforms = {}
         self.parentframe = frame
         #self.W = {}
-        if omega != None:
+        if isinstance(omega, Vector):
             #self.set_omega(omega, self.parentframe)
             #frame.set_omega(-omega, self, force=True)
             self._wrel = omega
-            self._wrel_children = {}
             frame._wrel_children[self] = -omega
+        elif isinstance(omega, tuple):
+            # Case of simple rotations about 1 axis
+            self._wrel = Vector(omega[1] * self.triad[omega[0]-1])
+            frame._wrel_children[self] = Vector(-omega[1] *
+                    self.triad[omega[0]-1])
         else:
             self._wrel = Vector(0)
-            self._wrel_children = {}
+
+        self._wrel_children = {}
+
 
         if frame is not None:
             frame.children.append(self)
@@ -1022,10 +1029,12 @@ class ReferenceFrame(object):
         if not isinstance(angle, (list, tuple)):
             if axis in set((1, 2, 3)):
                 matrix = self._rot(axis, angle)
-                omega = Vector(angle.diff(t)*self[axis])
+                #omega = Vector(angle.diff(t)*self[axis])
+                omega = (axis, angle.diff(t))
             elif axis in set((-1, -2, -3)):
                 matrix = self._rot(-axis, -angle)
-                omega = Vector(-angle.diff(t)*self[-axis])
+                #omega = Vector(-angle.diff(t)*self[-axis])
+                omega = (-axis, -angle.diff(t))
             elif isinstance(axis, (UnitVector, Vector)):
                 raise NotImplementedError("Axis angle rotations not \
                     implemented.")
@@ -1266,6 +1275,12 @@ class NewtonianReferenceFrame(ReferenceFrame):
     """
     def __init__(self, s):
         ReferenceFrame.__init__(self, s)
+        # Holonomic constraint equations
+        self.hc_eqns = []
+        # Differentiatated holonomic constraint equations
+        self.dhc_eqns = []
+        # Nonholonomic constraint equations
+        self.nhc_eqns = []
 
     def subkindiffs(self, expr_dict):
         self.recursive_subs(self, expr_dict)
@@ -1293,6 +1308,63 @@ class NewtonianReferenceFrame(ReferenceFrame):
         # Set class attribute for the list of independent generalized speeds
         self._ulist = u_list
 
+    def form_constraint_matrix(self):
+        """Form the constraint matrix associated with linear velocity
+        constraints.
+
+        Includes both differentiated holonomic constraints and nonholonomic
+        constraints.  Both types of constraints must be linear in the time
+        derivatives of the generalized coordinates.
+
+        """
+
+        M1 = zeros([len(self.dhc_eqns), len(self.qdot_list)])
+        M2 = zeros([len(self.nhc_eqns), len(self.qdot_list)])
+        for i, eqn in enumerate(self.dhc_eqns):
+            for j, qd in enumerate(self.qdot_list):
+                entry = eqn.coeff(qd)
+                M1[i, j] = entry if entry is not None else S(0)
+
+
+        for i, eqn in enumerate(self.nhc_eqns):
+            for j, qd in enumerate(self.qdot_list):
+                entry = eqn.coeff(qd)
+                M2[i, j] = entry if entry is not None else S(0)
+
+        self.constraint_matrix = M2.row_insert(0, M1)
+
+    def solve_constraint_matrix(self, dependent_qdots):
+        """Solve the constraint matrix for the dependent qdots in terms of the
+        independent qdots.
+        """
+        d_column_index = []
+        for qd in dependent_qdots:
+            d_column_index.append(self.qdot_list.index(qd))
+        d_column_index.sort()
+        i_column_index = list(set(range(0, len(self.qdot_list))) -
+                set(d_column_index)).sort()
+        rows, columns = self.constraint_matrix.shape
+        if rows != len(d_column_index):
+            raise ValueError('Number of dependent qdots should equal number of\
+                constraint equations')
+        if (columns-rows) != len(i_column_index):
+            raise ValueError('Number of independent qdots should equal number\
+                of qdots minus number of dependent qdots')
+        ds_mat = zeros([rows, rows])
+        is_mat = zeros([rows, columns-rows])
+        for i, j in enumerate(d_column_index):
+            ds_mat[:, i] = self.constraint_matrix[:,j]
+        for i, j in enumerate(i_column_index):
+            is_mat[:, i] = self.constraint_matrix[:,j]
+
+    def set_nhc_eqns(self, *args):
+        """Assigns nonholonomic constraint equations, forms constraint matrix.
+        """
+        for arg in args:
+            for eqn in arg:
+                self.nhc_eqns.append(eqn)
+        self.form_constraint_matrix()
+
 def most_frequent_frame(vector):
     """Determines the most frequent frame of all unitvector terms in a vector.
     """
@@ -1301,41 +1373,47 @@ def most_frequent_frame(vector):
         frame_counter[uv.frame] = frame_counter.get(uv.frame, 0) + 1
     return max([(frame_counter[x], x) for x in frame_counter])[1]
 
-def kinematic_chain(point1, point2, r):
+def kinematic_chain(point1, point2, r=None, vec_list=None):
     """Close a kinematic loop and form the associated constraint equations.
 
     point1: begin point
     point2: end point
     r: vector from point2 to point1 which closes the loop kinematic loop
+    vec_list:  List of UnitVectors to dot the constraint with
 
     Returns the kinematic constraint equations, along with the time derivatives
     of those equations.
     """
-    loop = point2.rel(point1) + r
-    frame = most_frequent_frame(loop)
-    kc_eqs = []
-    dkc_eqs = []
+    if r is None:
+        loop = point2.rel(point1)
+    else:
+        loop = point2.rel(point1) + r
+
+    if vec_list is None:
+        frame = most_frequent_frame(loop)
+        vec_list = [frame[i] for i in (1, 2, 3)]
+    hc_eqs = []
+    dhc_eqs = []
     # Generate the scalar holonomic constraint equations
-    for i in (1, 2, 3):
-        kc = dot(frame[i], loop)
-        if kc != 0:
-            kc_eqs.append(kc)
-            dkc_eqs.append(expand(kc.diff(t)))
+    for uv in vec_list:
+        hc = dot(uv, loop)
+        if hc != 0:
+            hc_eqs.append(hc)
+            dhc_eqs.append(expand(hc.diff(t)))
     qd_list = point1.NewtonianFrame.qdot_list
     qdot_symbols = [Symbol(str(q.args[0].func)+"'") for q in qd_list]
     subsdict = dict(zip(qd_list, qdot_symbols))
-    subs_dkc_eqs = [collect(eq.subs(subsdict), qdot_symbols) for eq in dkc_eqs]
+    subs_dhc_eqs = [collect(eq.subs(subsdict), qdot_symbols) for eq in dhc_eqs]
     rsubsdict = dict(zip(qdot_symbols, qd_list))
-    dkc_eqs = [eq.subs(rsubsdict) for eq in subs_dkc_eqs]
-    # Assign the constraints to the Newtonian Reference frame so they can be
-    # tracked
-    point1.NewtonianFrame.kc_eqs = kc_eqs
-    #point1.NewtonianFrame.dkc_eqs = dkc_eqs
-    point1.NewtonianFrame.dkc_eqs = dkc_eqs
+    dhc_eqs = [eq.subs(rsubsdict) for eq in subs_dhc_eqs]
+    # Append the constraints to the Newtonian Reference constraint list
+    for hc_eqn, dhc_eqn in zip(hc_eqs, dhc_eqs):
+        point1.NewtonianFrame.hc_eqns.append(hc_eqn)
+        point1.NewtonianFrame.dhc_eqns.append(dhc_eqn)
 
     # Return the constraint equations so the user can look at them if they
     # want.
-    return kc_eqs, subs_dkc_eqs
+    return hc_eqs, subs_dhc_eqs
 
 def express(v, frame):
     """Expresses a vector in terms of UnitVectors fixed in a specified frame.
