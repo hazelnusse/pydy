@@ -4,9 +4,7 @@ from numpy import array, arange
 from sympy import symbols, Function, S, solve, simplify, \
         collect, Matrix, lambdify, trigsimp, expand, Eq, pretty_print
 
-from pydy import ReferenceFrame, cross, dot, dt, express, \
-        Vector, UnitVector, Dyad, Inertia, InertiaForce, \
-        InertiaTorque
+from pydy import *
 
 # Constants
 m, g, r1, r2, t, I, J= symbols("m g r1 r2 t I J")
@@ -18,12 +16,14 @@ m, g, r1, r2, t, I, J= symbols("m g r1 r2 t I J")
 au1, au2, au3, cf1, cf2, cf3 = symbols("au1 au2 au3 cf1 cf2 cf3")
 u3p, u4p, u5p = symbols("u3p u4p u5p")
 
+(q1, q2, q3, q4, q5), q_list, qdot_list = gcs('q', 5, list=True)
 
-q1, q2, q3, q4, q5 = [Function("q%i"%j)(t) for j in range(1, 6)]
 u1, u2, u3 = [Function("u%i"%j)(t) for j in (1,2,3)]
 
+N = NewtonianReferenceFrame('N')
+N.q_list = q_list
+N.qdot_list = qdot_list
 
-N = ReferenceFrame('N')
 A = N.rotate("A", 3, q3)
 B = A.rotate("B", 1, q4)
 C = B.rotate("C", 2, q5)
@@ -38,8 +38,22 @@ CN = CO.locate('CN', r1*B[3] + r2*N[3], C)
 # of the point fixed to C, instantaneously in contact with the ground, must be
 # zero.
 nh1, nh2 = dot(CN.vel(), N[1]), dot(CN.vel(), N[2])
+print nh1
+print nh2
+N.set_nhc_eqns([nh1, nh2])
+print N.constraint_matrix
+B = N.constraint_matrix
+BTB = B.T.multiply(B)
+for i in range(BTB.lines):
+    for j in range(BTB.cols):
+        BTB[i,j] = trigsimp(BTB[i,j])
+
+print BTB
+stop
+
 dependent_rates = solve([nh1,nh2], (q1.diff(t), q2.diff(t)))
 print 'Dependent rates', dependent_rates
+stop
 
 # Imposing the constraints upon the velocity of the two points CO, CN.  Note
 # that CN.vel == zero after inposing the constraints.

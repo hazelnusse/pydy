@@ -951,16 +951,20 @@ def test_point_vel():
     B = A.rotate('B', 1, q4)
     C = B.rotate('C', 2, q5)
     P1 = N.O.locate('P1', q1*N[1] + q2*N[2])
-    P2 = P1.locate('P2', -r2*N[3] - r1*B[3])
-    CP = P2.locate('CP', r2*N[3] + r1*B[3], C)
+    P2 = P1.locate('P2', -r2*A[3] - r1*B[3])
+    CP = P2.locate('CP', r2*A[3] + r1*B[3], C)
     # These are checking that the inertial velocities of the 4 points are
     # correct
     assert N.O.vel() == Vector(0)
     assert P1.vel() == Vector(q1.diff(t)*N[1] + q2.diff(t)*N[2])
     assert P2.vel() == P1.vel() + Vector(-r1*q3.diff(t)*sin(q4)*B[1] \
             + r1*q4.diff(t)*B[2])
+    print CP.vel()
+    print P1.vel() + Vector(-r2*q4.diff(t)*A[2] + \
+            (r1*q5.diff(t) + r2*q5.diff(t)*cos(q4))*B[1])
     assert CP.vel() == P1.vel() + Vector(-r2*q4.diff(t)*A[2] + \
             (r1*q5.diff(t) + r2*q5.diff(t)*cos(q4))*B[1])
+
     # These are just checking that v_p1_p2_N == -v_p2_p1_N
     assert N.O.vel(N.O, N) == Vector(0)
     assert N.O.vel(P1, N) == -P1.vel(N.O, N)

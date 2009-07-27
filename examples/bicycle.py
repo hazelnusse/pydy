@@ -62,7 +62,6 @@ nh_rear = [dot(N2.vel(), N[i]) for i in (1, 2)]
 nh_front = [dot(FN.vel(), A[i]) for i in (1, 2)]
 
 N.set_nhc_eqns(nh_rear, nh_front)
-print N.constraint_matrix[0,0]
 stop
 
 
