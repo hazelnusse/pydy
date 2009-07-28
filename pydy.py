@@ -167,43 +167,49 @@ class UnitVector(Basic):
             return Vector(cp)
 
         if isinstance(other, UnitVector):
-            c = other.express(self.frame)
-            if isinstance(c, UnitVector):
-                cp_list = [self.v['num'][1]*c.v['num'][2] - \
-                        self.v['num'][2]*c.v['num'][1], \
-                        -self.v['num'][0]*c.v['num'][2] + \
-                        self.v['num'][2]*c.v['num'][0],  \
-                        self.v['num'][0]*c.v['num'][1] - \
-                        self.v['num'][1]*c.v['num'][0]]
-                cp = {}
-                for (c, i) in zip(cp_list, [1, 2, 3]):
-                    if c != 0:
-                        cp.update({self.frame[i] : c})
-                if len(cp) == 1:
-                    if cp.values()[0] == 1:
-                        return cp.keys()[0]  # Return a UnitVector object
+            nrf = self.frame.NewtonianReferenceFrame
+            if (self, other) in nrf.uv_cross_products:
+                return nrf.uv_cross_products[(self, other)]
+            elif (other, self) in nrf.uv_cross_products:
+                return -nrf.uv_cross_products[(other, self)]
+            else:
+                c = other.express(self.frame)
+                if isinstance(c, UnitVector):
+                    cp_list = [self.v['num'][1]*c.v['num'][2] - \
+                            self.v['num'][2]*c.v['num'][1], \
+                            -self.v['num'][0]*c.v['num'][2] + \
+                            self.v['num'][2]*c.v['num'][0],  \
+                            self.v['num'][0]*c.v['num'][1] - \
+                            self.v['num'][1]*c.v['num'][0]]
+                    cp = {}
+                    for (c, i) in zip(cp_list, [1, 2, 3]):
+                        if c != 0:
+                            cp.update({self.frame[i] : c})
+                    if len(cp) == 1:
+                        if cp.values()[0] == 1:
+                            return cp.keys()[0]  # Return a UnitVector object
+                        else:
+                            return Vector(cp)
                     else:
-                        return Vector(cp)
-                else:
-                    cp1 = Vector(cp)
+                        cp1 = Vector(cp)
+                        cp2 = cp1.express(other.frame)
+                        if isinstance(cp2, UnitVector):
+                            return cp2
+                        elif len(cp1.dict) <= len(cp2.dict):
+                            return cp1
+                        else:
+                            return cp2
+                elif isinstance(c, Vector):
+                    cp1 = cross_with_Vector(self, c)
                     cp2 = cp1.express(other.frame)
-                    if isinstance(cp2, UnitVector):
+                    if isinstance(cp1, UnitVector):
+                        return cp1
+                    elif isinstance(cp2, UnitVector):
                         return cp2
                     elif len(cp1.dict) <= len(cp2.dict):
                         return cp1
                     else:
                         return cp2
-            elif isinstance(c, Vector):
-                cp1 = cross_with_Vector(self, c)
-                cp2 = cp1.express(other.frame)
-                if isinstance(cp1, UnitVector):
-                    return cp1
-                elif isinstance(cp2, UnitVector):
-                    return cp2
-                elif len(cp1.dict) <= len(cp2.dict):
-                    return cp1
-                else:
-                    return cp2
         elif isinstance(other, Vector):
             return cross_with_Vector(self, other)
         else:
@@ -1438,16 +1444,25 @@ class NewtonianReferenceFrame(ReferenceFrame):
             else:
                 self.constraint_matrix = M2
 
-    def solve_constraint_matrix(self, dependent_qdots):
+    def solve_constraint_matrix(self, dependent_qdots, method='GE'):
         """Solve the constraint matrix for the dependent qdots in terms of the
         independent qdots.
+
+        When solving for the dependent speeds in terms of a the independent
+        ones, a symbolic matrix inversion is necessary.  The method parameter
+        can be either 'GE', 'ADJ', or 'LU'.  See inv() for more information on
+        the differences.
         """
         d_column_index = []
         for qd in dependent_qdots:
             d_column_index.append(self.qdot_list.index(qd))
         d_column_index.sort()
         i_column_index = list(set(range(0, len(self.qdot_list))) -
-                set(d_column_index)).sort()
+                set(d_column_index))
+        #print i_column_index
+        #print self.qdot_list
+        #print d_column_index
+        #stop
         rows, columns = self.constraint_matrix.shape
         if rows != len(d_column_index):
             raise ValueError('Number of dependent qdots should equal number of\
@@ -1462,6 +1477,11 @@ class NewtonianReferenceFrame(ReferenceFrame):
         for i, j in enumerate(i_column_index):
             is_mat[:, i] = self.constraint_matrix[:,j]
         # Need to now invert ds_mat, and form -inv(ds_mat)*is_mat
+        matr = -ds_mat.inv(method=method)*is_mat
+        r, c = matr.shape
+        #for i in range(0, r):
+        #    for j in range(0, c):
+
 
     def set_nhc_eqns(self, *args):
         """Assigns nonholonomic constraint equations, forms constraint matrix.
@@ -1486,6 +1506,7 @@ class NewtonianReferenceFrame(ReferenceFrame):
         else:
             for child in Point.children:
                 self.recursive_gravity(child, v)
+
 
 def most_frequent_frame(vector):
     """Determines the most frequent frame of all unitvector terms in a vector.

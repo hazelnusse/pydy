@@ -38,17 +38,9 @@ CN = CO.locate('CN', r1*B[3] + r2*N[3], C)
 # of the point fixed to C, instantaneously in contact with the ground, must be
 # zero.
 nh1, nh2 = dot(CN.vel(), N[1]), dot(CN.vel(), N[2])
-print nh1
-print nh2
 N.set_nhc_eqns([nh1, nh2])
-print N.constraint_matrix
-B = N.constraint_matrix
-BTB = B.T.multiply(B)
-for i in range(BTB.lines):
-    for j in range(BTB.cols):
-        BTB[i,j] = trigsimp(BTB[i,j])
+N.solve_constraint_matrix([q1.diff(t), q2.diff(t)])
 
-print BTB
 stop
 
 dependent_rates = solve([nh1,nh2], (q1.diff(t), q2.diff(t)))
