@@ -174,6 +174,7 @@ class UnitVector(Basic):
                 return -nrf.uv_cross_products[(other, self)]
             else:
                 c = other.express(self.frame)
+                #print self.frame
                 if isinstance(c, UnitVector):
                     cp_list = [self.v['num'][1]*c.v['num'][2] - \
                             self.v['num'][2]*c.v['num'][1], \
@@ -185,7 +186,9 @@ class UnitVector(Basic):
                     for (c, i) in zip(cp_list, [1, 2, 3]):
                         if c != 0:
                             cp.update({self.frame[i] : c})
-                    if len(cp) == 1:
+                    if len(cp) == 0:
+                        return Vector(0)
+                    elif len(cp) == 1:
                         if cp.values()[0] == 1:
                             return cp.keys()[0]  # Return a UnitVector object
                         else:
@@ -195,10 +198,19 @@ class UnitVector(Basic):
                         cp2 = cp1.express(other.frame)
                         if isinstance(cp2, UnitVector):
                             return cp2
-                        elif len(cp1.dict) <= len(cp2.dict):
-                            return cp1
                         else:
-                            return cp2
+                            for k in cp1.dict:
+                                cp1.dict[k] = trigsimp(cp1.dict[k])
+                            for k in cp2.dict:
+                                cp2.dict[k] = trigsimp(cp2.dict[k])
+                            if isinstance(cp1, UnitVector):
+                                return cp1
+                            elif isinstance(cp2, UnitVector):
+                                return cp2
+                            elif len(cp1.dict) <= len(cp2.dict):
+                                return cp1
+                            else:
+                                return cp2
                 elif isinstance(c, Vector):
                     cp1 = cross_with_Vector(self, c)
                     cp2 = cp1.express(other.frame)
@@ -206,10 +218,19 @@ class UnitVector(Basic):
                         return cp1
                     elif isinstance(cp2, UnitVector):
                         return cp2
-                    elif len(cp1.dict) <= len(cp2.dict):
-                        return cp1
                     else:
-                        return cp2
+                        for k in cp1.dict:
+                            cp1.dict[k] = trigsimp(cp1.dict[k])
+                        for k in cp2.dict:
+                            cp2.dict[k] = trigsimp(cp2.dict[k])
+                        if isinstance(cp1, UnitVector):
+                            return cp1
+                        elif isinstance(cp2, UnitVector):
+                            return cp2
+                        elif len(cp1.dict) <= len(cp2.dict):
+                            return cp1
+                        else:
+                            return cp2
         elif isinstance(other, Vector):
             return cross_with_Vector(self, other)
         else:
@@ -249,6 +270,8 @@ class Dyad(Basic):
             self.dict.update({v.args[-2:]: v.args[:-2]})
         elif v.is_Pow:
             self.dict.update({term.args[-1]: term.coeff(term.args[-1])})
+        elif v == 0:
+            pass
         else:
             raise NotImplementedError()
 
@@ -864,8 +887,8 @@ class Point(object):
         r = Vector(r)
         newpoint = Point(name, relativeposition=r, \
                 parentpoint=self, fixedinframe=frame)
-        if mass is not None: newpoint.mass = mass
-        if force is not None: newpoint.force = Vector(force)
+        newpoint.mass = mass if mass is not None else 0
+        newpoint.force = Vector(force) if force is not None else Vector(0)
         return newpoint
 
     def rel(self, other):
@@ -914,6 +937,39 @@ class Point(object):
                     raise NotImplementedError('Somehow these two points are \
                         both fixed in 2 or more of the same frames')
         return v
+
+    def acc(self, point=None, frame=None):
+        """Calculate the acceleration of a point.
+
+        Used without arguments, vel() returns the velocity of self
+        relative to the Newtonian Frame, taking into account whether points
+        have been declared as fixed in a frame or not.
+
+        Used with arguments, .vel(point, frame) returns the velocity of self
+        relative to point, as view by an observer fixed in frame.
+        """
+
+        a = Vector(0)
+        if point == frame == None:
+            for p in self.point_list:
+                a += p._arel
+        elif isinstance(point, Point) and isinstance(frame, ReferenceFrame):
+            # Get the point list from point to self
+            point_list = point.get_point_list(self)
+            for i, pa in enumerate(point_list[:-1]):
+                pb = point_list[i+1]
+                set_intersect = pa._fixedin & pb._fixedin
+                # Case when the two points are not fixed in the same frame
+                if len(set_intersect) == 0:
+                    a += dt(pb.vel(pa), frame)
+                # Case when the two points are fixed in the same frame
+                elif len(set_intersect) == 1:
+                    a += cross(set_intersect.pop().ang_vel(frame),
+                            pb._vrel)
+                else:
+                    raise NotImplementedError('Somehow these two points are \
+                        both fixed in 2 or more of the same frames')
+        return a
 
     def get_point_list(self, other=None):
         """
@@ -978,6 +1034,13 @@ class ReferenceFrame(object):
         ReferenceFrame object.  See rotate() method for details of the optional
         arguments.
         """
+        self.children = []
+        self.name = s
+        self.triad = [UnitVector(self, i) for i in (1,2,3)]
+        self.transforms = {}
+        self.parentframe = frame
+        self.torque = Vector(0)
+
         if not any([matrix, frame, omega]):
             self.ref_frame_list = [self]
             self.O = Point(s + 'O', fixedinframe=self)
@@ -985,15 +1048,10 @@ class ReferenceFrame(object):
             self.NewtonianReferenceFrame = self
             self.uv_dot_products = {}
             self.uv_cross_products = {}
+            self.inertia = Inertia(self, (0,0,0,0,0,0))
         else:
             self.ref_frame_list = [self] + frame.ref_frame_list[:]
             self.NewtonianReferenceFrame = frame.NewtonianReferenceFrame
-
-        self.children = []
-        self.name = s
-        self.triad = [UnitVector(self, i) for i in (1,2,3)]
-        self.transforms = {}
-        self.parentframe = frame
 
         if isinstance(omega, Vector):
             self._wrel = omega
@@ -1036,7 +1094,7 @@ class ReferenceFrame(object):
         # We just append it to our "transforms" dict.
         self.transforms[frame] = matrix
 
-    def rotate(self, name, axis, angle):
+    def rotate(self, name, axis, angle, I=None, I_frame=None):
         """Returns a new rotated reference frame.
 
         Perform simple rotations, Euler rotations, space fixed rotations, axis
@@ -1076,6 +1134,14 @@ class ReferenceFrame(object):
             newframe = ReferenceFrame(name, matrix, self, omega)
             self[abs(axis)].common_frames.add(newframe)
             newframe[abs(axis)].common_frames.add(self)
+            if I == None and I_frame==None:
+                newframe.inertia = Inertia(newframe, (0, 0, 0, 0, 0, 0))
+            elif I != None and I_frame != None:
+                newframe.inertia = Inertia(I_frame, I)
+            elif I != None and I_frame == None:
+                newframe.inertia = Inertia(newframe, I)
+            else:
+                raise NotImplementedError()
             return newframe
         else:
             if len(angle) == 3:
@@ -1116,6 +1182,14 @@ class ReferenceFrame(object):
                     omega  = Vector({newFrame[1]: w1, newFrame[2]: w2,
                         newFrame[3]: w3})
                     newFrame.set_omega(omega, self, force=True)
+                    if I == None and I_frame==None:
+                        newFrame.inertia = Inertia(newFrame, (0, 0, 0, 0, 0, 0))
+                    elif I != None and I_frame != None:
+                        newFrame.inertia = Inertia(I_frame, I)
+                    elif I != None and I_frame == None:
+                        newFrame.inertia = Inertia(newFrame, I)
+                    else:
+                        raise NotImplementedError()
                     return newFrame
             else:
                 raise NotImplementedError("angle must be a list/tuple of \
@@ -1183,8 +1257,6 @@ class ReferenceFrame(object):
     def get_rot_matrices(self, frame):
         """
         Returns a list of matrices to get from self to frame.
-        """
-        """
         # local function
         def shrink(rm_list):
             new_list = []
@@ -1230,13 +1302,14 @@ class ReferenceFrame(object):
         else:
             raise ValueError("set_omega has already been called.")
 
-    def ang_vel(self, frame):
+    def ang_vel(self, frame=None):
         """Angular velocity relative to another frame.
         """
 
         if frame == self:
             return Vector(0)
         else:
+            if frame == None: frame = self.NewtonianReferenceFrame
             om = Vector(0)
             fl = frame.get_frames_list(self)
             n = len(fl)
@@ -1247,13 +1320,14 @@ class ReferenceFrame(object):
                     om -= fl[i]._wrel
         return om
 
-    def ang_acc(self, frame):
+    def ang_acc(self, frame=None):
         """Angular acceleration relative to another frame.
         """
 
         if frame == self:
             return Vector(0)
         else:
+            if frame == None: frame = self.NewtonianReferenceFrame
             alpha = Vector(0)
             fl = frame.get_frames_list(self)
             n = len(fl)
@@ -1394,11 +1468,13 @@ class NewtonianReferenceFrame(ReferenceFrame):
                 self.recursive_subs(child, expr_dict)
 
     def recursive_partials(self, PorF):
+        """Recursively form the relative partial velocities of each point.
+        """
         # Substitute into appropriate velocity/angular velocity
         if isinstance(PorF, Point):
-            PorF._partialvrel = PorF._vrel.partials(self._ulist)
+            PorF._partialvrel = PorF._vrel.partials(self.u_list)
         elif isinstance(PorF, ReferenceFrame):
-            PorF._partialwrel = PorF._wrel.partials(self._ulist)
+            PorF._partialwrel = PorF._wrel.partials(self.u_list)
             #for k in PorF._wrel_children:
             #    PorF._wrel_children[k] = PorF._wrel_children[k].subs(expr_dict)
         else:
@@ -1411,9 +1487,13 @@ class NewtonianReferenceFrame(ReferenceFrame):
             for child in PorF.children:
                 self.recursive_partials(child)
 
-    def setgenspeeds(self, u_list):
-        # Set class attribute for the list of independent generalized speeds
-        self._ulist = u_list
+    def setcoords(self, q_list, qdot_list, u_list):
+        """Set the generalized coordinates, their time derivatives, and the
+        generalized speeds.
+        """
+        self.q_list = q_list
+        self.qdot_list = qdot_list
+        self.u_list = u_list
 
     def form_constraint_matrix(self):
         """Form the constraint matrix associated with linear velocity
@@ -1459,10 +1539,6 @@ class NewtonianReferenceFrame(ReferenceFrame):
         d_column_index.sort()
         i_column_index = list(set(range(0, len(self.qdot_list))) -
                 set(d_column_index))
-        #print i_column_index
-        #print self.qdot_list
-        #print d_column_index
-        #stop
         rows, columns = self.constraint_matrix.shape
         if rows != len(d_column_index):
             raise ValueError('Number of dependent qdots should equal number of\
@@ -1482,6 +1558,94 @@ class NewtonianReferenceFrame(ReferenceFrame):
         #for i in range(0, r):
         #    for j in range(0, c):
 
+    def frstar(self):
+        """Computes the generalized inertia forces of the system.
+        """
+        self.recursive_frstar(self.O)
+        self.recursive_frstar(self)
+
+    def recursive_frstar(self, PorF):
+        """Recursively computes generalized inertia forces for each particle
+        and rigid body in the system.
+        """
+        if isinstance(PorF, Point):
+            if not hasattr(PorF, 'partialv'): self._partialv(PorF)
+            PorF.gen_acc = [PorF.acc().dot(pv) for pv in PorF.partialv]
+            if PorF.mass == 0:
+                PorF.gen_inertia_force = [0] * len(self.u_list)
+            else:
+                PorF.gen_inertia_force = [-PorF.mass * ga for ga in PorF.gen_acc]
+        elif isinstance(PorF, ReferenceFrame):
+            if not hasattr(PorF, 'partialw'): self._partialw(PorF)
+            if PorF.inertia == Inertia(self, (0,0,0,0,0,0)):
+                PorF.gen_inertia_force = [0] * len(self.u_list)
+            else:
+                alph = PorF.ang_acc()
+                I = PorF.inertia
+                w = PorF.ang_vel()
+                PorF.gen_inertia_force = [pw.dot(-alph.dot(I)
+                    - w.cross(I.rdot(w))) for pw in PorF.partialw]
+        else:
+            raise NotImplementedError()
+
+        #  Initiate recursion
+        if PorF.children == []:
+            return
+        else:
+            for child in PorF.children:
+                self.recursive_frstar(child)
+
+    def fr(self):
+        """Computes the generalized active forces of the system.
+        """
+        self.recursive_fr(self.O)
+        self.recursive_fr(self)
+
+    def recursive_fr(self, PorF):
+        """Recursively computes generalized active forces for each particle
+        and rigid body in the system.
+        """
+        if isinstance(PorF, Point):
+            if not hasattr(PorF, 'partialv'): self._partialv(PorF)
+            if PorF.force == Vector(0):
+                PorF.gen_active_force = [0] * len(self.u_list)
+            else:
+                PorF.gen_active_force = [PorF.force.dot(pv) for pv in
+                    PorF.partialv]
+        elif isinstance(PorF, ReferenceFrame):
+            if not hasattr(PorF, 'partialw'): self._partialw(PorF)
+            if PorF.torque == Vector(0):
+                PorF.gen_active_force = [0] * len(self.u_list)
+            else:
+                PorF.gen_active_force = [PorF.torque.dot(pw) for pw in
+                    PorF.partialw]
+        else:
+            raise NotImplementedError()
+
+        #  Initiate recursion
+        if PorF.children == []:
+            return
+        else:
+            for child in PorF.children:
+                self.recursive_fr(child)
+
+    def _partialv(self, point):
+        """Computes the r absolute partial velocities of a point
+        """
+        if point.parentpoint == None:
+            point.partialv = [Vector(0)] * len(self.u_list)
+        else:
+            point.partialv = [Vector(point.parentpoint.partialv[r] +
+                    point._partialvrel[r]) for r in range(len(self.u_list))]
+
+    def _partialw(self, frame):
+        """Computes the r absolute partial velocities of a ReferenceFrame
+        """
+        if frame.parentframe == None:
+            frame.partialw = [Vector(0)] * len(self.u_list)
+        else:
+            frame.partialw = [Vector(frame.parentframe.partialw[r] +
+                    frame._partialwrel[r]) for r in range(len(self.u_list))]
 
     def set_nhc_eqns(self, *args):
         """Assigns nonholonomic constraint equations, forms constraint matrix.
@@ -1491,7 +1655,10 @@ class NewtonianReferenceFrame(ReferenceFrame):
                 self.nhc_eqns.append(eqn)
         self.form_constraint_matrix()
 
-    def apply_gravitational_force(self, v):
+    def gravity(self, v):
+        """Applies a gravitational force to each particle and rigid body in the
+        system.
+        """
         v = Vector(v)
         self.recursive_gravity(self.O, v)
 
@@ -1506,6 +1673,28 @@ class NewtonianReferenceFrame(ReferenceFrame):
         else:
             for child in Point.children:
                 self.recursive_gravity(child, v)
+
+    def form_kanes_equations(self):
+        self.fr()
+        self.frstar()
+
+        self.kanes_equations = [0] * len(self.u_list)
+        self.recursive_eoms(self.O)
+        self.recursive_eoms(self)
+        for r, e in enumerate(self.kanes_equations):
+            self.kanes_equations[r] = e.expand()
+        return self.kanes_equations
+
+    def recursive_eoms(self, PorF):
+        for r in range(len(self.u_list)):
+            self.kanes_equations[r] += PorF.gen_active_force[r] +\
+                PorF.gen_inertia_force[r]
+
+        if PorF.children == []:
+            return
+        else:
+            for child in PorF.children:
+                self.recursive_eoms(child)
 
 
 def most_frequent_frame(vector):
@@ -1642,24 +1831,25 @@ def dt(v, frame):
         raise TypeError('Second argument must be a ReferenceFrame, \
                 instead a %s object was given' % str(type(v)))
 
-def InertiaForce(m, a):
-    """Computes Inertia force, defined as:
+def InertiaForce(p):
+    """Computes Inertia force of a point, defined as:
 
     R^* = -m*a
 
     Equation 4.11.3 or 4.11.6 from Dynamics: Theory and Application
     """
-    if isinstance(a, Vector):
-        IF_dict = dict([(uv, -m*coef) for uv, coef in a.dict.items()])
-    elif isinstance(a, UnitVector):
-        IF_dict = {a: -m}
+    if isinstance(p, Point):
+        if p.mass == 0:
+            return Vector(0)
+        else:
+            IF_dict = dict([(uv, -p.mass*coef) for uv, coef in \
+                    p.acc().dict.items()])
+            return Vector(IF_dict)
     else:
-        raise TypeError('The acceleration a must be a Vector or UnitVector, \
-            instead a %s object was given.' % str(type(a)))
-    return Vector(IF_dict)
+        raise TypeError('InertiForce requires a Point as its argument')
 
-def InertiaTorque(I, omega, alpha):
-    """Computes Inertia torque, defined as:
+def InertiaTorque(frame):
+    """Computes Inertia torque of a ReferenceFrame/Rigid Body, defined as:
 
     T^* = - cross(alpha, I) - cross(omega, dot(I, omega))
 
@@ -1669,30 +1859,14 @@ def InertiaTorque(I, omega, alpha):
 
     Equation 4.11.8 from Dynamics: Theory and Application
     """
-    if isinstance(I, Dyad):
-        if isinstance(alpha, (UnitVector, Vector)) and isinstance(omega,
-                (UnitVector, Vector)):
-            return dot(-alpha, I) - cross(omega, dot(I, omega))
-        else:
-            raise NotImplementedError("Alpha and Omega must be UnitVector or \
-                Vector Instances")
+    if isinstance(frame, ReferenceFrame):
+            return dot(-frame.ang_acc(), frame.inertia)\
+                    - cross(frame.ang_vel(),\
+                    dot(frame.inertia, \
+                        frame.ang_vel()))
     else:
-        raise NotImplementedError("I must be a Dyad")
+        raise NotImplementedError("frame must be a Reference Frame")
 
-def RigidBody(point, frame, mass, inertia):
-    """
-    Assign mass and inertia to a Point and a Reference frame, effectively
-    creating a Rigid Body.
-
-    """
-    point.mass = mass
-    frame.inertia = inertia
-
-def Particle(point, mass):
-    """
-    Assign mass to a Point, effectively creating a particle
-    """
-    point.mass = mass
 
 def GeneralizedCoordinate(s):
     gc = Symbol(s)(Symbol('t'))
@@ -1700,28 +1874,6 @@ def GeneralizedCoordinate(s):
     gc.__repr__ = lambda self: PyDyStrPrinter().doprint(self)
     gc.__str__ = lambda self: PyDyStrPrinter().doprint(self)
     return gc
-
-
-#class GeneralizedCoordinate(Symbol):
-    #def __init__(self, name, depends_on=Symbol('t'), *args):
-    #    self.dv = depends_on
-
-    #def dt(self):
-    #    return self.diff(Symbol('t'))
-
-    #def diff(self, var):
-    #    if var == Symbol('t'):
-    #        return GeneralizedCoordinate(self.name + "'")
-    #    else:
-    #        return Derivative(self, var)
-
-    #def _eval_derivative(self, s):
-    #    if s == self:
-    #        return S.One
-    #    elif s == self.dv:
-    #        return GeneralizedCoordinate(self.name + "'")
-    #    else:
-    #        return S.Zero
 
 def gcs(s, number=1, list=False):
     gc_list = [GeneralizedCoordinate(s[0]+str(i)) for i in range(1, number + 1)]
@@ -1779,8 +1931,8 @@ class PyDyStrPrinter(StrPrinter):
                     # All subsequent terms pad with spaces and add parenthesis
                     else:
                         if isinstance(e.dict[k], Add):
-                            if e.dict[k].could_extract_minus_sign():
-                                s += (' - (' + self.doprint(-e.dict[k])
+                            if e.dict[k].expand().could_extract_minus_sign():
+                                s += (' - (' + self.doprint(-e.dict[k].expand())
                                     + ')' + small_dot + self.doprint(k))
                             else:
                                 s += (' + (' + self.doprint(e.dict[k])
@@ -1789,8 +1941,8 @@ class PyDyStrPrinter(StrPrinter):
                             mulcoef = S(1)
                             sign_counter = 0
                             for arg in e.dict[k].args:
-                                if arg.could_extract_minus_sign():
-                                    mulcoef *= -arg
+                                if arg.expand().could_extract_minus_sign():
+                                    mulcoef *= -arg.expand()
                                     sign_counter += 1
                                 else:
                                     mulcoef *= arg

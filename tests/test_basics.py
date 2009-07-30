@@ -959,7 +959,8 @@ def test_point_vel():
     assert P1.vel() == Vector(q1.diff(t)*N[1] + q2.diff(t)*N[2])
     assert P2.vel() == P1.vel() + Vector(-r1*q3.diff(t)*sin(q4)*B[1] \
             + r1*q4.diff(t)*B[2])
-    print CP.vel()
+    print 'P2.vel()', P2.vel()
+    print 'CP.vel()', CP.vel()
     print P1.vel() + Vector(-r2*q4.diff(t)*A[2] + \
             (r1*q5.diff(t) + r2*q5.diff(t)*cos(q4))*B[1])
     assert CP.vel() == P1.vel() + Vector(-r2*q4.diff(t)*A[2] + \
