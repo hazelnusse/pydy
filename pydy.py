@@ -1399,7 +1399,7 @@ class NewtonianReferenceFrame(ReferenceFrame):
         # Nonholonomic constraint equations
         self.nhc_eqns = []
 
-    def setkindiffs(self, expr_dict):
+    def setkindiffs(self, expr_dict, dependent_rates=None):
         """Recursivly apply kinematic differential equations to velocity and
         angular velocity expressions of every Point and ReferenceFrame,
         respectively.
@@ -1409,6 +1409,8 @@ class NewtonianReferenceFrame(ReferenceFrame):
         """
         # Substitute kinematic differential equations into velocity and
         # angular velocity expressions
+        self.kindiffs = expr_dict
+        self.dependent_rates = dependent_rates
         self.recursive_subs(self, expr_dict)
         self.recursive_subs(self.O, expr_dict)
 
@@ -1487,13 +1489,41 @@ class NewtonianReferenceFrame(ReferenceFrame):
             for child in PorF.children:
                 self.recursive_partials(child)
 
-    def setcoords(self, q_list, qdot_list, u_list):
+    def setcoords(self, q_list, qdot_list, u_list, udot_list):
         """Set the generalized coordinates, their time derivatives, and the
         generalized speeds.
         """
         self.q_list = q_list
         self.qdot_list = qdot_list
         self.u_list = u_list
+        self.udot_list = udot_list
+
+        # Generate lists of Symbol objects instead of Function objects
+        self.q_list_s = [Symbol(str(q.func)) for q in q_list]
+        self.qdot_list_s = [Symbol(str(q.func)+'p') for q in q_list]
+        self.u_list_s = [Symbol(str(u.func)) for u in u_list]
+        self.udot_list_s = [Symbol(str(u.func)+'p') for u in u_list]
+
+        # Generate substitution dictionaries between Symbol and Function
+        # representation of the coordinates, generalized speeds, and their
+        # respective time derivatives
+        self.q_list_dict = dict(zip(q_list, self.q_list_s))
+        self.q_list_dict_back = dict(zip(self.q_list_s, q_list))
+        self.qdot_list_dict = dict(zip(qdot_list, self.qdot_list_s))
+        self.qdot_list_dict_back = dict(zip(self.qdot_list_s, qdot_list))
+        self.u_list_dict = dict(zip(u_list, self.u_list_s))
+        self.u_list_dict_back = dict(zip(self.u_list_s, u_list))
+        self.udot_list_dict = dict(zip(udot_list, self.udot_list_s))
+        self.udot_list_dict_back = dict(zip(self.udot_list_s, udot_list))
+
+        self.symbol_dict = {}
+        for d in (self.q_list_dict, self.qdot_list_dict, self.u_list_dict,
+                self.udot_list_dict):
+            self.symbol_dict.update(d)
+        self.symbol_dict_back = {}
+        for d in (self.q_list_dict_back, self.qdot_list_dict_back,
+                self.u_list_dict_back, self.udot_list_dict_back):
+            self.symbol_dict_back.update(d)
 
     def form_constraint_matrix(self):
         """Form the constraint matrix associated with linear velocity
@@ -1696,6 +1726,12 @@ class NewtonianReferenceFrame(ReferenceFrame):
             for child in PorF.children:
                 self.recursive_eoms(child)
 
+    def form_f(self):
+        """Form a function of the form f(x, t, parameters) that can be passed
+        to scipy.odeint.
+        """
+        kin_diff_symbol = {}
+        #for qd in self.qdot_list:
 
 def most_frequent_frame(vector):
     """Determines the most frequent frame of all unitvector terms in a vector.
