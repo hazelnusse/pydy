@@ -1429,20 +1429,22 @@ class NewtonianReferenceFrame(ReferenceFrame):
         """
         if isinstance(PorF, Point):
             if PorF._fixedin == set([]):
-                PorF._arel = PorF._vrel.dt(self)
+                PorF._arel = PorF._vrel.dt(self).subs(self.kindiffs)
             elif len(PorF._fixedin) == 1:
                 frame = list(PorF._fixedin)[0]
                 PorF._arel = frame.ang_vel(self).cross(PorF._vrel) + \
-                    frame.ang_acc(self).cross(PorF.rel(PorF.parentpoint))
+                    frame.ang_acc(self).cross(PorF.rel(PorF.parentpoint)).subs(self.kindiffs)
             else:
                 frame_counter = {}
                 for frame in PorF._fixedin:
                     frame_counter[frame] = len(frame.get_frames_list(self))
                 closest = min([(frame_counter[x], x) for x in frame_counter])[1]
-                PorF._arel = closest.ang_vel(self).cross(PorF._vrel) + \
-                        closest.ang_acc(self).cross(PorF.rel(PorF.parentpoint))
+                PorF._arel = (closest.ang_vel(self).cross(PorF._vrel) +
+                        closest.ang_acc(self).cross(PorF.rel(
+                        PorF.parentpoint)).subs(self.kindiffs))
         elif isinstance(PorF, ReferenceFrame):
-            PorF._alpharel = PorF._wrel.dt(PorF)
+            PorF._alpharel = \
+            PorF._wrel.subs(self.kindiffs).dt(PorF.NewtonianReferenceFrame).subs(self.kindiffs)
 
         #  Initiate recursion
         if PorF.children == []:
@@ -1549,8 +1551,8 @@ class NewtonianReferenceFrame(ReferenceFrame):
                     entry = eqn.coeff(qd)
                     M2[i, j] = trigsimp(entry) if entry is not None else S(0)
             if hasattr(self, 'constraint_matrix'):
-                self.constraint_matrix = self.constraint_matrix.row_insert(-1,
-                        M2)
+                print self.constraint_matrix
+                self.constraint_matrix = self.constraint_matrix.row_insert(-1, M2)
             else:
                 self.constraint_matrix = M2
 
@@ -1566,7 +1568,7 @@ class NewtonianReferenceFrame(ReferenceFrame):
         d_column_index = []
         for qd in dependent_qdots:
             d_column_index.append(self.qdot_list.index(qd))
-        d_column_index.sort()
+        #d_column_indexsort()
         i_column_index = list(set(range(0, len(self.qdot_list))) -
                 set(d_column_index))
         rows, columns = self.constraint_matrix.shape
@@ -1585,6 +1587,11 @@ class NewtonianReferenceFrame(ReferenceFrame):
         # Need to now invert ds_mat, and form -inv(ds_mat)*is_mat
         matr = -ds_mat.inv(method=method)*is_mat
         r, c = matr.shape
+        kindiffs = {}
+        for r, qd in enumerate(dependent_qdots):
+            kindiffs[qd] = matr[r]
+
+        return kindiffs
         #for i in range(0, r):
         #    for j in range(0, c):
 
@@ -1600,11 +1607,11 @@ class NewtonianReferenceFrame(ReferenceFrame):
         """
         if isinstance(PorF, Point):
             if not hasattr(PorF, 'partialv'): self._partialv(PorF)
-            PorF.gen_acc = [PorF.acc().dot(pv) for pv in PorF.partialv]
             if PorF.mass == 0:
                 PorF.gen_inertia_force = [0] * len(self.u_list)
             else:
-                PorF.gen_inertia_force = [-PorF.mass * ga for ga in PorF.gen_acc]
+                PorF.gen_inertia_force = [-PorF.mass * PorF.acc().dot(pv)
+                        for pv in PorF.partialv]
         elif isinstance(PorF, ReferenceFrame):
             if not hasattr(PorF, 'partialw'): self._partialw(PorF)
             if PorF.inertia == Inertia(self, (0,0,0,0,0,0)):
@@ -1711,8 +1718,8 @@ class NewtonianReferenceFrame(ReferenceFrame):
         self.kanes_equations = [0] * len(self.u_list)
         self.recursive_eoms(self.O)
         self.recursive_eoms(self)
-        for r, e in enumerate(self.kanes_equations):
-            self.kanes_equations[r] = e.expand()
+        #for r, e in enumerate(self.kanes_equations):
+        #    self.kanes_equations[r] = e.expand()
         return self.kanes_equations
 
     def recursive_eoms(self, PorF):
@@ -1767,16 +1774,21 @@ def kinematic_chain(point1, point2, r=None, vec_list=None):
         hc = dot(uv, loop)
         if hc != 0:
             hc_eqs.append(hc)
-            dhc_eqs.append(expand(hc.diff(t)))
+            dhc = expand(hc.diff(t))
+            if dhc != 0:
+                dhc_eqs.append(expand(hc.diff(t)))
     qd_list = point1.NewtonianFrame.qdot_list
     qdot_symbols = [Symbol(str(q.args[0].func)+"'") for q in qd_list]
     subsdict = dict(zip(qd_list, qdot_symbols))
     subs_dhc_eqs = [collect(eq.subs(subsdict), qdot_symbols) for eq in dhc_eqs]
-    rsubsdict = dict(zip(qdot_symbols, qd_list))
-    dhc_eqs = [eq.subs(rsubsdict) for eq in subs_dhc_eqs]
+    if len(dhc_eqs) != 0:
+        rsubsdict = dict(zip(qdot_symbols, qd_list))
+        dhc_eqs = [eq.subs(rsubsdict) for eq in subs_dhc_eqs]
     # Append the constraints to the Newtonian Reference constraint list
-    for hc_eqn, dhc_eqn in zip(hc_eqs, dhc_eqs):
+    for hc_eqn in hc_eqs:
         point1.NewtonianFrame.hc_eqns.append(hc_eqn)
+
+    for dhc_eqn in dhc_eqs:
         point1.NewtonianFrame.dhc_eqns.append(dhc_eqn)
 
     # Return the constraint equations so the user can look at them if they
@@ -1904,9 +1916,11 @@ def InertiaTorque(frame):
         raise NotImplementedError("frame must be a Reference Frame")
 
 
-def GeneralizedCoordinate(s):
+def GeneralizedCoordinate(s, constant=False):
     gc = Symbol(s)(Symbol('t'))
     gc.is_gc = True
+    if constant==True:
+        gc.fdiff = lambda argindex: 0
     gc.__repr__ = lambda self: PyDyStrPrinter().doprint(self)
     gc.__str__ = lambda self: PyDyStrPrinter().doprint(self)
     return gc
