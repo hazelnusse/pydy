@@ -68,9 +68,46 @@ N.dhc_eqns = []
 nh_front = [dot(FN.vel(), A[i]) for i in (1, 2)]
 
 # Put the constraints into a matrix form
-N.set_nhc_eqns(nh_front)
+#N.set_nhc_eqns(nh_front)
 # Solve the matrix for the dependent rates
-kindiffs = N.solve_constraint_matrix([q1.diff(t), q3.diff(t)])
+#dependent_rates = N.solve_constraint_matrix([q1.diff(t), q3.diff(t)])
+
+# Define the generalized speeds to be the B frame measure numbers of the
+# angular
+print D.ang_vel()
+stop
+
+u_rhs = [dot(D.ang_vel(), B[i]) for i in (2, 3)]
+print u_rhs
+stop
+
+
+# Create the equations that define the generalized speeds, then solve them for
+# the time derivatives of the generalized coordinates
+u_definitions = [u - u_r for u, u_r in zip(u_list, u_rhs)]
+kindiffs = solve(u_definitions, qdot_list)
+print 'Kinematic differential equations'
+
+for qd in qdot_list[:3]:
+    kindiffs[qd] = expand(kindiffs[qd])
+    print qd, '=', kindiffs[qd]
+    eoms.append(kindiffs[qd])
+
+# Form the expressions for q1' and q2', taken to be dependent speeds
+# Completely optional, these have no influence on the dynamics.
+nh = [dot(N1.vel(), N[1]), dot(N1.vel(), N[2])]
+dependent_rates = solve(nh, q4.diff(t), q5.diff(t))
+print 'Dependent rates:'
+for qd in dependent_rates:
+    dependent_rates[qd] = expand(dependent_rates[qd].subs(kindiffs))
+    print qd, '=', dependent_rates[qd]
+    eoms.append(dependent_rates[qd])
+
+# Substitute the kinematic differential equations into velocity expressions,
+# form partial angular velocities and partial velocites, form angular
+# accelerations and accelerations
+
+
 
 N.setkindiffs(kindiffs)
 

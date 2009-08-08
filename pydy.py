@@ -1,6 +1,6 @@
 from sympy import (Symbol, symbols, Basic, Function, Mul, Pow, Matrix, sin,
         cos, S, eye, Add, trigsimp, expand, pretty, Eq, collect, sqrt,
-        sympify, factor, zeros)
+        sympify, factor, zeros, simplify)
 from sympy.printing.pretty.pretty import PrettyPrinter
 from sympy.printing.str import StrPrinter
 
@@ -1536,23 +1536,23 @@ class NewtonianReferenceFrame(ReferenceFrame):
         derivatives of the generalized coordinates.
 
         """
-        if len(self.dhc_eqns) > 0:
-            M1 = zeros([len(self.dhc_eqns), len(self.qdot_list)])
-            for i, eqn in enumerate(self.dhc_eqns):
-                for j, qd in enumerate(self.qdot_list):
-                    entry = eqn.coeff(qd)
-                    M1[i, j] = trigsimp(entry) if entry is not None else S(0)
-            self.constraint_matrix = M1
+        #if len(self.dhc_eqns) > 0:
+        #    M1 = zeros([len(self.dhc_eqns), len(self.qdot_list)])
+        #    for i, eqn in enumerate(self.dhc_eqns):
+        #        for j, qd in enumerate(self.qdot_list):
+        #            entry = eqn.coeff(qd, expand=False)
+        #            M1[i, j] = entry if entry is not None else S(0)
+        #    self.constraint_matrix = M1
 
         if len(self.nhc_eqns) > 0:
             M2 = zeros([len(self.nhc_eqns), len(self.qdot_list)])
             for i, eqn in enumerate(self.nhc_eqns):
                 for j, qd in enumerate(self.qdot_list):
-                    entry = eqn.coeff(qd)
-                    M2[i, j] = trigsimp(entry) if entry is not None else S(0)
+                    entry = eqn.coeff(qd, expand=False)
+                    M2[i, j] = entry if entry is not None else S(0)
             if hasattr(self, 'constraint_matrix'):
-                print self.constraint_matrix
-                self.constraint_matrix = self.constraint_matrix.row_insert(-1, M2)
+                self.constraint_matrix = M2.row_insert(0,
+                        self.constraint_matrix)
             else:
                 self.constraint_matrix = M2
 
@@ -1568,9 +1568,9 @@ class NewtonianReferenceFrame(ReferenceFrame):
         d_column_index = []
         for qd in dependent_qdots:
             d_column_index.append(self.qdot_list.index(qd))
-        #d_column_indexsort()
         i_column_index = list(set(range(0, len(self.qdot_list))) -
                 set(d_column_index))
+
         rows, columns = self.constraint_matrix.shape
         if rows != len(d_column_index):
             raise ValueError('Number of dependent qdots should equal number of\
@@ -1585,15 +1585,36 @@ class NewtonianReferenceFrame(ReferenceFrame):
         for i, j in enumerate(i_column_index):
             is_mat[:, i] = self.constraint_matrix[:,j]
         # Need to now invert ds_mat, and form -inv(ds_mat)*is_mat
-        matr = -ds_mat.inv(method=method)*is_mat
-        r, c = matr.shape
-        kindiffs = {}
-        for r, qd in enumerate(dependent_qdots):
-            kindiffs[qd] = matr[r]
+        ds_mat_dummy = zeros([rows, rows])
+        is_mat_dummy = zeros([rows, columns-rows])
+        constraint_subs_dict = {}
+        constraint_subs_dict_back = {}
+        for r in range(rows):
+            for c in range(rows):
+                if ds_mat[r,c] != 0:
+                    dummy = Symbol('ds%d%d'%(r,c), dummy=True)
+                    constraint_subs_dict[ds_mat[r,c]] = dummy
+                    constraint_subs_dict_back[dummy] = ds_mat[r,c]
+                    ds_mat_dummy[r, c] = dummy
+            for c in range(columns-rows):
+                if is_mat[r,c] != 0:
+                    dummy = Symbol('is%d%d'%(r,c), dummy=True)
+                    constraint_subs_dict[is_mat[r,c]] = dummy
+                    constraint_subs_dict_back[dummy] = is_mat[r,c]
+                    is_mat_dummy[r, c] = dummy
 
-        return kindiffs
-        #for i in range(0, r):
-        #    for j in range(0, c):
+        matr_dummy = -ds_mat_dummy.inv(method=method)*is_mat_dummy
+        print matr_dummy
+        self.constraint_subs_dict = constraint_subs_dict
+        self.constraint_subs_dict_back = constraint_subs_dict_back
+
+        independent_speeds =  Matrix([[self.qdot_list[i]] for i in i_column_index])
+
+        dependent_rates = {}
+        for r, qd in enumerate(dependent_qdots):
+            dependent_rates[qd] = (matr_dummy[r,:]*independent_speeds)[0]
+
+        return dependent_rates
 
     def frstar(self):
         """Computes the generalized inertia forces of the system.
@@ -1769,21 +1790,46 @@ def kinematic_chain(point1, point2, r=None, vec_list=None):
         vec_list = [frame[i] for i in (1, 2, 3)]
     hc_eqs = []
     dhc_eqs = []
+
+    q_list = point1.NewtonianFrame.q_list
+    q_list_s = point1.NewtonianFrame.q_list_s
+    q_list_dict = point1.NewtonianFrame.q_list_dict
+    q_list_dict_back = point1.NewtonianFrame.q_list_dict_back
+
+    qdot_list = point1.NewtonianFrame.qdot_list
+    qdot_list_s = point1.NewtonianFrame.qdot_list_s
+    qdot_list_dict = point1.NewtonianFrame.qdot_list_dict
+    qdot_list_dict_back = point1.NewtonianFrame.qdot_list_dict_back
+
+    cm_row_list = []
     # Generate the scalar holonomic constraint equations
     for uv in vec_list:
         hc = dot(uv, loop)
         if hc != 0:
             hc_eqs.append(hc)
-            dhc = expand(hc.diff(t))
-            if dhc != 0:
-                dhc_eqs.append(expand(hc.diff(t)))
-    qd_list = point1.NewtonianFrame.qdot_list
-    qdot_symbols = [Symbol(str(q.args[0].func)+"'") for q in qd_list]
-    subsdict = dict(zip(qd_list, qdot_symbols))
-    subs_dhc_eqs = [collect(eq.subs(subsdict), qdot_symbols) for eq in dhc_eqs]
+            hc_s = hc.subs(q_list_dict)
+            # Get a list of the coordinates involved in the constraint equation
+            coords_s = list(hc_s.atoms(Symbol) & set(q_list_s))
+            coords_gc = [cd_s.subs(q_list_dict_back) for
+                    cd_s in coords_s]
+            coords_gc_dot = [c_gc.diff(t) for c_gc in coords_gc]
+
+            dhc = S(0)
+            cm_row_i = [0]*len(qdot_list)
+            for j, q in enumerate(coords_s):
+                col_index =\
+                    point1.NewtonianFrame.qdot_list.index(coords_gc_dot[j])
+                cm_entry = hc_s.diff(q).subs(q_list_dict_back)
+                cm_row_i[col_index] = cm_entry
+                dhc += cm_entry*coords_gc_dot[j]
+            if any(cm_row_i):
+                cm_row_list.insert(-1, cm_row_i)
+
+    point1.NewtonianFrame.constraint_matrix = Matrix(cm_row_list)
+
+    subs_dhc_eqs = [collect(eq.subs(qdot_list_dict), qdot_list_s) for eq in dhc_eqs]
     if len(dhc_eqs) != 0:
-        rsubsdict = dict(zip(qdot_symbols, qd_list))
-        dhc_eqs = [eq.subs(rsubsdict) for eq in subs_dhc_eqs]
+        dhc_eqs = [eq.subs(qdot_list_dict_back) for eq in subs_dhc_eqs]
     # Append the constraints to the Newtonian Reference constraint list
     for hc_eqn in hc_eqs:
         point1.NewtonianFrame.hc_eqns.append(hc_eqn)
