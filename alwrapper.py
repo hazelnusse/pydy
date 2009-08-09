@@ -39,7 +39,15 @@ class Autolev(object):
         s = re.split("(-> \(\d+\))", al_output)
         input = s[0]
         if not input.strip() == command.strip():
-            raise AutolevError("Unexpected result: %s" % input)
+            # autolev returned something more than just echoing the "command".
+            # try if the echo was successful:
+            if input.split("\n")[0].strip() == command.strip():
+                # only raise an exception if something suspicious is returned:
+                if input.find("Error") != -1:
+                    raise AutolevError("Unexpected result: %s" % input)
+            else:
+                # always raise an exception
+                raise AutolevError("Unexpected result: %s" % input)
         outputs = s[1:]
         pairs = []
         for i in range(len(outputs)/2):

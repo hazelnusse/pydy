@@ -50,4 +50,10 @@ def test_expand():
 
 def test_error1():
     a = Autolev()
-    assert raises(AutolevError, "a.run_command('x')")
+    assert a.run_command("variables x, y") == []
+    assert raises(AutolevError, "a.run_command('(x + y')")
+
+def test_error2():
+    a = Autolev()
+    assert a.run_command("variables x") == []
+    assert a.run_command("x*2") == []
