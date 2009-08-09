@@ -1,7 +1,7 @@
-from alwrapper import Al
+from alwrapper import Autolev
 
 def test_multiline():
-    a = Al()
+    a = Autolev()
     assert a.run_command("variables a") == []
     assert a.run_command('AUTOZ ON') == []
     assert a.run_command('frames D, E') == []

@@ -3,7 +3,7 @@ import re
 
 import pexpect
 
-class Al(object):
+class Autolev(object):
 
     def __init__(self):
         self._child = pexpect.spawn('al')
@@ -47,12 +47,12 @@ class Al(object):
             pairs.append((prompt, output))
         return pairs
 
-s = "(-c3*s1 - c1*s2*s3)/((c1*c2 + c2*s1*(c3*s1 + c1*s2*s3)/(c1*c3 - s1*s2*s3))*(c1*c3 - s1*s2*s3))"
+#s = "(-c3*s1 - c1*s2*s3)/((c1*c2 + c2*s1*(c3*s1 + c1*s2*s3)/(c1*c3 - s1*s2*s3))*(c1*c3 - s1*s2*s3))"
 
-s2 = s.replace("**", "^")
-#print s2
-a = Al()
-print a.run_command("variables a,b,c, s1, s2, s3, c1, c2, c3, u1, u2, u3, u4, u5, u6")
-#print a.run_command('test = (a+b)^10')
-print a.run_command('test = %s' % s2)
-print a.run_command('test2 = expand(test)')
+#s2 = s.replace("**", "^")
+##print s2
+#a = Al()
+#print a.run_command("variables a,b,c, s1, s2, s3, c1, c2, c3, u1, u2, u3, u4, u5, u6")
+##print a.run_command('test = (a+b)^10')
+#print a.run_command('test = %s' % s2)
+#print a.run_command('test2 = expand(test)')
