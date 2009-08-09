@@ -1409,8 +1409,18 @@ class NewtonianReferenceFrame(ReferenceFrame):
         """
         # Substitute kinematic differential equations into velocity and
         # angular velocity expressions
-        self.kindiffs = expr_dict
-        self.dependent_rates = dependent_rates
+        #self.kindiffs = expr_dict if dependent_rates is None else \
+        #    expr_dict.update(dependent_rates)
+        if dependent_rates is None:
+            self.kindiffs = expr_dict
+        else:
+            nd = {}
+            for k, v in expr_dict.items():
+                nd[k] = v
+            for k, v in dependent_rates.items():
+                nd[k] = v
+            self.kindiffs = nd
+        #self.dependent_rates = dependent_rates
         self.recursive_subs(self, expr_dict)
         self.recursive_subs(self.O, expr_dict)
 
@@ -1760,6 +1770,21 @@ class NewtonianReferenceFrame(ReferenceFrame):
         """
         kin_diff_symbol = {}
         #for qd in self.qdot_list:
+
+def form_transform_matrix(eqns, linear_terms):
+    """Given a list of equations and linear terms, form the tranformation
+    matrix.
+    """
+
+    m = len(eqns)
+    n = len(linear_terms)
+    M = zeros((m,n))
+    for i in range(m):
+        for j in range(n):
+            mij = eqns[i].coeff(linear_terms[j], expand=False)
+            M[i,j] = mij if mij is not None else S(0)
+    return M
+
 
 def most_frequent_frame(vector):
     """Determines the most frequent frame of all unitvector terms in a vector.

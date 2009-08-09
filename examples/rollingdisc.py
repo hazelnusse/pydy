@@ -57,7 +57,7 @@ nh = [dot(N1.vel(), N[1]), dot(N1.vel(), N[2])]
 dependent_rates = solve(nh, q4.diff(t), q5.diff(t))
 print 'Dependent rates:'
 for qd in dependent_rates:
-    dependent_rates[qd] = expand(dependent_rates[qd].subs(kindiffs))
+    dependent_rates[qd] = expand(dependent_rates[qd])#.subs(kindiffs))
     print qd, '=', dependent_rates[qd]
     eoms.append(dependent_rates[qd])
 
