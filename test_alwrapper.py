@@ -55,3 +55,9 @@ def test_error3():
     a = Autolev()
     assert a.run_command("variables x") == []
     assert a.run_command("test = x*x") == [('-> (3)', 'test = x^2')]
+
+def test_error4():
+    a = Autolev()
+    assert a.run_command("variables x") == []
+    assert a.run_command("test = x*x") == [('-> (3)', 'test = x^2')]
+    assert raises(AutolevError, "a.run_command('test = x*x')")

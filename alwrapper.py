@@ -34,7 +34,13 @@ class Autolev(object):
 
         """
         self._child.sendline(command)
-        self._child.expect(['(?<!-> )(\(\d+\))'])
+        id = self._child.expect([
+            '(?<!-> )(\(\d+\))',
+            'Overwrite',
+            ])
+        if id == 1:
+            raise AutolevError("Unexpected result: %s" % self._child.before)
+
         al_output = self._child.before
         s = re.split("(-> \(\d+\))", al_output)
         input = s[0]
