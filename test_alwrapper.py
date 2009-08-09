@@ -41,13 +41,6 @@ def test_expand():
                 'test2 = -s1/(c2*(c1^2+s1^2)) - c1*s2*s3/(c2*c3*(c1^2+s1^2))')
             ]
 
-#def test_longline():
-#    s = "x"
-#
-#    a = Autolev()
-#    assert a.run_command("variables x") == []
-#    assert a.run_command("x") == []
-
 def test_error1():
     a = Autolev()
     assert a.run_command("variables x, y") == []
@@ -57,3 +50,8 @@ def test_error2():
     a = Autolev()
     assert a.run_command("variables x") == []
     assert a.run_command("x*2") == []
+
+def test_error3():
+    a = Autolev()
+    assert a.run_command("variables x") == []
+    assert a.run_command("test = x*x") == [('-> (3)', 'test = x^2')]
