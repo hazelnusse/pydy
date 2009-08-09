@@ -61,3 +61,16 @@ def test_error4():
     assert a.run_command("variables x") == []
     assert a.run_command("test = x*x") == [('-> (3)', 'test = x^2')]
     assert raises(AutolevError, "a.run_command('test = x*x')")
+
+def test_error5():
+    a = Autolev()
+    a = Autolev()
+    assert a.run_command("variables x, y") == []
+    n = 80
+    s = "1/(x+" * n + "y" + ")"*n
+    assert a.run_command("test = %s" % s) == [('-> (3)', 'test = 1/(x+1/(x+1/(x+1/(x+1/(x+1/(x+1/(x+1/(x+1/(x+1/(x+1/(x+1/(x+1/(x+1/(x+1/(x+1/(x+1/(x+1/(x+1/(x+1/(x+1/(x+1/(x+1/(x+1/(x+1/(x+1/(x+1/(x+1/(x+1/(x+1/(x+1/(x+1/(x+1/(x+1/(x+1/(x+1/(x+1/(x+1/(x+1/(x+1/(x+1/(x+1/(x+1/(x+1/(x+1/(x+1/(x+1/(x+1/(x+1/(x+1/(x+1/(x+1/(x+1/(x+1/(x+1/(x+1/(x+1/(x+1/(x+1/(x+1/(x+1/(x+1/(x+1/(x+1/(x+1/(x+1/(x+1/(x+1/(x+1/(x+1/(x+1/(x+1/(x+1/(x+1/(x+1/(x+1/(x+1/(x+1/(x+1/(x+1/(x+y))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))')]
+
+    n = 90
+    s = "1/(x+" * n + "y" + ")"*n
+    assert raises(AutolevError, 'a.run_command("test = %s" % s)')
+
