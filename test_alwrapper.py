@@ -1,4 +1,20 @@
-from alwrapper import Autolev
+from alwrapper import Autolev, AutolevError
+
+def raises(ExpectedException, code):
+    """
+    Tests, that the "code" raises the ExpectedException exception.
+
+    If so, returns True, otherwise False.
+    """
+    assert isinstance(code, str)
+    import sys
+    frame = sys._getframe(1)
+    loc = frame.f_locals.copy()
+    try:
+        exec code in frame.f_globals, loc
+    except ExpectedException:
+        return True
+    return False
 
 def test_multiline():
     a = Autolev()
@@ -24,3 +40,14 @@ def test_expand():
             ('-> (5)',
                 'test2 = -s1/(c2*(c1^2+s1^2)) - c1*s2*s3/(c2*c3*(c1^2+s1^2))')
             ]
+
+#def test_longline():
+#    s = "x"
+#
+#    a = Autolev()
+#    assert a.run_command("variables x") == []
+#    assert a.run_command("x") == []
+
+def test_error1():
+    a = Autolev()
+    assert raises(AutolevError, "a.run_command('x')")

@@ -3,6 +3,9 @@ import re
 
 import pexpect
 
+class AutolevError(Exception):
+    pass
+
 class Autolev(object):
 
     def __init__(self):
@@ -35,9 +38,8 @@ class Autolev(object):
         al_output = self._child.before
         s = re.split("(-> \(\d+\))", al_output)
         input = s[0]
-        #print input
-        #print command
-        assert input.strip() == command.strip()
+        if not input.strip() == command.strip():
+            raise AutolevError("Unexpected result: %s" % input)
         outputs = s[1:]
         pairs = []
         for i in range(len(outputs)/2):
