@@ -1,3 +1,4 @@
+import os
 import re
 
 import pexpect
@@ -8,12 +9,25 @@ class Al(object):
         self._child = pexpect.spawn('al')
         self._child.expect('\(1\)')
 
+    def __del__(self):
+        # cleans the tmp output of autolev:
+        os.system("rm -f alTmp.*")
+
     def run_command(self, command):
         """
         Runs the command in autolev and returns a list of (prompt, output).
 
         Example:
-        >>>
+        >>> a = Al()
+        >>> a.run_command("variables a")
+        []
+        >>> a.run_command('AUTOZ ON')
+        []
+        >>> a.run_command('frames D, E')
+        []
+        >>> a.run_command('simprot(E, D, 1, a)')
+        [('-> (5)', 'Z1 = COS(a)'), ('-> (6)', 'Z2 = SIN(a)'), ('-> (7)', 'E_D
+            = [1, 0, 0; 0, Z1, -Z2; 0, Z2, Z1]')]
 
         """
         self._child.sendline(command)
@@ -36,6 +50,7 @@ a = Al()
 print a.run_command("variables a,b,c")
 print a.run_command('test = (a+b+c)^2')
 print a.run_command('test2 = expand(test, 1:3)')
+print a.run_command("variables a")
 print a.run_command('AUTOZ ON')
 print a.run_command('frames D, E')
 print a.run_command('simprot(E, D, 1, a)')
