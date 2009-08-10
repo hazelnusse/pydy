@@ -3,6 +3,7 @@ from sympy import (Symbol, symbols, Basic, Function, Mul, Pow, Matrix, sin,
         sympify, factor, zeros, simplify)
 from sympy.printing.pretty.pretty import PrettyPrinter
 from sympy.printing.str import StrPrinter
+import time
 
 e1 = Matrix([1, 0, 0])
 e2 = Matrix([0, 1, 0])
@@ -1398,6 +1399,12 @@ class NewtonianReferenceFrame(ReferenceFrame):
         self.dhc_eqns = []
         # Nonholonomic constraint equations
         self.nhc_eqns = []
+        self.symbol_dict = {}
+        self.symbol_dict_back = {}
+        self.trig_func_set = set([])
+        self.cos_func_set = set([])
+        self.sin_func_set = set([])
+        self.csqrd_dict = {}
 
     def setkindiffs(self, expr_dict, dependent_rates=None):
         """Recursivly apply kinematic differential equations to velocity and
@@ -1420,6 +1427,21 @@ class NewtonianReferenceFrame(ReferenceFrame):
             for k, v in dependent_rates.items():
                 nd[k] = v
             self.kindiffs = nd
+        
+        for eq in self.qdot_list:
+            sins = self.kindiffs[eq].atoms(sin)
+            coss = self.kindiffs[eq].atoms(cos)
+            if sins is not None:
+                self.trig_func_set.update(sins)
+                self.sin_func_set.update(sins)
+            if coss is not None:
+                self.trig_func_set.update(coss)
+                self.cos_func_set.update(coss)
+
+        for c in self.cos_func_set:
+            if c**2 not in self.csqrd_dict:
+                self.csqrd_dict[c**2] = 1 - sin(c.args[0])**2 
+        
         #self.dependent_rates = dependent_rates
         self.recursive_subs(self, expr_dict)
         self.recursive_subs(self.O, expr_dict)
@@ -1432,6 +1454,26 @@ class NewtonianReferenceFrame(ReferenceFrame):
         # Points
         self.recursive_acc(self)
         self.recursive_acc(self.O)
+
+    def setdyndiffs(self, eqns):
+        """
+        Sets the dynamic equations of motion.
+        """
+        self.dyndiffs = eqns
+
+        for eq in self.udot_list:
+            sins = self.dyndiffs[eq].atoms(sin)
+            coss = self.dyndiffs[eq].atoms(cos)
+            if sins is not None:
+                self.trig_func_set.update(sins)
+                self.sin_func_set.update(sins)
+            if coss is not None:
+                self.trig_func_set.update(coss)
+                self.cos_func_set.update(coss)
+
+        for c in self.cos_func_set:
+            if c**2 not in self.csqrd_dict:
+                self.csqrd_dict[c**2] = 1 - sin(c.args[0])**2 
 
     def recursive_acc(self, PorF):
         """Recursively form acceleration of Points and angular acceleration of
@@ -1501,41 +1543,57 @@ class NewtonianReferenceFrame(ReferenceFrame):
             for child in PorF.children:
                 self.recursive_partials(child)
 
-    def setcoords(self, q_list, qdot_list, u_list, udot_list):
-        """Set the generalized coordinates, their time derivatives, and the
-        generalized speeds.
+    def declare_coords(self, string, number, list=True):
+        """Declare the generalized coordinates and their time derivatives.
         """
+        q_list, q_list, qdot_list = gcs(string, number, list)
         self.q_list = q_list
         self.qdot_list = qdot_list
+        # Generate lists of Symbol objects instead of Function objects
+        self.q_list_s = [Symbol(str(q.func)) for q in q_list]
+        self.qdot_list_s = [Symbol(str(q.func)+'p') for q in q_list]
+        self.q_list_dict = dict(zip(q_list, self.q_list_s))
+        self.q_list_dict_back = dict(zip(self.q_list_s, q_list))
+        self.qdot_list_dict = dict(zip(qdot_list, self.qdot_list_s))
+        self.qdot_list_dict_back = dict(zip(self.qdot_list_s, qdot_list))
+        # Update the comprehensive symbol dictionaries
+        for d in (self.q_list_dict, self.qdot_list_dict):
+            self.symbol_dict.update(d)
+        for d in (self.q_list_dict_back, self.qdot_list_dict_back):
+            self.symbol_dict_back.update(d)
+        return q_list, q_list, qdot_list
+
+    def declare_speeds(self, string, number, list=True):
+        """Declare the generalized speeds and their time derivatives.
+        """
+        u_list, u_list, udot_list = gcs(string, number, list)
         self.u_list = u_list
         self.udot_list = udot_list
 
         # Generate lists of Symbol objects instead of Function objects
-        self.q_list_s = [Symbol(str(q.func)) for q in q_list]
-        self.qdot_list_s = [Symbol(str(q.func)+'p') for q in q_list]
         self.u_list_s = [Symbol(str(u.func)) for u in u_list]
         self.udot_list_s = [Symbol(str(u.func)+'p') for u in u_list]
 
         # Generate substitution dictionaries between Symbol and Function
         # representation of the coordinates, generalized speeds, and their
         # respective time derivatives
-        self.q_list_dict = dict(zip(q_list, self.q_list_s))
-        self.q_list_dict_back = dict(zip(self.q_list_s, q_list))
-        self.qdot_list_dict = dict(zip(qdot_list, self.qdot_list_s))
-        self.qdot_list_dict_back = dict(zip(self.qdot_list_s, qdot_list))
         self.u_list_dict = dict(zip(u_list, self.u_list_s))
         self.u_list_dict_back = dict(zip(self.u_list_s, u_list))
         self.udot_list_dict = dict(zip(udot_list, self.udot_list_s))
         self.udot_list_dict_back = dict(zip(self.udot_list_s, udot_list))
 
-        self.symbol_dict = {}
-        for d in (self.q_list_dict, self.qdot_list_dict, self.u_list_dict,
-                self.udot_list_dict):
+        for d in (self.u_list_dict, self.udot_list_dict):
             self.symbol_dict.update(d)
-        self.symbol_dict_back = {}
-        for d in (self.q_list_dict_back, self.qdot_list_dict_back,
-                self.u_list_dict_back, self.udot_list_dict_back):
+        for d in (self.u_list_dict_back, self.udot_list_dict_back):
             self.symbol_dict_back.update(d)
+
+        return u_list, u_list, udot_list
+
+    def declare_parameters(self, string):
+        """Declare the parameters (constants) of the system.
+        """
+        self.parameter_list = symbols(string)
+        return self.parameter_list
 
     def form_constraint_matrix(self):
         """Form the constraint matrix associated with linear velocity
@@ -1764,27 +1822,155 @@ class NewtonianReferenceFrame(ReferenceFrame):
             for child in PorF.children:
                 self.recursive_eoms(child)
 
-    def form_f(self):
-        """Form a function of the form f(x, t, parameters) that can be passed
-        to scipy.odeint.
+    def output_eoms(self, filename, *args):
+        """Output the equations of motion to a file as a function which can be
+        integrated by scipy.odeint
         """
-        kin_diff_symbol = {}
-        #for qd in self.qdot_list:
+        ode_func_string = '# ' + time.asctime() + '\n'
+        ode_func_string += "from numpy import sin, cos, tan, vectorize\n\n"
+        ode_func_string += "def f(x, t, parameter_list):\n"
+        ode_func_string += '    # Unpacking the parameters\n'
+        s = ""
+        for p in self.parameter_list:
+            s += str(p) + ', '
+        ode_func_string += '    ' + s[:-2] + ' = ' + 'parameter_list\n'
+        ode_func_string += '    # Unpacking the states (q\'s and u\'s)\n'
+        s = ""
+        for q in self.q_list:
+            s += str(q) + ', '
+        for u in self.u_list:
+            s += str(u) + ', '
+        ode_func_string += '    ' + s[:-2] + ' = ' + 'x\n'
 
-def form_transform_matrix(eqns, linear_terms):
-    """Given a list of equations and linear terms, form the tranformation
-    matrix.
-    """
+        trig_func_string = ""
 
-    m = len(eqns)
-    n = len(linear_terms)
-    M = zeros((m,n))
-    for i in range(m):
-        for j in range(n):
-            mij = eqns[i].coeff(linear_terms[j], expand=False)
-            M[i,j] = mij if mij is not None else S(0)
-    return M
+        for tf in self.trig_func_set:
+            trig_func_string += '    ' + str(tf) + ' = '
+            if str(tf)[0] == 's':
+                trig_func_string += 'sin(' + str(tf.args[0]) + ')\n'
+            if str(tf)[0] == 'c':
+                trig_func_string += 'cos(' + str(tf.args[0]) + ')\n'
+            if str(tf)[0] == 't':
+                trig_func_string += 'tan(' + str(tf.args[0]) + ')\n'
 
+        ode_func_string += trig_func_string
+
+        dxdt_list = ""
+
+        ode_func_string += '    # Kinematic differential equations\n'
+        for qd in self.qdot_list:
+            ode_func_string += '    ' + str(qd)[:-1] + 'p' + ' = ' + str(self.kindiffs[qd]) + '\n'
+            dxdt_list += str(qd)[:-1] + 'p, '
+
+        ode_func_string += '    # Dynamic differential equations\n'
+        for ud in self.udot_list:
+            ode_func_string += '    ' + str(ud)[:-1] + 'p' +  ' = ' + str(self.dyndiffs[ud]) + '\n'
+            dxdt_list += str(ud)[:-1] + 'p, '
+
+        ode_func_string += '    ' + 'return [' + dxdt_list[:-2] + ']'
+
+        qdot2u_func_string = ""
+        qdot2u_func_string += "def qdot2u(q, qd, parameter_list):\n"
+        qdot2u_func_string += '    # Unpacking the parameters\n'
+        s = ""
+        for p in self.parameter_list:
+            s += str(p) + ', '
+        qdot2u_func_string += '    ' + s[:-2] + ' = ' + 'parameter_list\n'
+        qdot2u_func_string += '    # Unpacking the qdots\n'
+        s = ""
+        for q in self.q_list:
+            s += str(q) + ', '
+        qdot2u_func_string += '    ' + s[:-2] + ' = ' + 'q\n'
+        s = ""
+        for qd in self.qdot_list:
+            s += str(qd)[:-1] + 'p, '
+        qdot2u_func_string += '    ' + s[:-2] + ' = ' + 'qd\n'
+
+        trig_func_string = ""
+
+        for tf in self.trig_func_set:
+            trig_func_string += '    ' + str(tf) + ' = '
+            if str(tf)[0] == 's':
+                trig_func_string += 'sin(' + str(tf.args[0]) + ')\n'
+            if str(tf)[0] == 'c':
+                trig_func_string += 'cos(' + str(tf.args[0]) + ')\n'
+            if str(tf)[0] == 't':
+                trig_func_string += 'tan(' + str(tf.args[0]) + ')\n'
+
+        qdot2u_func_string += trig_func_string
+
+        dxdt_list = ""
+
+        qdot2u_func_string += '    # Kinematic differential equations\n'
+        for i, u in enumerate(self.u_list):
+            qdot2u_func_string += '    ' + str(u) + ' = ' +\
+                    str((self.transform_matrix[i,:]*Matrix(self.qdot_list_s))[0]) + '\n'
+            dxdt_list += str(u) + ', '
+        qdot2u_func_string += '    return [' + dxdt_list[:-2] + ']' 
+        
+        f = open(filename, 'w')
+        f.write(ode_func_string + '\n\n' + qdot2u_func_string)
+        """
+        if args:
+            n = len(args)
+            a =  "@vectorize\n"
+            a += "def animate(q, parameter_list):\n"
+            s = ""
+            for p in self.parameter_list:
+                s += str(p) + ', '
+            a += '    ' + s[:-2] + ' = ' + 'parameter_list\n'
+            a += '    # Unpacking the coordinates (q\'s)\n'
+            s = ""
+            for q in self.q_list:
+                s += str(q) + ', '
+            a += '    ' + s[:-2] + ' = ' + 'q\n'
+            
+            trig_func_string = ""
+            for tf in self.trig_func_set:
+                trig_func_string += '    ' + str(tf) + ' = '
+                if str(tf)[0] == 's':
+                    trig_func_string += 'sin(' + str(tf.args[0]) + ')\n'
+                if str(tf)[0] == 'c':
+                    trig_func_string += 'cos(' + str(tf.args[0]) + ')\n'
+                if str(tf)[0] == 't':
+                    trig_func_string += 'tan(' + str(tf.args[0]) + ')\n'
+            a += trig_func_string
+            
+            point_counter = 0
+            frame_counter = 0
+            return_vars = []
+            for arg in args:
+                if isinstance(arg, Point):
+                    point_counter += 1
+                    pos = [arg.rel(self.O).dot(self[i]) for i in (1,2,3)]
+                elif isinstance(arg, tuple) and len(arg) == 2:
+                    frame_counter += 1
+                    axis = [arg[0].dot(self[i]) for i in (1,2,3)]
+                    if arg[1] in self.q_list:
+                        angle = arg[1]
+                    else:
+                        raise ValueError('angle must be in the coordinate\
+                                list')
+                else:
+                    raise TypeError('Optional parameters must be Point or\
+                        ReferenceFrame instances')
+        """
+        f.close()
+
+    def form_transform_matrix(self, eqns, linear_terms):
+        """Given a list of equations and linear terms, form the tranformation
+        matrix.
+        """
+
+        m = len(eqns)
+        n = len(linear_terms)
+        M = zeros((m,n))
+        for i in range(m):
+            for j in range(n):
+                mij = eqns[i].coeff(linear_terms[j], expand=False)
+                M[i,j] = mij if mij is not None else S(0)
+        self.transform_matrix = M
+        return M
 
 def most_frequent_frame(vector):
     """Determines the most frequent frame of all unitvector terms in a vector.
