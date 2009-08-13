@@ -7,7 +7,7 @@ from numpy import array, arange, zeros, roots
 m = 3.1/1000.   # A penny has a mass of 3.1g
 g = 9.81        # Gravitational acceleration
 r = 0.019/2.    # Radius of a penny
-# Dimensions of a quarter 
+# Dimensions of a quarter
 m = 5.67/1000.  # A quarter has a mass of 5.67g
 r = 0.02426/2.    # Radius of a penny
 params = [m, g, r]
@@ -69,8 +69,8 @@ blue = (0, 0, 1)
 white = (1, 1, 1)
 NO = (0,0,0)
 scene = display(title='Rolling disc @ %0.2f realtime'%k, up=(0,0,-1),\
-        uniform=1, background=black, forward=(1,0,0), exit=0,\
-        autocenter=True, autoscale=True)
+        uniform=1, background=black, forward=(1,0,0), exit=0)
+
 # Inertial reference frame arrows
 n = [arrow(pos=NO,axis=(.001,0,0),color=red),
      arrow(pos=NO,axis=(0,.001,0),color=green),
