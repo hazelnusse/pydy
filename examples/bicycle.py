@@ -1,13 +1,12 @@
 from sympy import *
 from pydy import *
 
-rrt, rft, rr, rf, lr, ls, lf = symbols('rrt rft rr rf lr ls lf')
-l1, l2, l3, l4 = symbols('l1 l2 l3 l4')
-(q1, q2, q3, q4, q5, q6), q_list, qdot_list = gcs('q', 6, list=True)
-(u1, u2, u3), u_list, udot_list = gcs('u', 3, list=True)
-
 N = NewtonianReferenceFrame('N')
-N.setcoords(q_list, qdot_list, u_list, udot_list)
+
+rrt, rft, rr, rf, lr, ls, lf, l1, l2, l3, l4 = N.declare_parameters('rrt rft\
+        rr rf lr ls lf l1 l2 l3 l4')
+(q1, q2, q3, q4, q5, q6), q_list, qdot_list = N.declare_coords('q', 6, list=True)
+(u1, u2, u3), u_list, udot_list = N.declare_speeds('u', 3, list=True)
 
 # Reference Frames
 # Yaw frame

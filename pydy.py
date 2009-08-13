@@ -1,6 +1,6 @@
 from sympy import (Symbol, symbols, Basic, Function, Mul, Pow, Matrix, sin,
-        cos, S, eye, Add, trigsimp, expand, pretty, Eq, collect, sqrt,
-        sympify, factor, zeros, simplify)
+        cos, tan, S, eye, Add, trigsimp, expand, pretty, Eq, collect, sqrt,
+        sympify, factor, zeros, simplify, solve_linear_system)
 from sympy.printing.pretty.pretty import PrettyPrinter
 from sympy.printing.str import StrPrinter
 import time
@@ -244,7 +244,6 @@ class UnitVector(Basic):
             if self.frame == diff_frame:
                 return Vector(0)
             else:
-                print self.frame.ang_vel(diff_frame)
                 return cross(self.frame.ang_vel(diff_frame), self)
         else:
             raise TypeError("Must provide a ReferenceFrame to take the \
@@ -1418,26 +1417,29 @@ class NewtonianReferenceFrame(ReferenceFrame):
         # angular velocity expressions
         #self.kindiffs = expr_dict if dependent_rates is None else \
         #    expr_dict.update(dependent_rates)
-        if dependent_rates is None:
-            self.kindiffs = expr_dict
-        else:
-            nd = {}
-            for k, v in expr_dict.items():
-                nd[k] = v
-            for k, v in dependent_rates.items():
-                nd[k] = v
-            self.kindiffs = nd
-        
-        for eq in self.qdot_list:
-            sins = self.kindiffs[eq].atoms(sin)
-            coss = self.kindiffs[eq].atoms(cos)
+        self.kindiffs = expr_dict
+        for eqn in self.kindiffs.values():
+            sins = eqn.atoms(sin) 
+            coss = eqn.atoms(cos)
             if sins is not None:
                 self.trig_func_set.update(sins)
                 self.sin_func_set.update(sins)
             if coss is not None:
                 self.trig_func_set.update(coss)
                 self.cos_func_set.update(coss)
-
+        
+        if dependent_rates is not None:
+            self.dependent_rates = dependent_rates
+            for eqn in self.dependent_rates.values():
+                sins = eqn.atoms(sin) 
+                coss = eqn.atoms(cos)
+                if sins is not None:
+                    self.trig_func_set.update(sins)
+                    self.sin_func_set.update(sins)
+                if coss is not None:
+                    self.trig_func_set.update(coss)
+                    self.cos_func_set.update(coss)
+        
         for c in self.cos_func_set:
             if c**2 not in self.csqrd_dict:
                 self.csqrd_dict[c**2] = 1 - sin(c.args[0])**2 
@@ -1858,9 +1860,20 @@ class NewtonianReferenceFrame(ReferenceFrame):
         dxdt_list = ""
 
         ode_func_string += '    # Kinematic differential equations\n'
+        qdl = []
         for qd in self.qdot_list:
+            if qd in self.kindiffs: qdl.append(qd)
+
+        for qd in qdl:
             ode_func_string += '    ' + str(qd)[:-1] + 'p' + ' = ' + str(self.kindiffs[qd]) + '\n'
             dxdt_list += str(qd)[:-1] + 'p, '
+        if hasattr(self, 'dependent_rates'):
+            ode_func_string += '    # Dependent differential equations\n'
+            for qd in self.dependent_rates:
+                ode_func_string += '    ' + str(qd)[:-1] + 'p' + ' = ' +\
+                    str(self.dependent_rates[qd].subs(self.qdot_list_dict)) + '\n'
+                dxdt_list += str(qd)[:-1] + 'p, '
+
 
         ode_func_string += '    # Dynamic differential equations\n'
         for ud in self.udot_list:
@@ -1876,13 +1889,13 @@ class NewtonianReferenceFrame(ReferenceFrame):
         for p in self.parameter_list:
             s += str(p) + ', '
         qdot2u_func_string += '    ' + s[:-2] + ' = ' + 'parameter_list\n'
-        qdot2u_func_string += '    # Unpacking the qdots\n'
+        qdot2u_func_string += '    # Unpacking the q\'s and qdots\n'
         s = ""
         for q in self.q_list:
             s += str(q) + ', '
         qdot2u_func_string += '    ' + s[:-2] + ' = ' + 'q\n'
         s = ""
-        for qd in self.qdot_list:
+        for qd in qdl:
             s += str(qd)[:-1] + 'p, '
         qdot2u_func_string += '    ' + s[:-2] + ' = ' + 'qd\n'
 
@@ -1902,31 +1915,85 @@ class NewtonianReferenceFrame(ReferenceFrame):
         dxdt_list = ""
 
         qdot2u_func_string += '    # Kinematic differential equations\n'
-        for i, u in enumerate(self.u_list):
-            qdot2u_func_string += '    ' + str(u) + ' = ' +\
-                    str((self.transform_matrix[i,:]*Matrix(self.qdot_list_s))[0]) + '\n'
-            dxdt_list += str(u) + ', '
-        qdot2u_func_string += '    return [' + dxdt_list[:-2] + ']' 
-        
+        if hasattr(self, 'dependent_rates'):
+            qdot_i = [qd.subs(self.qdot_list_dict) for qd in qdl]
+            for i, u in enumerate(self.u_list):
+                qdot2u_func_string += '    ' + str(u) + ' = ' +\
+                        str((self.transform_matrix[i,:]*Matrix(qdot_i))[0]) + '\n'
+                dxdt_list += str(u) + ', '
+            qdot2u_func_string += '    return [' + dxdt_list[:-2] + ']'
+        else:
+            for i, u in enumerate(self.u_list):
+                qdot2u_func_string += '    ' + str(u) + ' = ' +\
+                        str((self.transform_matrix[i,:]*Matrix(self.qdot_list_s))[0]) + '\n'
+                dxdt_list += str(u) + ', '
+            qdot2u_func_string += '    return [' + dxdt_list[:-2] + ']'
+
         f = open(filename, 'w')
         f.write(ode_func_string + '\n\n' + qdot2u_func_string)
-        """
+
         if args:
             n = len(args)
-            a =  "@vectorize\n"
+            a =  ""
             a += "def animate(q, parameter_list):\n"
+            a += '    # Unpacking the parameters\n'
             s = ""
             for p in self.parameter_list:
                 s += str(p) + ', '
             a += '    ' + s[:-2] + ' = ' + 'parameter_list\n'
-            a += '    # Unpacking the coordinates (q\'s)\n'
+            a += '    # Unpacking the coordinates\n'
             s = ""
             for q in self.q_list:
                 s += str(q) + ', '
             a += '    ' + s[:-2] + ' = ' + 'q\n'
-            
+
+            trig_func_set = set([])
+            a_temp = ""
+            ret_string = ""
+            for arg in args:
+                ret_string += "["
+                if isinstance(arg, tuple) and len(arg) == 2:
+                    if isinstance(arg[0], Point) and isinstance(arg[1], Point):
+                        pos = [arg[0].rel(arg[1]).dot(self[i]) for i in (1,2,3)]
+                        for i, p in enumerate(pos):
+                            nv = "p_" + arg[1].name + "_" + arg[0].name +\
+                                "_%d"%(i+1)
+                            a_temp += "    " + nv + " = " + str(p) + "\n"
+                            ret_string += nv + ", "
+                            trig_terms = p.atoms(sin, cos, tan)
+                            if trig_terms:
+                                trig_func_set.update(trig_terms)
+                        ret_string = ret_string[:-2] + "], "
+                    elif isinstance(arg[0], (UnitVector, Vector)):
+                        if isinstance(arg[0], (UnitVector, Vector)):
+                            axis = [arg[0].dot(self[i]) for i in (1,2,3)]
+                        else:
+                            raise ValueError('Axis must be a Vector or UnitVector')
+                        # XXX TODO allow for a general sympy expression for the
+                        # angle
+                        if arg[1] in self.q_list or arg[1] == 0:
+                            angle = arg[1] or S.Zero 
+                            trig_terms = angle.atoms(sin, cos, tan)
+                            if trig_terms:
+                                trig_func_set.update(trig_terms)
+                        else:
+                            raise ValueError('Angle must be in the coordinate\
+                                    list')
+                        for j, p in enumerate(axis):
+                            nv = arg[0].frame.name + str(arg[0].i) + "_%d"%(j+1)
+                            a_temp += "    " + nv + " = " + str(p) + "\n"
+                            ret_string += nv + ", "
+                            trig_terms = p.atoms(sin, cos, tan)
+                            if trig_terms:
+                                trig_func_set.update(trig_terms)
+                        ret_string += str(angle) +"], "
+                else:
+                    raise TypeError('Optional parameters must be 2-tuples with\
+                        either two Point objects or an Axis and an Angle')
+
+            a += "    # Trigonometric functions needed\n"
             trig_func_string = ""
-            for tf in self.trig_func_set:
+            for tf in trig_func_set:
                 trig_func_string += '    ' + str(tf) + ' = '
                 if str(tf)[0] == 's':
                     trig_func_string += 'sin(' + str(tf.args[0]) + ')\n'
@@ -1935,26 +2002,12 @@ class NewtonianReferenceFrame(ReferenceFrame):
                 if str(tf)[0] == 't':
                     trig_func_string += 'tan(' + str(tf.args[0]) + ')\n'
             a += trig_func_string
-            
-            point_counter = 0
-            frame_counter = 0
-            return_vars = []
-            for arg in args:
-                if isinstance(arg, Point):
-                    point_counter += 1
-                    pos = [arg.rel(self.O).dot(self[i]) for i in (1,2,3)]
-                elif isinstance(arg, tuple) and len(arg) == 2:
-                    frame_counter += 1
-                    axis = [arg[0].dot(self[i]) for i in (1,2,3)]
-                    if arg[1] in self.q_list:
-                        angle = arg[1]
-                    else:
-                        raise ValueError('angle must be in the coordinate\
-                                list')
-                else:
-                    raise TypeError('Optional parameters must be Point or\
-                        ReferenceFrame instances')
-        """
+
+            a += "    # Position of Points and Axis/Angle Calculations\n"
+            if ret_string != "":
+                a_temp += "    return " + ret_string[:-2]
+            a += a_temp
+        f.write('\n\n' + a)
         f.close()
 
     def form_transform_matrix(self, eqns, linear_terms):
@@ -1971,6 +2024,33 @@ class NewtonianReferenceFrame(ReferenceFrame):
                 M[i,j] = mij if mij is not None else S(0)
         self.transform_matrix = M
         return M
+
+    def form_kindiffs(self, T, qdot_list, u_list):
+        """Invert the transformation u = T*q' and determine the kinematic
+        differential equations.
+
+        qdot_list and u_list must be of the same length.  For holonomic systems
+       with no unreduced coordinates, this will always be the case.  For 
+       systems with unreduced coordinates and/or nonholonomic constraints,
+       there will generally be fewer u's than qdots, so one must choose the u's
+       in a way such that they only depend on the same number of qdots.
+        """
+        m, n = T.shape
+        system = T.col_insert(n, Matrix(u_list))
+        d = {}
+        system2 = zeros(system.shape)
+        for i in range(system.shape[0]):
+            for j in range(system.shape[1]):
+                if system[i, j] != 0:
+                    s = Symbol("a", dummy=True)
+                    d[s] = system[i, j]
+                    system2[i, j] = s
+        kindiffs = solve_linear_system(system2, *qdot_list)
+
+        for qd in qdot_list:
+            kindiffs[qd] = trigsimp(kindiffs[qd].subs(d).expand())
+
+        return kindiffs
 
 def most_frequent_frame(vector):
     """Determines the most frequent frame of all unitvector terms in a vector.

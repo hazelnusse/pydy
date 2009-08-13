@@ -5,7 +5,6 @@ from sympy import (symbols, Function, S, solve, simplify,
 from pydy import *
 from scipy.integrate import odeint
 from numpy import array, arange
-import matplotlib.pyplot as plt
 
 # Create a Newtonian reference frame
 N = NewtonianReferenceFrame('N')
@@ -23,7 +22,7 @@ B = A.rotate("B", 1, q2)
 # Frame fixed to the torus rigid body.
 C = B.rotate("C", 2, q3, I=(I11, I22, I33, 0, 0, 0))
 
-# Locate the mass center of torus
+# Locate the mass center
 CO = N.O.locate('CO', q4*N[1] + q5*N[2] + q6*N[3], mass=m)
 
 # Define the generalized speeds
@@ -34,20 +33,7 @@ u_rhs = [dot(C.ang_vel(), C[i]) for i in (1, 2, 3)]\
 T = N.form_transform_matrix(u_rhs, qdot_list)
 
 # Need to implement a method to automate the solving for the qdots
-system = T.col_insert(6,Matrix(u_list))
-d = {}
-system2 = zeros(system.shape)
-for i in range(system.shape[0]):
-    for j in range(system.shape[1]):
-        if system[i, j] != 0:
-            s = Symbol("a", dummy=True)
-            d[s] = system[i, j]
-            system2[i, j] = s
-
-kindiffs = solve_linear_system(system2, *qdot_list)
-
-for qd in qdot_list:
-    kindiffs[qd] = trigsimp(kindiffs[qd].subs(d)).expand()
+kindiffs = N.form_kindiffs(T, qdot_list, u_list)
 
 N.setkindiffs(kindiffs)
 
@@ -63,4 +49,4 @@ N.setdyndiffs(dyndiffs)
 for r, ud in enumerate(udot_list):
     dyndiffs[ud] = simplify(expand(dyndiffs[ud].subs(N.csqrd_dict)))
 
-N.output_eoms('rigidbody_eoms.py')
+N.output_eoms('rigidbody_eoms.py', (CO, N.O), (C[2], q3))

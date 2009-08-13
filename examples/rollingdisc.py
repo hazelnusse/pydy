@@ -3,25 +3,18 @@ from sympy import symbols, Function, S, solve, simplify, \
 
 from pydy import *
 
+# Create a Newtonian reference frame
+N = NewtonianReferenceFrame('N')
+
 # Constants
-parameter_list = symbols("m g r t I J")
-m, g, r, t, I, J = parameter_list
+m, g, r = N.declare_parameters("m g r")
 
 I = m*r**2/4  # Central moment of inertia about any diameter
 J = m*r**2/2  # Central moment of inertia about normal axis
 
 # Declare generalized coordinates and generalized speeds
-(q1, q2, q3, q4, q5), q_list, qdot_list = gcs('q', 5, list=True)
-(u1, u2, u3), u_list, udot_list = gcs('u', 3, list=True)
-
-# List for holding all motion equations
-eoms = []
-
-# Create a Newtonian reference frame
-N = NewtonianReferenceFrame('N')
-
-# Assign all lists to N book keeping purposes
-N.setcoords(q_list, qdot_list, u_list, udot_list)
+(q1, q2, q3, q4, q5), q_list, qdot_list = N.declare_coords('q', 5, list=True)
+(u1, u2, u3), u_list, udot_list = N.declare_speeds('u', 3, list=True)
 
 # Intermediate reference frames
 A = N.rotate("A", 3, q1)
@@ -39,27 +32,24 @@ N1 = CO.locate('N1', r*B[3] - q4*N[1] - q5*N[2])
 # Define the generalized speeds to be the B frame measure numbers of the angular
 u_rhs = [dot(C.ang_vel(), B[i]) for i in (1, 2, 3)]
 
+T = N.form_transform_matrix(u_rhs, qdot_list[:3])
+
+kindiffs = N.form_kindiffs(T, qdot_list[:3], u_list)
 
 # Create the equations that define the generalized speeds, then solve them for
 # the time derivatives of the generalized coordinates
-u_definitions = [u - u_r for u, u_r in zip(u_list, u_rhs)]
-kindiffs = solve(u_definitions, qdot_list)
 print 'Kinematic differential equations'
-
 for qd in qdot_list[:3]:
-    kindiffs[qd] = expand(kindiffs[qd])
     print qd, '=', kindiffs[qd]
-    eoms.append(kindiffs[qd])
 
 # Form the expressions for q1' and q2', taken to be dependent speeds
 # Completely optional, these have no influence on the dynamics.
 nh = [dot(N1.vel(), N[1]), dot(N1.vel(), N[2])]
 dependent_rates = solve(nh, q4.diff(t), q5.diff(t))
+
 print 'Dependent rates:'
 for qd in dependent_rates:
-    dependent_rates[qd] = expand(dependent_rates[qd])#.subs(kindiffs))
     print qd, '=', dependent_rates[qd]
-    eoms.append(dependent_rates[qd])
 
 # Substitute the kinematic differential equations into velocity expressions,
 # form partial angular velocities and partial velocites, form angular
@@ -74,11 +64,11 @@ kanes_eqns = N.form_kanes_equations()
 dyndiffs = solve(kanes_eqns, udot_list)
 
 print 'Dynamic differential equations'
-for r, ud in enumerate(udot_list):
-    if r == 2:
-        dyndiffs[ud] = collect(expand(dyndiffs[ud]), u1)
-    else:
-        dyndiffs[ud] = expand(dyndiffs[ud])
+for ud in udot_list:
+    dyndiffs[ud] = dyndiffs[ud].expand()
     print ud, '=', dyndiffs[ud]
-    eoms.append(dyndiffs[ud])
 
+N.setdyndiffs(dyndiffs)
+
+N.output_eoms('rollingdisc_eoms.py', (CO, N1), (B[2], q3), (C[1], 0), (C[3],
+    0))

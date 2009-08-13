@@ -1,4 +1,4 @@
-# Sun Aug  9 23:59:14 2009
+# Wed Aug 12 17:45:18 2009
 from numpy import sin, cos, tan, vectorize
 
 def f(x, t, parameter_list):
@@ -29,7 +29,7 @@ def f(x, t, parameter_list):
 def qdot2u(q, qd, parameter_list):
     # Unpacking the parameters
     m, g, I11, I22, I33 = parameter_list
-    # Unpacking the qdots
+    # Unpacking the q's and qdots
     q1, q2, q3, q4, q5, q6 = q
     q1p, q2p, q3p, q4p, q5p, q6p = qd
     c3 = cos(q3)
@@ -44,3 +44,22 @@ def qdot2u(q, qd, parameter_list):
     u5 = q5p
     u6 = q6p
     return [u1, u2, u3, u4, u5, u6]
+
+def animate(q, parameter_list):
+    # Unpacking the parameters
+    m, g, I11, I22, I33 = parameter_list
+    # Unpacking the coordinates
+    q1, q2, q3, q4, q5, q6 = q
+    # Trigonometric functions needed
+    s1 = sin(q1)
+    s2 = sin(q2)
+    c1 = cos(q1)
+    c2 = cos(q2)
+    # Position of Points and Axis/Angle Calculations
+    p_NO_CO_1 = q4
+    p_NO_CO_2 = q5
+    p_NO_CO_3 = q6
+    C2_1 = -c2*s1
+    C2_2 = c1*c2
+    C2_3 = s2
+    return [p_NO_CO_1, p_NO_CO_2, p_NO_CO_3], [C2_1, C2_2, C2_3, q3]
