@@ -39,28 +39,32 @@ C3_axis = zeros((n, 4))
 for i, state in enumerate(x[:,:5]):
     CO_pos[i], C_axis_angle[i], C1_axis[i], C3_axis[i] = animate(state, params)
 
-from visual import ring, display, rate, arrow
+from visual import ring, display, rate, arrow, curve
 scene = display(title='Rolling disc animation', width=800, height=800, up=(0,0,-1),\
         uniform=1, background=(1,1,1), forward=(1,0,0), exit=0,\
         autocenter=True, autoscale=True)
-black = (1,1,1)
+black = (0,0,0)
 red = (1, 0, 0)
 green = (0, 1, 0)
 blue = (0, 0, 1)
 n = [arrow(pos=(0,0,0),axis=(.1,0,0),length=0.01,color=red),
      arrow(pos=(0,0,0),axis=(0,.1,0),length=0.01,color=green),
      arrow(pos=(0,0,0),axis=(0,0,.1),length=0.01,color=blue)]
-body = ring(pos=CO_pos[0, :], axis=C_axis_angle[0, :3], angle=C_axis_angle[0, 3],\
-        radius=r, thickness=0.01, color=(0.5,0.5,0.5))
-c_frame = [arrow(pos=CO_pos[0,:],axis=0.3*C1_axis[0,:3],length=0.01,color=red),
-            arrow(pos=CO_pos[0,:],axis=0.3*C3_axis[0,:3],length=0.01,color=blue)]
+body = ring(pos=CO_pos[0, :], axis=C_axis_angle[0, :3],\
+        angle=C_axis_angle[0, 3], radius=r, thickness=0.01, color=(0.5,0.5,0.5))
+c1c3 = [arrow(pos=CO_pos[0,:],axis=0.3*C1_axis[0,:3],length=.01,color=red),
+            arrow(pos=CO_pos[0,:],axis=0.3*C3_axis[0,:3],length=.01,color=blue)]
+body.trail = curve()
+body.trail.append(pos=(x[0,3], x[0,4], 0.0), color=black)
+
 i = 1
 while i<n:
     rate(1./ts)
     body.pos = CO_pos[i, :]
     body.axis = C_axis_angle[i, :3]
-    c_frame[0].pos = body.pos
-    c_frame[1].pos = body.pos
-    c_frame[0].axis = 0.3*C1_axis[i,:3]
-    c_frame[1].axis = 0.3*C3_axis[i,:3]
+    c1c3[0].pos = body.pos
+    c1c3[1].pos = body.pos
+    c1c3[0].axis = 0.3*C1_axis[i,:3]
+    c1c3[1].axis = 0.3*C3_axis[i,:3]
+    body.trail.append(pos=(x[i,3], x[i,4], 0.0), color=black)
     i += 1
