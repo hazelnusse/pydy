@@ -1,20 +1,19 @@
-from sympy import *
+from sympy import solve
 from pydy import *
 
-rrt, rft, rr, rf, lr, ls, lf = symbols('rrt rft rr rf lr ls lf')
-l1, l2, l3, l4 = symbols('l1 l2 l3 l4')
-# frame pitch, and steer are constant
-q4, q5 = [GeneralizedCoordinate('q%d'%i, constant=True) for i in (4, 5)]
-# Yaw, lean, rear and front wheel angles are not constant
-q1, q2, q3, q6 = [GeneralizedCoordinate('q%d'%i) for i in (1, 2, 3, 6)]
-u2, u6 = [GeneralizedCoordinate('u%d'%i) for i in (2, 6)]
-
-q_list = [q1, q2, q3, q4, q5, q6]
-qdot_list = [q1.diff(t), q2.diff(t), q3.diff(t), q6.diff(t)]
-u_list = [u2, u6]
-udot_list = [u2.diff(t), u6.diff(t)]
 N = NewtonianReferenceFrame('N')
-N.setcoords(q_list, qdot_list, u_list, udot_list)
+rrt, rft, rr, rf, lr, ls, lf, l1, l2, l3, l4 = N.declare_parameters('rrt rft rr rf lr ls lf l1 l2 l3 l4')
+
+# Declare generalized coordinates and generalized speeds
+(q1, q2, q3, q4, q5, q6, q7, q8), q_list, qdot_list = N.declare_coords('q', 8, list=True)
+(u1, u2, u3), u_list, udot_list = N.declare_speeds('u', 3, list=True)
+
+# Independent qdots
+qdot_list_i = [q2.diff(t), q5.diff(t), q6.diff(t)]
+# Take the dependent qdots to be yaw, rear wheel, pitch, and x, y rates
+qdot_list_d = [q1.diff(t), q3.diff(t), q4.diff(t), q7.diff(t), q8.diff(t)]
+# Dependent qdot's which are implicitly dependent upon the other three.
+qdot_list_d_i = [q7.diff(t), q8.diff(t)]
 
 # Reference Frames
 # Yaw frame
@@ -43,11 +42,8 @@ g = Vector(A[3] - (dot(E[2], A[3]))*E[2]).normalized()
 # wheel contact
 CO = N.O.locate('CO', -rrt*A[3] - rr*B[3], C)
 
-# Locate point moving in N, coincident with rear wheel contact
-#NC = CO.locate('NC', rrt*A[3] + rr*B[3])
-# Second point fixed in N, serves as an inertial reference point
-#N2 = NC.locate('N2', -q1*N[1] - q2*N[2])
-
+# Locate point fixed in N, to serve as inertial origin
+N1 = CO.locate('NC', rrt*A[3] + rr*B[3] - q7*N[1] - q8*N[2])
 # Locate mass center of ricycle with rigidly attached rider
 DO = CO.locate('DO', l1*D[1] + l2*D[3], D)
 # Locate top of steer axis
@@ -62,23 +58,48 @@ FN = FO.locate('FN', rf*g + rft*A[3], F)
 # Form the holonomic constraint and its time derivative
 kinematic_chain(N.O, FN, vec_list=[A[3]])
 
-N.dhc_eqns = []
+# Rear wheel nonholonomic constraint equations
+nh_rear = [dot(N1.vel(), N[i]) for i in (1, 2)]
+soln = solve(nh_rear, qdot_list_d[-2:])
 
 # Front wheel nonholonomic constraint equations
-nh_front = [dot(FN.vel(), A[i]) for i in (1, 2)]
+nh_front = [Eq(0, dot(FN.vel(), A[i])) for i in (1, 2)]
 
-# Put the constraints into a matrix form
-#N.set_nhc_eqns(nh_front)
-# Solve the matrix for the dependent rates
-#dependent_rates = N.solve_constraint_matrix([q1.diff(t), q3.diff(t)])
-
-# Define the generalized speeds to be the B frame measure numbers of the
-# angular
-print D.ang_vel()
+u_rhs = [Eq(u1, dot(D.ang_vel(), B[1])),
+         Eq(u2, dot(D.ang_vel(), B[2])),
+         Eq(u3, dot(E.ang_vel(), D[3]))]
+print type(N.constraint_matrix)
 stop
 
-u_rhs = [dot(D.ang_vel(), B[i]) for i in (2, 3)]
-print u_rhs
+print Eq(0, N.constraint_matrix*Matrix(qdot_list)[0])
+stop
+
+T = N.form_transform_matrix([Eq(0, N.constraint_matrix*Matrix(qdot_list))[0]] + nh_front+u_rhs, qdot_list)
+print T
+stop
+T = N.form_transform_matrix(nh_front+u_rhs, qdot_list[:-2], expand=True)
+print T
+stop
+
+
+N.set_nhc_eqns(nh_front)#, nh_rear)
+
+# There are three generalized speeds but 6 qdots involved in nh_front and the
+# differentiated kinematic chain
+
+# Solve the matrix for the dependent rates
+dependent_rates = N.solve_constraint_matrix(qdot_list_d[:-2])
+
+print 'Dependent rates'
+for dr in dependent_rates:
+    print dr, ' = ', dependent_rates[dr]
+print 'Implicitly defined dependent rates'
+for dr in soln:
+    print dr, ' = ', soln[dr]
+
+
+u_rhs = [dot(D.ang_vel(), B[i]) for i in (1, 3)] + [dot(E.ang_vel(), D[3])]
+print 'u_rhs = ', u_rhs
 stop
 
 

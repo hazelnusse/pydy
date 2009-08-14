@@ -49,7 +49,7 @@ for i, state in enumerate(x[:,:6]):
     C_axis_angle[i] *= w
 
 from visual import box, display, rate, arrow
-scene = display(title='Rigid body animation @ %0.2f realtime', width=800, height=800, up=(0,0,-1),\
+scene = display(title='Rigid body animation @ %0.2f realtime'%k, width=800, height=800, up=(0,0,-1),\
         uniform=1, background=(1,1,1), forward=(1,0,0), exit=0)
 black = (1,1,1)
 red = (1, 0, 0)

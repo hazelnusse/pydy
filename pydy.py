@@ -1605,6 +1605,8 @@ class NewtonianReferenceFrame(ReferenceFrame):
         constraints.  Both types of constraints must be linear in the time
         derivatives of the generalized coordinates.
 
+        Requires that both kinematic_chain and/or self.set_nhc_eqns has been
+        called.
         """
         #if len(self.dhc_eqns) > 0:
         #    M1 = zeros([len(self.dhc_eqns), len(self.qdot_list)])
@@ -1643,11 +1645,9 @@ class NewtonianReferenceFrame(ReferenceFrame):
 
         rows, columns = self.constraint_matrix.shape
         if rows != len(d_column_index):
-            raise ValueError('Number of dependent qdots should equal number of\
-                constraint equations')
+            raise ValueError('Number of dependent qdots should equal number of constraint equations')
         if (columns-rows) != len(i_column_index):
-            raise ValueError('Number of independent qdots should equal number\
-                of qdots minus number of dependent qdots')
+            raise ValueError('Number of independent qdots should equal number of qdots minus number of dependent qdots')
         ds_mat = zeros([rows, rows])
         is_mat = zeros([rows, columns-rows])
         for i, j in enumerate(d_column_index):
@@ -1655,34 +1655,29 @@ class NewtonianReferenceFrame(ReferenceFrame):
         for i, j in enumerate(i_column_index):
             is_mat[:, i] = self.constraint_matrix[:,j]
         # Need to now invert ds_mat, and form -inv(ds_mat)*is_mat
+
         ds_mat_dummy = zeros([rows, rows])
         is_mat_dummy = zeros([rows, columns-rows])
-        constraint_subs_dict = {}
-        constraint_subs_dict_back = {}
-        for r in range(rows):
-            for c in range(rows):
-                if ds_mat[r,c] != 0:
-                    dummy = Symbol('ds%d%d'%(r,c), dummy=True)
-                    constraint_subs_dict[ds_mat[r,c]] = dummy
-                    constraint_subs_dict_back[dummy] = ds_mat[r,c]
-                    ds_mat_dummy[r, c] = dummy
-            for c in range(columns-rows):
-                if is_mat[r,c] != 0:
-                    dummy = Symbol('is%d%d'%(r,c), dummy=True)
-                    constraint_subs_dict[is_mat[r,c]] = dummy
-                    constraint_subs_dict_back[dummy] = is_mat[r,c]
-                    is_mat_dummy[r, c] = dummy
-
+        d = {}
+        for i in range(rows):
+            for j in range(rows):
+                if ds_mat[i, j] != 0:
+                    s = Symbol('a', dummy=True)
+                    d[s] = ds_mat[i, j]
+                    ds_mat_dummy[i, j] = s
+            for j in range(columns-rows):
+                if is_mat[i, j] != 0:
+                    s = Symbol('a', dummy=True)
+                    d[s] = is_mat[i, j]
+                    is_mat_dummy[i, j] = s
         matr_dummy = -ds_mat_dummy.inv(method=method)*is_mat_dummy
-        print matr_dummy
-        self.constraint_subs_dict = constraint_subs_dict
-        self.constraint_subs_dict_back = constraint_subs_dict_back
 
         independent_speeds =  Matrix([[self.qdot_list[i]] for i in i_column_index])
 
         dependent_rates = {}
         for r, qd in enumerate(dependent_qdots):
-            dependent_rates[qd] = (matr_dummy[r,:]*independent_speeds)[0]
+            dependent_rates[qd] =\
+                (matr_dummy[r,:]*independent_speeds)[0].subs(d)
 
         return dependent_rates
 
@@ -2010,20 +2005,51 @@ class NewtonianReferenceFrame(ReferenceFrame):
         f.write('\n\n' + a)
         f.close()
 
-    def form_transform_matrix(self, eqns, linear_terms):
+    def form_transform_matrix(self, eqns, qdot_list, expand=False, method='GE'):
         """Given a list of equations and linear terms, form the tranformation
         matrix.
         """
-
         m = len(eqns)
-        n = len(linear_terms)
+        n = len(qdot_list)
+        if m != n:
+            raise ValueError('Number of equations must equal number of unkowns.')
         M = zeros((m,n))
         for i in range(m):
             for j in range(n):
-                mij = eqns[i].coeff(linear_terms[j], expand=False)
+                mij = eqns[i].lhs.coeff(qdot_list[j], expand=expand)
                 M[i,j] = mij if mij is not None else S(0)
         self.transform_matrix = M
-        return M
+        d = {}
+        dummy = zeros((m,n))
+        for i in range(m):
+            for j in range(n):
+                if M[i,j] != 0:
+                    s = Symbol('a', dummy=True)
+                    d[s] = M[i,j]
+                    sins = M[i,j].atoms(sin)
+                    coss = M[i,j].atoms(cos)
+                    tans = M[i,j].atoms(tan)
+                    if sins:
+                        self.trig_func_set.update(sins)
+                        self.sin_func_set.update(sins)
+                    if coss:
+                        self.trig_func_set.update(coss)
+                        self.cos_func_set.update(coss)
+                        # Causes rigidbody.py to crap out on deriving the
+                        # dynamic equations
+                        #for c in coss:
+                        #    self.csqrd_dict.update({c**2: 1-sin(c.args[0])})
+                    if tans:
+                        self.trig_func_set.update(tans)
+                        self.tan_func_set.update(tans)
+                    dummy[i,j] = s
+        Minv = dummy.inv(method=method).subs(d)
+        self.transform_matrix_inv = Minv
+        kindiffs = {}
+        rhs = Matrix([eqn.rhs for eqn in eqns])
+        for i, qd in enumerate(qdot_list):
+            kindiffs[qd] = (Minv[i,:]*rhs)[0]
+        return M, Minv, kindiffs
 
     def form_kindiffs(self, T, qdot_list, u_list):
         """Invert the transformation u = T*q' and determine the kinematic

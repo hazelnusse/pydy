@@ -9,7 +9,7 @@ g = 9.81        # Gravitational acceleration
 r = 0.019/2.    # Radius of a penny
 # Dimensions of a quarter
 m = 5.67/1000.  # A quarter has a mass of 5.67g
-r = 0.02426/2.    # Radius of a penny
+r = 0.02426/2.  # Radius of a quarter
 params = [m, g, r]
 
 # states = [q1, q2, q3, q4, q5, u1, u2, u3]
@@ -22,23 +22,27 @@ params = [m, g, r]
 # Gravity is in the positive N[3] direction
 
 # Specify the initial conditions of the coordinates and the generalized speeds
-qi = [0., 1.1, 0., .001, 0.001]
+qi = [0., 0.1, 0., .001, 0.001]
+
 # Steady turning conditions require that u1 = 0 and that
 # u3**2 - 2*c2*u2/s2*u3 - 4*g*c2/(5*r) = 0
 # Given lean angle q2 and gen. speed u2, u3 must be a root of the above
-# polynomial
-q2i = qi[1]
+# polynomial.  Note that for zero lean angles, there are an infinite number of
+# spin rates that are steady turns of infinite radius.
 u2i = .0
-coefs = [1., -2*u2i/tan(q2i), -4*g*cos(q2i)/(5*r)]
-u3i = roots(coefs)
-print u3i
-ui = [0.0,u2i,u3i[0]]
+u3i = u2i/tan(qi[1]) + ((u2i/tan(qi[1]))**2 + 4*g*cos(qi[1])/(5*r))**(0.5)
+ui = [0.0,u2i,u3i]
+
+# Alternatively, specify any other intial generalized speeds
+ui = [1.95,17.0,0.0]
+
+# Inital states
 xi = qi + ui
 
 # Integration time
 ti = 0.0
-ts = 0.001
-tf = 40.0
+ts = 0.01
+tf = 10.0
 t = arange(ti, tf+ts, ts)
 n = len(t)
 # Integrate the differential equations
@@ -51,7 +55,7 @@ C1_axis = zeros((n, 4))
 C3_axis = zeros((n, 4))
 
 # Animation playback speed multiplier (1 == realtime)
-k = 0.2
+k = 0.5
 
 for i, state in enumerate(x[:,:5]):
     CO_pos[i], C_axis_angle[i], C1_axis[i], C3_axis[i] = animate(state, params)
@@ -72,7 +76,7 @@ scene = display(title='Rolling disc @ %0.2f realtime'%k, up=(0,0,-1),\
         uniform=1, background=black, forward=(1,0,0), exit=0)
 
 # Inertial reference frame arrows
-n = [arrow(pos=NO,axis=(.001,0,0),color=red),
+N = [arrow(pos=NO,axis=(.001,0,0),color=red),
      arrow(pos=NO,axis=(0,.001,0),color=green),
      arrow(pos=NO,axis=(0,0,.001),color=blue)]
 # Two cones are used to look like a thin disc

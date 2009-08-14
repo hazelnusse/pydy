@@ -19,21 +19,23 @@ m, g, I11, I22, I33 = N.declare_parameters('m g I11 I22 I33')
 A = N.rotate("A", 3, q1)
 B = A.rotate("B", 1, q2)
 
-# Frame fixed to the torus rigid body.
+# Frame fixed to the torus rigid body
 C = B.rotate("C", 2, q3, I=(I11, I22, I33, 0, 0, 0))
 
 # Locate the mass center
 CO = N.O.locate('CO', q4*N[1] + q5*N[2] + q6*N[3], mass=m)
 
 # Define the generalized speeds
-u_rhs = [dot(C.ang_vel(), C[i]) for i in (1, 2, 3)]\
-        + [dot(CO.vel(), N[i]) for i in (1, 2, 3)]
+u_defs = [Eq(dot(C.ang_vel(), C[i]), u_list[i-1]) for i in (1, 2, 3)]\
+        + [Eq(dot(CO.vel(), N[i-3]), u_list[i-1]) for i in (4, 5, 6)]
 
-# Form transformation matrix of u = T * q'
-T = N.form_transform_matrix(u_rhs, qdot_list)
+# Form transformation matrix of u := T * q'
+T, Tinv, kindiffs = N.form_transform_matrix(u_defs, qdot_list, method='ADJ')
 
-# Need to implement a method to automate the solving for the qdots
-kindiffs = N.form_kindiffs(T, qdot_list, u_list)
+print 'Kinematic differential equations'
+for r, qd in enumerate(qdot_list):
+    kindiffs[qd] = trigsimp(expand(kindiffs[qd]))
+    print qd, ' = ', kindiffs[qd]
 
 N.setkindiffs(kindiffs)
 
@@ -43,10 +45,11 @@ N.gravity(g*A[3])
 # Form Kane's equations and solve them for the udots
 kanes_eqns = N.form_kanes_equations()
 dyndiffs = solve(kanes_eqns, udot_list)
-
-N.setdyndiffs(dyndiffs)
-
+print 'Dynamic differential equations'
 for r, ud in enumerate(udot_list):
     dyndiffs[ud] = simplify(expand(dyndiffs[ud].subs(N.csqrd_dict)))
+    print ud, ' = ', dyndiffs[ud]
+
+N.setdyndiffs(dyndiffs)
 
 N.output_eoms('rigidbody_eoms.py', (CO, N.O), (C[2], q3))

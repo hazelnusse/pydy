@@ -1,4 +1,4 @@
-# Wed Aug 12 17:45:18 2009
+# Fri Aug 14 15:41:35 2009
 from numpy import sin, cos, tan, vectorize
 
 def f(x, t, parameter_list):
@@ -10,17 +10,18 @@ def f(x, t, parameter_list):
     c2 = cos(q2)
     s2 = sin(q2)
     s3 = sin(q3)
+    t2 = s2/c2
     # Kinematic differential equations
     q1p = c3*u3/c2 - s3*u1/c2
     q2p = c3*u1 + s3*u3
-    q3p = s2*s3*u1/c2 - c3*s2*u3/c2 + u2
+    q3p = t2*s3*u1 - c3*t2*u3 + u2
     q4p = u4
     q5p = u5
     q6p = u6
     # Dynamic differential equations
-    u1p = (I22*u2*u3 - I33*u2*u3)/I11
-    u2p = (I33*u1*u3 - I11*u1*u3)/I22
-    u3p = (I11*u1*u2 - I22*u1*u2)/I33
+    u1p = (I22 - I33)*u2*u3/I11
+    u2p = (I33 - I11)*u1*u3/I22
+    u3p = (I11 - I22)*u1*u2/I33
     u4p = 0
     u5p = 0
     u6p = g
