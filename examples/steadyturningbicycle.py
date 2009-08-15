@@ -36,7 +36,7 @@ F._wrel = Vector(q6.diff(t)*E[2])
 E._wrel_children[F] = Vector(-q6.diff(t)*E[2])
 
 # Unit vector in the plane of the front wheel, pointed towards the ground
-g = Vector(A[3] - (dot(E[2], A[3]))*E[2]).normalized()
+g = Vector(A[3] - (dot(E[2], A[3]))*E[2]).normalized
 
 # Locate rear wheel center relative to point fixed in N, coincident with rear
 # wheel contact
@@ -56,8 +56,11 @@ FO = DE.locate('FO', lf*E[1] + ls*E[3], E)
 FN = FO.locate('FN', rf*g + rft*A[3], F)
 
 # Form the holonomic constraint and its time derivative
-kinematic_chain(N.O, FN, vec_list=[A[3]])
-
+hcs, dhcs = kinematic_chain(N.O, FN, vec_list=[A[3]])
+stop
+print hcs, dhcs
+print hcs[0].diff(t)
+stop
 # Rear wheel nonholonomic constraint equations
 nh_rear = [dot(N1.vel(), N[i]) for i in (1, 2)]
 soln = solve(nh_rear, qdot_list_d[-2:])
@@ -68,16 +71,7 @@ nh_front = [Eq(0, dot(FN.vel(), A[i])) for i in (1, 2)]
 u_rhs = [Eq(u1, dot(D.ang_vel(), B[1])),
          Eq(u2, dot(D.ang_vel(), B[2])),
          Eq(u3, dot(E.ang_vel(), D[3]))]
-print type(N.constraint_matrix)
-stop
-
-print Eq(0, N.constraint_matrix*Matrix(qdot_list)[0])
-stop
-
-T = N.form_transform_matrix([Eq(0, N.constraint_matrix*Matrix(qdot_list))[0]] + nh_front+u_rhs, qdot_list)
-print T
-stop
-T = N.form_transform_matrix(nh_front+u_rhs, qdot_list[:-2], expand=True)
+T, Tinv, kindiffs = N.form_transform_matrix(nh_front+u_rhs, qdot_list[:-2], expand=False)
 print T
 stop
 

@@ -642,11 +642,13 @@ class Vector(Basic):
         else:
             return Vector(new)
 
+    @property
     def mag(self):
         """Magnitude of a Vector.
         """
-        return sqrt(self.mag_sqr())
+        return sqrt(self.mag_sqr)
 
+    @property
     def mag_sqr(self):
         """Magnitude squared of a Vector.
         """
@@ -689,9 +691,10 @@ class Vector(Basic):
             m = trigexprf + otherexpr
         return m
 
+    @property
     def normalized(self):
         v = Vector(0)
-        m = self.mag()
+        m = self.mag
         for k in self.dict:
             v.dict[k] = self.dict[k] / m
         return v
@@ -2127,6 +2130,7 @@ def kinematic_chain(point1, point2, r=None, vec_list=None):
             hc_s = hc.subs(q_list_dict)
             # Get a list of the coordinates involved in the constraint equation
             coords_s = list(hc_s.atoms(Symbol) & set(q_list_s))
+            print coords_s
             coords_gc = [cd_s.subs(q_list_dict_back) for
                     cd_s in coords_s]
             coords_gc_dot = [c_gc.diff(t) for c_gc in coords_gc]
