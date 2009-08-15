@@ -776,11 +776,10 @@ def test_mag():
     v2 = Vector(A[1] + A[2])
     v3 = Vector(A[1] + A[2] + A[3])
     v4 = -A[1]
-    assert v1.mag() == 1
-    #print v2.mag()
-    assert v2.mag() == 2**Rational(1,2)
-    assert v3.mag() == 3**Rational(1,2)
-    assert v4.mag() == 1
+    assert v1.mag == 1
+    assert v2.mag == 2**Rational(1,2)
+    assert v3.mag == 3**Rational(1,2)
+    assert v4.mag == 1
 
 
 def test_rotate_Euler_Space():
