@@ -14,7 +14,7 @@ J = m*r**2/2  # Central moment of inertia about normal axis
 
 # Declare generalized coordinates and generalized speeds
 (q1, q2, q3, q4, q5), q_list, qdot_list = N.declare_coords('q', 5, list=True)
-(u1, u2, u3), u_list, udot_list = N.declare_speeds('u', 3, list=True)
+(u1, u2, u3, u4, u5), u_list, udot_list = N.declare_speeds('u', 5, list=True)
 
 # Intermediate reference frames
 A = N.rotate("A", 3, q1)
@@ -31,32 +31,35 @@ N1 = CO.locate('N1', r*B[3] - q4*N[1] - q5*N[2])
 
 # Define the generalized speeds to be the B frame measure numbers of the angular
 # Must be of the form:  A*q' == u
-u_defs = [Eq(dot(C.ang_vel(), B[i]), u_list[i-1]) for i in (1, 2, 3)]
+u_defs = N.define_speeds(
+        [Eq(u_list[i-1], dot(C.ang_vel(), B[i])) for i in (1, 2, 3)] + \
+        [Eq(u4, q4.diff(t)), Eq(u5, q5.diff(t))])
+
+T, Tinv, kindiffs = N.form_kindiffs(u_defs, qdot_list, method='ADJ')
+
+# Set angular velocity and velocity expressions to only involve generalized
+# speeds
+A._wrel = A._wrel.express(B).subs(kindiffs)
+B._wrel = B._wrel.express(B).subs(kindiffs)
+C._wrel = C._wrel.express(B).subs(kindiffs)
+CO._vrel = cross(C.ang_vel(), CO.rel(N.O))
+N1._vrel = Vector(-u4*N[1] - u5*N[2]) + dt(N.O.rel(CO), N)
+
 # Must be of the form:  B*q' == 0
 constrainteqs = [Eq(dot(N1.vel(), N[1]), 0), Eq(dot(N1.vel(), N[2]), 0)]
-implicit_rates = solve(constrainteqs, q4.diff(t), q5.diff(t))
+dependent_speeds = solve(constrainteqs, u4, u5)
+for lhs, rhs in dependent_speeds.items():
+    dependent_speeds[lhs] = rhs.expand()
 
-T, Tinv, kindiffs = N.form_transform_matrix(u_defs, qdot_list[:3], method='GE')
 print 'Kinematic differential equations'
-for qd in qdot_list[:3]:
+for qd in qdot_list:
     print qd, '=', kindiffs[qd]
 
-print 'Implicitly defined rates:'
-for qd in implicit_rates:
-    print qd, '=', implicit_rates[qd]
+print 'Dependent speeds:'
+for u in dependent_speeds:
+    print u, '=', dependent_speeds[u]
 
-A._wrel = express(A._wrel, B).subs(kindiffs)
-B._wrel = express(B._wrel, B).subs(kindiffs)
-C._wrel = express(C._wrel, B).subs(kindiffs)
-#print C.ang_vel()
-CO._vrel = cross(C.ang_vel(), CO.rel(N.O))
-#print CO.vel()
-#stop
-# Substitute the kinematic differential equations into velocity expressions,
-# form partial angular velocities and partial velocites, form angular
-# accelerations and accelerations
-N.setkindiffs(kindiffs, implicit_rates)
-#N.setkindiffs({},{})
+N.setkindiffs(kindiffs, dependent_speeds)
 
 # Apply gravity
 N.gravity(g*A[3])
@@ -66,8 +69,9 @@ kanes_eqns = N.form_kanes_equations()
 dyndiffs = solve(kanes_eqns, udot_list)
 
 print 'Dynamic differential equations'
-for ud in udot_list:
+for ud in udot_list[:3]:
     dyndiffs[ud] = dyndiffs[ud].expand()
     print ud, '=', dyndiffs[ud]
+
 N.setdyndiffs(dyndiffs)
 N.output_eoms('rollingdisc_eoms.py', (CO, N1), (B[2], q3), (C[1], 0), (C[3], 0))

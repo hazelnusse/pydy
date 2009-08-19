@@ -1477,7 +1477,7 @@ class NewtonianReferenceFrame(ReferenceFrame):
         self.tan_func_set = set([])
         self.csqrd_dict = {}
 
-    def setkindiffs(self, expr_dict, dependent_rates=None):
+    def setkindiffs(self, expr_dict, dependent_speeds=None):
         """Recursivly apply kinematic differential equations to velocity and
         angular velocity expressions of every Point and ReferenceFrame,
         respectively.
@@ -1485,10 +1485,6 @@ class NewtonianReferenceFrame(ReferenceFrame):
         Also forms the acceleration and angular acceleration of each point.
 
         """
-        # Substitute kinematic differential equations into velocity and
-        # angular velocity expressions
-        #self.kindiffs = expr_dict if dependent_rates is None else \
-        #    expr_dict.update(dependent_rates)
         self.kindiffs = expr_dict
         for eqn in self.kindiffs.values():
             sins = eqn.atoms(sin)
@@ -1500,9 +1496,9 @@ class NewtonianReferenceFrame(ReferenceFrame):
                 self.trig_func_set.update(coss)
                 self.cos_func_set.update(coss)
 
-        if dependent_rates is not None:
-            self.dependent_rates = dependent_rates
-            for eqn in self.dependent_rates.values():
+        if dependent_speeds is not None:
+            self.dependent_speeds = dependent_speeds
+            for eqn in self.dependent_speeds.values():
                 sins = eqn.atoms(sin)
                 coss = eqn.atoms(cos)
                 if sins is not None:
@@ -1515,12 +1511,6 @@ class NewtonianReferenceFrame(ReferenceFrame):
         for c in self.cos_func_set:
             if c**2 not in self.csqrd_dict:
                 self.csqrd_dict[c**2] = 1 - sin(c.args[0])**2
-
-        #self.dependent_rates = dependent_rates
-        # This is the bad way to do thing because it relys on symbolic
-        # cancellations that may not occur automatically
-        #self.recursive_subs(self, expr_dict)
-        #self.recursive_subs(self.O, expr_dict)
 
         # Form partial velocity expressions
         self.recursive_partials(self)
@@ -1537,9 +1527,9 @@ class NewtonianReferenceFrame(ReferenceFrame):
         """
         self.dyndiffs = eqns
 
-        for eq in self.udot_list:
-            sins = self.dyndiffs[eq].atoms(sin)
-            coss = self.dyndiffs[eq].atoms(cos)
+        for ud, rhs in eqns.items():
+            sins = rhs.atoms(sin)
+            coss = rhs.atoms(cos)
             if sins is not None:
                 self.trig_func_set.update(sins)
                 self.sin_func_set.update(sins)
@@ -1913,9 +1903,16 @@ class NewtonianReferenceFrame(ReferenceFrame):
         ode_func_string += '    ' + s[:-2] + ' = ' + 'parameter_list\n'
         ode_func_string += '    # Unpacking the states (q\'s and u\'s)\n'
         s = ""
+        udsort = []
+        usort = []
+        for i, ud in enumerate(self.udot_list):
+            if ud in self.dyndiffs:
+                udsort.append(ud)
+                usort.append(self.u_list[i])
+
         for q in self.q_list:
             s += str(q) + ', '
-        for u in self.u_list:
+        for u in usort:
             s += str(u) + ', '
         ode_func_string += '    ' + s[:-2] + ' = ' + 'x\n'
 
@@ -1934,6 +1931,13 @@ class NewtonianReferenceFrame(ReferenceFrame):
 
         dxdt_list = ""
 
+        if hasattr(self, 'dependent_speeds'):
+            ode_func_string += '    # Dependent generalized speeds\n'
+            for u in self.dependent_speeds:
+                ode_func_string += '    ' + str(u) + ' = ' +\
+                    str(self.dependent_speeds[u].subs(self.qdot_list_dict)) + '\n'
+                #dxdt_list += str(u)[:-1] + 'p, '
+
         ode_func_string += '    # Kinematic differential equations\n'
         qdl = []
         for qd in self.qdot_list:
@@ -1942,16 +1946,10 @@ class NewtonianReferenceFrame(ReferenceFrame):
         for qd in qdl:
             ode_func_string += '    ' + str(qd)[:-1] + 'p' + ' = ' + str(self.kindiffs[qd]) + '\n'
             dxdt_list += str(qd)[:-1] + 'p, '
-        if hasattr(self, 'dependent_rates'):
-            ode_func_string += '    # Dependent differential equations\n'
-            for qd in self.dependent_rates:
-                ode_func_string += '    ' + str(qd)[:-1] + 'p' + ' = ' +\
-                    str(self.dependent_rates[qd].subs(self.qdot_list_dict)) + '\n'
-                dxdt_list += str(qd)[:-1] + 'p, '
-
 
         ode_func_string += '    # Dynamic differential equations\n'
-        for ud in self.udot_list:
+
+        for ud in udsort:
             ode_func_string += '    ' + str(ud)[:-1] + 'p' +  ' = ' + str(self.dyndiffs[ud]) + '\n'
             dxdt_list += str(ud)[:-1] + 'p, '
 
@@ -2085,7 +2083,7 @@ class NewtonianReferenceFrame(ReferenceFrame):
         f.write('\n\n' + a)
         f.close()
 
-    def form_kindiffs(self, eqns, qdot_list, method='ADJ'):
+    def form_kindiffs(self, eqns, qdot_list, method='ADJ', dep_speeds=None):
         """Given a list of equations and linear terms, form the tranformation
         matrix.
         """
@@ -2116,7 +2114,7 @@ class NewtonianReferenceFrame(ReferenceFrame):
                     num,den = Mij.as_numer_denom()
                     Minv[i, j] = \
                         (num.expand().subs(self.csqrd_dict).expand() / \
-                        den.expand().subs(self.csqrd_dict).expand()).subs(self.tan_dict)
+                        den.expand().subs(self.csqrd_dict).expand())#.subs(self.tan_dict)
                     sins = Minv[i,j].atoms(sin)
                     coss = Minv[i,j].atoms(cos)
                     tans = Minv[i,j].atoms(tan)

@@ -1,4 +1,4 @@
-# Tue Aug 18 09:05:18 2009
+# Wed Aug 19 11:21:17 2009
 from numpy import sin, cos, tan, vectorize
 
 def f(x, t, parameter_list):
@@ -10,13 +10,15 @@ def f(x, t, parameter_list):
     s2 = sin(q2)
     c1 = cos(q1)
     c2 = cos(q2)
+    # Dependent generalized speeds
+    u5 = -r*s1*u2 + r*s1*s2*u3/c2
+    u4 = -r*c1*u2 + r*c1*s2*u3/c2
     # Kinematic differential equations
     q1p = u3/c2
     q2p = u1
     q3p = -s2*u3/c2 + u2
-    # Dependent differential equations
-    q4p = -q3p*r*c1
-    q5p = -q3p*r*s1
+    q4p = u4
+    q5p = u5
     # Dynamic differential equations
     u1p = 2*u2*u3 - u3**2*s2/c2 + 4*g*s2/(5*r)
     u2p = -2*u1*u3/3
@@ -28,7 +30,7 @@ def qdot2u(q, qd, parameter_list):
     m, g, r = parameter_list
     # Unpacking the q's and qdots
     q1, q2, q3, q4, q5 = q
-    q1p, q2p, q3p = qd
+    q1p, q2p, q3p, q4p, q5p = qd
     s1 = sin(q1)
     s2 = sin(q2)
     c1 = cos(q1)
@@ -37,7 +39,9 @@ def qdot2u(q, qd, parameter_list):
     u1 = q2p
     u2 = q3p + q1p*s2
     u3 = q1p*c2
-    return [u1, u2, u3]
+    u4 = q4p
+    u5 = q5p
+    return [u1, u2, u3, u4, u5]
 
 def animate(q, parameter_list):
     # Unpacking the parameters
