@@ -1,6 +1,4 @@
-from sympy import symbols, Function, S, solve, simplify, \
-        collect, Matrix, lambdify, trigsimp, expand, Eq, pretty_print
-
+from sympy import solve, simplify
 from pydy import *
 
 # Create a Newtonian reference frame
@@ -43,6 +41,8 @@ A._wrel = A._wrel.express(B).subs(kindiffs)
 B._wrel = B._wrel.express(B).subs(kindiffs)
 C._wrel = C._wrel.express(B).subs(kindiffs)
 CO._vrel = cross(C.ang_vel(), CO.rel(N.O))
+# A little tricky, but basically, the velocity of N1 relative to the disc
+# center CO, as viewed by and observer fixed in N
 N1._vrel = Vector(-u4*N[1] - u5*N[2]) + dt(N.O.rel(CO), N)
 
 # Must be of the form:  B*q' == 0
@@ -56,9 +56,11 @@ for qd in qdot_list:
     print qd, '=', kindiffs[qd]
 
 print 'Dependent speeds:'
-for u in dependent_speeds:
-    print u, '=', dependent_speeds[u]
+for u in u_list:
+    if u in dependent_speeds:
+        print u, '=', dependent_speeds[u]
 
+# Set the kindiffs and dependent_speeds
 N.setkindiffs(kindiffs, dependent_speeds)
 
 # Apply gravity
