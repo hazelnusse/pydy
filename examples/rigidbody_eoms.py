@@ -1,4 +1,4 @@
-# Fri Aug 14 15:41:35 2009
+# Tue Aug 18 23:39:22 2009
 from numpy import sin, cos, tan, vectorize
 
 def f(x, t, parameter_list):
@@ -7,21 +7,20 @@ def f(x, t, parameter_list):
     # Unpacking the states (q's and u's)
     q1, q2, q3, q4, q5, q6, u1, u2, u3, u4, u5, u6 = x
     c3 = cos(q3)
-    c2 = cos(q2)
-    s2 = sin(q2)
     s3 = sin(q3)
-    t2 = s2/c2
+    c2 = cos(q2)
+    t2 = tan(q2)
     # Kinematic differential equations
     q1p = c3*u3/c2 - s3*u1/c2
     q2p = c3*u1 + s3*u3
-    q3p = t2*s3*u1 - c3*t2*u3 + u2
+    q3p = s3*t2*u1 - c3*t2*u3 + u2
     q4p = u4
     q5p = u5
     q6p = u6
     # Dynamic differential equations
-    u1p = (I22 - I33)*u2*u3/I11
-    u2p = (I33 - I11)*u1*u3/I22
-    u3p = (I11 - I22)*u1*u2/I33
+    u1p = (I22*u2*u3 - I33*u2*u3)/I11
+    u2p = (I33*u1*u3 - I11*u1*u3)/I22
+    u3p = (I11*u1*u2 - I22*u1*u2)/I33
     u4p = 0
     u5p = 0
     u6p = g
@@ -34,9 +33,9 @@ def qdot2u(q, qd, parameter_list):
     q1, q2, q3, q4, q5, q6 = q
     q1p, q2p, q3p, q4p, q5p, q6p = qd
     c3 = cos(q3)
-    c2 = cos(q2)
-    s2 = sin(q2)
     s3 = sin(q3)
+    c2 = cos(q2)
+    t2 = tan(q2)
     # Kinematic differential equations
     u1 = q2p*c3 - q1p*c2*s3
     u2 = q3p + q1p*s2

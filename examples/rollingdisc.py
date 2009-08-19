@@ -36,7 +36,7 @@ u_defs = [Eq(dot(C.ang_vel(), B[i]), u_list[i-1]) for i in (1, 2, 3)]
 constrainteqs = [Eq(dot(N1.vel(), N[1]), 0), Eq(dot(N1.vel(), N[2]), 0)]
 implicit_rates = solve(constrainteqs, q4.diff(t), q5.diff(t))
 
-T, Tinv, kindiffs = N.form_transform_matrix(u_defs, qdot_list[:3], method='LU')
+T, Tinv, kindiffs = N.form_transform_matrix(u_defs, qdot_list[:3], method='GE')
 print 'Kinematic differential equations'
 for qd in qdot_list[:3]:
     print qd, '=', kindiffs[qd]
@@ -45,11 +45,18 @@ print 'Implicitly defined rates:'
 for qd in implicit_rates:
     print qd, '=', implicit_rates[qd]
 
-
+A._wrel = express(A._wrel, B).subs(kindiffs)
+B._wrel = express(B._wrel, B).subs(kindiffs)
+C._wrel = express(C._wrel, B).subs(kindiffs)
+#print C.ang_vel()
+CO._vrel = cross(C.ang_vel(), CO.rel(N.O))
+#print CO.vel()
+#stop
 # Substitute the kinematic differential equations into velocity expressions,
 # form partial angular velocities and partial velocites, form angular
 # accelerations and accelerations
 N.setkindiffs(kindiffs, implicit_rates)
+#N.setkindiffs({},{})
 
 # Apply gravity
 N.gravity(g*A[3])

@@ -1,6 +1,7 @@
 from sympy import (Symbol, symbols, Basic, Function, Mul, Pow, Matrix, sin,
-        cos, tan, S, eye, Add, trigsimp, expand, pretty, Eq, collect, sqrt,
-        sympify, factor, zeros, simplify, solve_linear_system)
+        cos, tan, cot, S, eye, Add, trigsimp, expand, pretty, Eq, collect, sqrt,
+        sympify, factor, zeros, simplify, solve_linear_system, ratsimp,
+        powsimp)
 from sympy.printing.pretty.pretty import PrettyPrinter
 from sympy.printing.str import StrPrinter
 import time
@@ -133,11 +134,7 @@ class UnitVector(Basic):
                         other)] = dp
                     return dp
                 elif isinstance(c, Vector):
-                    s = S(0)
-                    for k, coef in c.dict.items():
-                        if self == k:
-                            s += coef
-                    s = trigsimp(s)
+                    s = c.dict.get(self, 0)
                     self.frame.NewtonianReferenceFrame.uv_dot_products[(self, \
                         other)] = s
                     return s
@@ -573,6 +570,8 @@ class Vector(Basic):
             raise NotImplementedError()
 
     def dot(self, other):
+        """Vector dot product.
+        """
         if isinstance(other, Vector):
             s = S(0)
             for k in self.dict:
@@ -580,7 +579,8 @@ class Vector(Basic):
                     other.dict])
             return s
         elif isinstance(other, UnitVector):
-            return sum([self.dict[k]*k.dot(other) for k in self.dict])
+            s = sum([self.dict[k]*k.dot(other) for k in self.dict])
+            return s
         elif isinstance(other, (Add, Mul)):
             return self.dot(Vector(other))
         elif isinstance(other, Dyad):
@@ -865,6 +865,40 @@ class Point(object):
                 raise TypeError('fixedinframe must be a ReferenceFrame type')
         else:
             raise NotImplementedError()
+
+    def apply_force(self, force, other=None, reset=False):
+        """Apply force to a point or particle.
+
+        Can be used to apply a force to a point or particle.
+
+        Repeated calls to apply_force are additive.
+
+        If optional argument other is specified, a torque or equal magnitude
+        but opposite sign will applied to the other point.
+
+        If you need to reset the applied force to zero, use optional parameter
+        reset=True
+        """
+        if other==None:
+            if reset==False:
+                self.force += Vector(force)
+            elif reset==True:
+                self.force = Vector(force)
+            else:
+                raise TypeError('reset must be a boolean')
+        elif isinstance(other, ReferenceFrame):
+            if reset==False:
+                force = Vector(force)
+                self.force += force
+                other.force -= force
+            elif reset==True:
+                force = Vector(force)
+                self.force = force
+                other.force = -force
+            else:
+                raise TypeError('reset must be a boolean')
+        else:
+            raise TypeError('other must be a ReferenceFrame')
 
     def locate(self, name, r, frame=None, mass=None, force=None):
         """Returns a new Point located relative to the parent point.
@@ -1257,6 +1291,40 @@ class ReferenceFrame(object):
             r1t.reverse()
             return r1t[:-1] + r2t
 
+    def apply_torque(self, torque, other=None, reset=False):
+        """Apply torque to a reference frame or rigid body.
+
+        Can be used to apply a torque to a reference frame or rigid body.
+
+        Repeated calls to apply_torqe are additive.
+
+        If optional argument other is specified, a torque or equal magnitude
+        but opposite sign will applied to the other reference frame.
+
+        If you need to reset the applied torque to zero, use optional parameter
+        reset=True
+        """
+        if other==None:
+            if reset==False:
+                self.torque += Vector(torque)
+            elif reset==True:
+                self.torque = Vector(torque)
+            else:
+                raise TypeError('reset must be a boolean')
+        elif isinstance(other, ReferenceFrame):
+            if reset==False:
+                torque = Vector(torque)
+                self.torque += torque
+                other.torque -= torque
+            elif reset==True:
+                torque = Vector(torque)
+                self.torque = torque
+                other.torque = -torque
+            else:
+                raise TypeError('reset must be a boolean')
+        else:
+            raise TypeError('other must be a ReferenceFrame')
+
     def get_rot_matrices(self, frame):
         """
         Returns a list of matrices to get from self to frame.
@@ -1406,6 +1474,7 @@ class NewtonianReferenceFrame(ReferenceFrame):
         self.trig_func_set = set([])
         self.cos_func_set = set([])
         self.sin_func_set = set([])
+        self.tan_func_set = set([])
         self.csqrd_dict = {}
 
     def setkindiffs(self, expr_dict, dependent_rates=None):
@@ -1422,7 +1491,7 @@ class NewtonianReferenceFrame(ReferenceFrame):
         #    expr_dict.update(dependent_rates)
         self.kindiffs = expr_dict
         for eqn in self.kindiffs.values():
-            sins = eqn.atoms(sin) 
+            sins = eqn.atoms(sin)
             coss = eqn.atoms(cos)
             if sins is not None:
                 self.trig_func_set.update(sins)
@@ -1430,11 +1499,11 @@ class NewtonianReferenceFrame(ReferenceFrame):
             if coss is not None:
                 self.trig_func_set.update(coss)
                 self.cos_func_set.update(coss)
-        
+
         if dependent_rates is not None:
             self.dependent_rates = dependent_rates
             for eqn in self.dependent_rates.values():
-                sins = eqn.atoms(sin) 
+                sins = eqn.atoms(sin)
                 coss = eqn.atoms(cos)
                 if sins is not None:
                     self.trig_func_set.update(sins)
@@ -1442,14 +1511,16 @@ class NewtonianReferenceFrame(ReferenceFrame):
                 if coss is not None:
                     self.trig_func_set.update(coss)
                     self.cos_func_set.update(coss)
-        
+
         for c in self.cos_func_set:
             if c**2 not in self.csqrd_dict:
-                self.csqrd_dict[c**2] = 1 - sin(c.args[0])**2 
-        
+                self.csqrd_dict[c**2] = 1 - sin(c.args[0])**2
+
         #self.dependent_rates = dependent_rates
-        self.recursive_subs(self, expr_dict)
-        self.recursive_subs(self.O, expr_dict)
+        # This is the bad way to do thing because it relys on symbolic
+        # cancellations that may not occur automatically
+        #self.recursive_subs(self, expr_dict)
+        #self.recursive_subs(self.O, expr_dict)
 
         # Form partial velocity expressions
         self.recursive_partials(self)
@@ -1478,7 +1549,7 @@ class NewtonianReferenceFrame(ReferenceFrame):
 
         for c in self.cos_func_set:
             if c**2 not in self.csqrd_dict:
-                self.csqrd_dict[c**2] = 1 - sin(c.args[0])**2 
+                self.csqrd_dict[c**2] = 1 - sin(c.args[0])**2
 
     def recursive_acc(self, PorF):
         """Recursively form acceleration of Points and angular acceleration of
@@ -1486,11 +1557,11 @@ class NewtonianReferenceFrame(ReferenceFrame):
         """
         if isinstance(PorF, Point):
             if PorF._fixedin == set([]):
-                PorF._arel = PorF._vrel.dt(self).subs(self.kindiffs)
+                PorF._arel = PorF._vrel.dt(self)#.subs(self.kindiffs)
             elif len(PorF._fixedin) == 1:
                 frame = list(PorF._fixedin)[0]
                 PorF._arel = frame.ang_vel(self).cross(PorF._vrel) + \
-                    frame.ang_acc(self).cross(PorF.rel(PorF.parentpoint)).subs(self.kindiffs)
+                    frame.ang_acc(self).cross(PorF.rel(PorF.parentpoint))#.subs(self.kindiffs)
             else:
                 frame_counter = {}
                 for frame in PorF._fixedin:
@@ -1498,10 +1569,9 @@ class NewtonianReferenceFrame(ReferenceFrame):
                 closest = min([(frame_counter[x], x) for x in frame_counter])[1]
                 PorF._arel = (closest.ang_vel(self).cross(PorF._vrel) +
                         closest.ang_acc(self).cross(PorF.rel(
-                        PorF.parentpoint)).subs(self.kindiffs))
+                        PorF.parentpoint)))#.subs(self.kindiffs))
         elif isinstance(PorF, ReferenceFrame):
-            PorF._alpharel = \
-            PorF._wrel.subs(self.kindiffs).dt(PorF.NewtonianReferenceFrame).subs(self.kindiffs)
+            PorF._alpharel = PorF._wrel.subs(self.kindiffs).dt(PorF.NewtonianReferenceFrame)#.subs(self.kindiffs)
 
         #  Initiate recursion
         if PorF.children == []:
@@ -1555,6 +1625,13 @@ class NewtonianReferenceFrame(ReferenceFrame):
         self.q_list = q_list
         self.qdot_list = qdot_list
         # Generate lists of Symbol objects instead of Function objects
+        self.csqrd_dict = {}
+        self.tan_dict = {}
+        self.cot_dict = {}
+        for q in q_list:
+            self.csqrd_dict[cos(q)**2] = 1 - sin(q)**2
+            self.tan_dict[sin(q)/cos(q)] = tan(q)
+            self.cot_dict[cos(q)/sin(q)] = cot(q)
         self.q_list_s = [Symbol(str(q.func)) for q in q_list]
         self.qdot_list_s = [Symbol(str(q.func)+'p') for q in q_list]
         self.q_list_dict = dict(zip(q_list, self.q_list_s))
@@ -2008,7 +2085,7 @@ class NewtonianReferenceFrame(ReferenceFrame):
         f.write('\n\n' + a)
         f.close()
 
-    def form_transform_matrix(self, eqns, qdot_list, expand=False, method='GE'):
+    def form_kindiffs(self, eqns, qdot_list, method='ADJ'):
         """Given a list of equations and linear terms, form the tranformation
         matrix.
         """
@@ -2019,7 +2096,7 @@ class NewtonianReferenceFrame(ReferenceFrame):
         M = zeros((m,n))
         for i in range(m):
             for j in range(n):
-                mij = eqns[i].lhs.coeff(qdot_list[j], expand=expand)
+                mij = eqns[i].rhs.coeff(qdot_list[j])
                 M[i,j] = mij if mij is not None else S(0)
         self.transform_matrix = M
         d = {}
@@ -2027,59 +2104,78 @@ class NewtonianReferenceFrame(ReferenceFrame):
         for i in range(m):
             for j in range(n):
                 if M[i,j] != 0:
-                    s = Symbol('a', dummy=True)
+                    s = Symbol('a%d%d'%(i,j), dummy=True)
                     d[s] = M[i,j]
-                    sins = M[i,j].atoms(sin)
-                    coss = M[i,j].atoms(cos)
-                    tans = M[i,j].atoms(tan)
+                    dummy[i,j] = s
+        Minv = dummy.inv(method=method)
+        for i in range(n):
+            for j in range(n):
+                if Minv[i,j] != 0:
+                    num,den = Minv[i,j].as_numer_denom()
+                    Mij = simplify(num.expand() / den.expand()).subs(d)
+                    num,den = Mij.as_numer_denom()
+                    Minv[i, j] = \
+                        (num.expand().subs(self.csqrd_dict).expand() / \
+                        den.expand().subs(self.csqrd_dict).expand()).subs(self.tan_dict)
+                    sins = Minv[i,j].atoms(sin)
+                    coss = Minv[i,j].atoms(cos)
+                    tans = Minv[i,j].atoms(tan)
                     if sins:
                         self.trig_func_set.update(sins)
                         self.sin_func_set.update(sins)
                     if coss:
                         self.trig_func_set.update(coss)
                         self.cos_func_set.update(coss)
-                        # Causes rigidbody.py to crap out on deriving the
-                        # dynamic equations
-                        #for c in coss:
-                        #    self.csqrd_dict.update({c**2: 1-sin(c.args[0])})
                     if tans:
                         self.trig_func_set.update(tans)
                         self.tan_func_set.update(tans)
-                    dummy[i,j] = s
-        Minv = dummy.inv(method=method).subs(d)
+
         self.transform_matrix_inv = Minv
         kindiffs = {}
-        rhs = Matrix([eqn.rhs for eqn in eqns])
+        rhs = Matrix([eqn.lhs for eqn in eqns])
         for i, qd in enumerate(qdot_list):
             kindiffs[qd] = (Minv[i,:]*rhs)[0]
         return M, Minv, kindiffs
 
-    def form_kindiffs(self, T, qdot_list, u_list):
-        """Invert the transformation u = T*q' and determine the kinematic
-        differential equations.
-
-        qdot_list and u_list must be of the same length.  For holonomic systems
-       with no unreduced coordinates, this will always be the case.  For 
-       systems with unreduced coordinates and/or nonholonomic constraints,
-       there will generally be fewer u's than qdots, so one must choose the u's
-       in a way such that they only depend on the same number of qdots.
+    def define_speeds(self, eqns):
+        """Defines the generalized speeds equations, conditioning them so that
+        they are more easily inverted to determined the kinematic differential
+        equations.
         """
-        m, n = T.shape
-        system = T.col_insert(n, Matrix(u_list))
-        d = {}
-        system2 = zeros(system.shape)
-        for i in range(system.shape[0]):
-            for j in range(system.shape[1]):
-                if system[i, j] != 0:
-                    s = Symbol("a", dummy=True)
-                    d[s] = system[i, j]
-                    system2[i, j] = s
-        kindiffs = solve_linear_system(system2, *qdot_list)
+        eqns_cond = []
+        for e in eqns:
+            rhs = collect(e.rhs.expand().subs(self.csqrd_dict).expand(), self.qdot_list)
+            eqns_cond.append(Eq(e.lhs, rhs))
+        return eqns_cond
 
-        for qd in qdot_list:
-            kindiffs[qd] = trigsimp(kindiffs[qd].subs(d).expand())
-
-        return kindiffs
+#    """
+#    def form_kindiffs(self, T, qdot_list, u_list):
+#        Invert the transformation u = T*q' and determine the kinematic
+#        differential equations.
+#
+#        qdot_list and u_list must be of the same length.  For holonomic systems
+#       with no unreduced coordinates, this will always be the case.  For 
+#       systems with unreduced coordinates and/or nonholonomic constraints,
+#       there will generally be fewer u's than qdots, so one must choose the u's
+#       in a way such that they only depend on the same number of qdots.
+#
+#        m, n = T.shape
+#        system = T.col_insert(n, Matrix(u_list))
+#        d = {}
+#        system2 = zeros(system.shape)
+#        for i in range(system.shape[0]):
+#            for j in range(system.shape[1]):
+#                if system[i, j] != 0:
+#                    s = Symbol("a", dummy=True)
+#                    d[s] = system[i, j]
+#                    system2[i, j] = s
+#        kindiffs = solve_linear_system(system2, *qdot_list)
+#
+#        for qd in qdot_list:
+#            kindiffs[qd] = trigsimp(kindiffs[qd].subs(d).expand())
+#
+#        return kindiffs
+#    """
 
 def most_frequent_frame(vector):
     """Determines the most frequent frame of all unitvector terms in a vector.

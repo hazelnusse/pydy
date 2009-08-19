@@ -2,7 +2,6 @@ from rigidbody_eoms import *
 
 from scipy.integrate import odeint
 from numpy import array, arange, zeros
-import matplotlib.pyplot as plt
 
 # Dimensions of rigid body in the three body fixed directions
 # Following are the dimensions of an iPhone 3G taken from apple.com
@@ -10,12 +9,12 @@ h = 0.1155      # meters  in the 1 direction
 w = 0.0621      # meters  in the 2 direction
 d = 0.0123      # meters  in the 3 direction
 m = 0.135       # kilograms
-g = 9.81        # meters / sec**2
+g = 0.0081        # meters / sec**2
 I11 = m*(w**2 + d**2)/12.
 I22 = m*(h**2 + d**2)/12.
 I33 = m*(h**2 + w**2)/12.
 
-params = [m, 0, I11, I22, I33]
+params = [m, g, I11, I22, I33]
 
 # states = [q1, q2, q3, q4, q5, q6, u1, u2, u3, u4, u5, u6]
 # q1, q2, q3 are Body Fixed (Euler) 3-1-2 angles
@@ -25,7 +24,7 @@ params = [m, 0, I11, I22, I33]
 
 # Specify the initial conditions of the coordinates and the generalized speeds
 q0 = [0.1, 0.1, 0.1, 0., 0., 0.]
-u0 = [0.0, 0.0, 1.0, 0., 0., 0.]
+u0 = [0.0, 0.0, 1.0, 0., 0., -0.1]
 x0 = q0 + u0
 
 # Integration time

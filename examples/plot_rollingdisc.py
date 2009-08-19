@@ -22,19 +22,20 @@ params = [m, g, r]
 # Gravity is in the positive N[3] direction
 
 # Specify the initial conditions of the coordinates and the generalized speeds
-qi = [0., 0.1, 0., .001, 0.001]
+qi = [0., 0.1, 0.0, .001, 0.001]
 
 # Steady turning conditions require that u1 = 0 and that
 # u3**2 - 2*c2*u2/s2*u3 - 4*g*c2/(5*r) = 0
 # Given lean angle q2 and gen. speed u2, u3 must be a root of the above
 # polynomial.  Note that for zero lean angles, there are an infinite number of
-# spin rates that are steady turns of infinite radius.
+# spin rates that are steady turns of infinite radius, so the following
+# equations break down.
 u2i = .0
 u3i = u2i/tan(qi[1]) + ((u2i/tan(qi[1]))**2 + 4*g*cos(qi[1])/(5*r))**(0.5)
 ui = [0.0,u2i,u3i]
 
 # Alternatively, specify any other intial generalized speeds
-ui = [1.95,17.0,0.0]
+ui = [.05,9.0,0.0]
 
 # Inital states
 xi = qi + ui
