@@ -45,11 +45,9 @@ CO._vrel = cross(C.ang_vel(), CO.rel(N.O))
 # center CO, as viewed by and observer fixed in N
 N1._vrel = Vector(-u4*N[1] - u5*N[2]) + dt(N.O.rel(CO), N)
 
-# Must be of the form:  B*q' == 0
+# Must be of the form:  B*u == 0
 constrainteqs = [Eq(dot(N1.vel(), N[1]), 0), Eq(dot(N1.vel(), N[2]), 0)]
-dependent_speeds = solve(constrainteqs, u4, u5)
-for lhs, rhs in dependent_speeds.items():
-    dependent_speeds[lhs] = rhs.expand()
+B, T, dependent_speeds = N.impose_constraints(constrainteqs, dependent=[u4,u5])
 
 print 'Kinematic differential equations'
 for qd in qdot_list:
