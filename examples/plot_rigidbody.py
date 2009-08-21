@@ -14,7 +14,7 @@ I11 = m*(w**2 + d**2)/12.
 I22 = m*(h**2 + d**2)/12.
 I33 = m*(h**2 + w**2)/12.
 
-params = [m, g, I11, I22, I33]
+params = [m, 0, I11, I22, I33]
 
 # states = [q1, q2, q3, q4, q5, q6, u1, u2, u3, u4, u5, u6]
 # q1, q2, q3 are Body Fixed (Euler) 3-1-2 angles
@@ -24,7 +24,7 @@ params = [m, g, I11, I22, I33]
 
 # Specify the initial conditions of the coordinates and the generalized speeds
 q0 = [0.1, 0.1, 0.1, 0., 0., 0.]
-u0 = [0.0, 0.0, 1.0, 0., 0., -0.1]
+u0 = [0.0, 0.0, 1.0, 0., 0., 0.0]
 x0 = q0 + u0
 
 # Integration time

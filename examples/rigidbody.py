@@ -21,7 +21,7 @@ u_defs = N.define_speeds(
         [Eq(u_list[i-1], dot(CO.vel(), N[i-3])) for i in (4, 5, 6)])
 
 # Form transformation matrix of u := T * q', return T, inv(T), and the kindiffs
-T, Tinv, kindiffs = N.form_kindiffs(u_defs, qdot_list, method='ADJ')
+T, Tinv, kindiffs = N.form_kindiffs(u_defs, qdot_list)
 
 print 'Kinematic differential equations'
 for qd in qdot_list:

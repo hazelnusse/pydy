@@ -1422,28 +1422,6 @@ class ReferenceFrame(object):
             result.append(f._wrel)
         return result
 
-
-
-#class Particle:
-#    def __init__(self, p, m):
-#        self.mass = Mass
-#        self.point = p
-
-#class RigidBody(ReferenceFrame, Particle):
-#    def __init__(self, s, matrix=None, frame=None, omega=None, m=0, I=0):
-#        ReferenceFrame.__init__(self, s, Matrix=None, frame=None, omega=None)
-#        Particle.__init__(self,s+'O', m)
-#        self.inertia = I
-
-
-#class InertialSystem():
-#    def __init__(self, s):
-#        self.name = s
-#
-#    def __getitem__(self, i):
-#        return self.triad[i-1]
-
-
 class NewtonianReferenceFrame(ReferenceFrame):
     """A Newtonian Reference Frame class.
 
@@ -1498,12 +1476,6 @@ class NewtonianReferenceFrame(ReferenceFrame):
                 self.cos_func_set.update(coss)
 
         if dependent_speeds is not None:
-            #self.dependent_speeds = dependent_speeds
-            #ind_speeds = list(set(self.u_list) - set(dependent_speeds))
-            #self.independent_speeds = []
-            #for u in self.u_list:
-            #    if u in ind_speeds:
-            #        self.independent_speeds.append(u)
             for eqn in dependent_speeds.values():
                 sins = eqn.atoms(sin)
                 coss = eqn.atoms(cos)
@@ -1599,9 +1571,28 @@ class NewtonianReferenceFrame(ReferenceFrame):
         """
         # Substitute into appropriate velocity/angular velocity
         if isinstance(PorF, Point):
-            PorF._partialvrel = PorF._vrel.partials(self.independent_speeds)
+            # Case when the system has no constraints
+            pvrel = PorF._vrel.partials(self.u_list)
+            #PorF._partialvrel = pvrel
+            if hasattr(self, 'dependent_speeds'):
+                pvrelc = [pvrel[i] for i in self.independent_ci]
+                pvreld = Matrix([pvrel[i] for i in self.dependent_ci]).T
+                con = matrixv_multiply(pvreld,\
+                        self.dependent_speed_transform).tolist()[0]
+                PorF._partialvrel = [pvrelc[i] + con[i] for i in range(len(con))]
+            else:
+                PorF._partialvrel = pvrel
         elif isinstance(PorF, ReferenceFrame):
-            PorF._partialwrel = PorF._wrel.partials(self.u_list)
+            pwrel = PorF._wrel.partials(self.u_list)
+            #PorF._partialwrel = pwrel
+            if hasattr(self, 'dependent_speeds'):
+                pwrelc = [pwrel[i] for i in self.independent_ci]
+                pwreld = Matrix([pwrel[i] for i in self.dependent_ci]).T
+                con = matrixv_multiply(pwreld,\
+                        self.dependent_speed_transform).tolist()[0]
+                PorF._partialwrel = [pwrelc[i] + con[i] for i in range(len(con))]
+            else:
+                PorF._partialwrel = pvrel
         else:
             raise NotImplementedError()
 
@@ -1714,6 +1705,8 @@ class NewtonianReferenceFrame(ReferenceFrame):
         # Assign the dependent and independent speeds
         self.dependent_speeds = [self.u_list[jd] for jd in dependent_ci]
         self.independent_speeds = [self.u_list[ji] for ji in independent_ci]
+        self.independent_ci = independent_ci
+        self.dependent_ci = dependent_ci
 
         # Put the equations in Matrix form and create a matrix with dummy
         # symbols representing non-zero entries
@@ -1743,68 +1736,14 @@ class NewtonianReferenceFrame(ReferenceFrame):
         # ud = -inv(Bd) * Bi * ui
         Bdinv = Bd.inv(method=method)
         T = - (Bdinv * Bi).subs(d)
-
         # Create dictionary for dependent speeds
         dep = {}
-        for u in dependent:
+        for i, u in enumerate(dependent):
             dep[u] = (T[i, :] * Matrix(self.independent_speeds))[0]
+        self.constraint_matrix = B
         self.dependent_speeds_eqs = dep
+        self.dependent_speed_transform = T
         return B, T, dep
-
-    """
-    def solve_constraint_matrix(self, dependent_qdots, method='GE'):
-        Solve the constraint matrix for the dependent qdots in terms of the
-        independent qdots.
-
-        When solving for the dependent speeds in terms of a the independent
-        ones, a symbolic matrix inversion is necessary.  The method parameter
-        can be either 'GE', 'ADJ', or 'LU'.  See inv() for more information on
-        the differences.
-
-        d_column_index = []
-        for qd in dependent_qdots:
-            d_column_index.append(self.qdot_list.index(qd))
-        i_column_index = list(set(range(0, len(self.qdot_list))) -
-                set(d_column_index))
-
-        rows, columns = self.constraint_matrix.shape
-        if rows != len(d_column_index):
-            raise ValueError('Number of dependent qdots should equal number of constraint equations')
-        if (columns-rows) != len(i_column_index):
-            raise ValueError('Number of independent qdots should equal number of qdots minus number of dependent qdots')
-        ds_mat = zeros([rows, rows])
-        is_mat = zeros([rows, columns-rows])
-        for i, j in enumerate(d_column_index):
-            ds_mat[:, i] = self.constraint_matrix[:,j]
-        for i, j in enumerate(i_column_index):
-            is_mat[:, i] = self.constraint_matrix[:,j]
-        # Need to now invert ds_mat, and form -inv(ds_mat)*is_mat
-
-        ds_mat_dummy = zeros([rows, rows])
-        is_mat_dummy = zeros([rows, columns-rows])
-        d = {}
-        for i in range(rows):
-            for j in range(rows):
-                if ds_mat[i, j] != 0:
-                    s = Symbol('a', dummy=True)
-                    d[s] = ds_mat[i, j]
-                    ds_mat_dummy[i, j] = s
-            for j in range(columns-rows):
-                if is_mat[i, j] != 0:
-                    s = Symbol('a', dummy=True)
-                    d[s] = is_mat[i, j]
-                    is_mat_dummy[i, j] = s
-        matr_dummy = -ds_mat_dummy.inv(method=method)*is_mat_dummy
-
-        independent_speeds =  Matrix([[self.qdot_list[i]] for i in i_column_index])
-
-        dependent_rates = {}
-        for r, qd in enumerate(dependent_qdots):
-            dependent_rates[qd] =\
-                (matr_dummy[r,:]*independent_speeds)[0].subs(d)
-
-        return dependent_rates
-    """
 
     def frstar(self):
         """Computes the generalized inertia forces of the system.
@@ -2228,6 +2167,45 @@ class NewtonianReferenceFrame(ReferenceFrame):
 #
 #        return kindiffs
 #    """
+
+def matrixv_multiply(A, B):
+    """For multplying a matrix of PyDy Vector/UnitVectors with matrices of
+    Sympy expressions.
+    
+    Normal matrix_multiply doesn't work because PyDy vectors are not derived
+    from Basic."""
+    ma, na = A.shape
+    mb, nb = B.shape
+    if na != mb:
+        raise ShapeError()
+    product = Matrix(ma, nb, lambda i,j: 0)
+    for i in xrange(ma):
+            for j in xrange(nb):
+                s = Vector(0)
+                for k in range(na):
+                    aik = A[i, k]
+                    bkj = B[k, j]
+                    if isinstance(aik, Vector):
+                        assert not isinstance(bkj, (UnitVector, Vector))
+                        p = {}
+                        for uv, val in aik.dict.items():
+                            p[uv] = bkj*val
+                    elif isinstance(aik, Unitvector):
+                        assert not isinstance(bkj, (UnitVector, Vector))
+                        p = bkj*aik
+                    elif isinstance(bkj, Vector):
+                        assert not isinstance(aik, (UnitVector, Vector))
+                        p = {}
+                        for uv, val in bkj.dict.items():
+                            p[uv] = aik*val
+                    elif isinstance(bkj, UnitVector):
+                        assert not isinstance(aik, (UnitVector, Vector))
+                        p = aik*bkj
+                    else:
+                        raise NotImplementedError()
+                    s += Vector(p) 
+                product[i, j] = s
+    return product
 
 def most_frequent_frame(vector):
     """Determines the most frequent frame of all unitvector terms in a vector.

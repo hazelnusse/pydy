@@ -1,4 +1,4 @@
-# Thu Aug 20 12:57:35 2009
+# Thu Aug 20 17:18:15 2009
 from numpy import sin, cos, tan, vectorize
 
 def f(x, t, parameter_list):
@@ -8,9 +8,10 @@ def f(x, t, parameter_list):
     q1, q2, q3, q4, q5, u1, u2, u3 = x
     s1 = sin(q1)
     s2 = sin(q2)
+    c1 = cos(q1)
     c2 = cos(q2)
     # Dependent generalized speeds
-    u4 = -r*s1*u2 + r*s1*s2*u3/c2
+    u4 = -r*c1*u2 + r*c1*s2*u3/c2
     u5 = -r*s1*u2 + r*s1*s2*u3/c2
     # Kinematic differential equations
     q1p = u3/c2
@@ -32,6 +33,7 @@ def qdot2u(q, qd, parameter_list):
     q1p, q2p, q3p, q4p, q5p = qd
     s1 = sin(q1)
     s2 = sin(q2)
+    c1 = cos(q1)
     c2 = cos(q2)
     # Kinematic differential equations
     u1 = q2p
@@ -57,10 +59,13 @@ def animate(q, parameter_list):
     p_N1_CO_1 = -r*s1*s2 + q4
     p_N1_CO_2 = r*c1*s2 + q5
     p_N1_CO_3 = -r*c2
+    B2_1 = -c2*s1
+    B2_2 = c1*c2
+    B2_3 = s2
     C1_1 = c1*c3 - s1*s2*s3
     C1_2 = c3*s1 + c1*s2*s3
     C1_3 = -c2*s3
     C3_1 = c1*s3 + c3*s1*s2
     C3_2 = s1*s3 - c1*c3*s2
     C3_3 = c2*c3
-    return [p_N1_CO_1, p_N1_CO_2, p_N1_CO_3], [[C1_1, C1_2, C1_3, 0], [C3_1, C3_2, C3_3, 0]
+    return [p_N1_CO_1, p_N1_CO_2, p_N1_CO_3], [B2_1, B2_2, B2_3, q3], [C1_1, C1_2, C1_3, 0], [C3_1, C3_2, C3_3, 0]
