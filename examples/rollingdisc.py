@@ -11,8 +11,8 @@ I = m*r**2/4  # Central moment of inertia about any diameter
 J = m*r**2/2  # Central moment of inertia about normal axis
 
 # Declare generalized coordinates and generalized speeds
-(q1, q2, q3, q4, q5), q_list, qdot_list = N.declare_coords('q', 5, list=True)
-(u1, u2, u3, u4, u5), u_list, udot_list = N.declare_speeds('u', 5, list=True)
+(q1, q2, q3, q4, q5), q_list, qdot_list = N.declare_coords('q', 5)
+(u1, u2, u3, u4, u5), u_list, udot_list = N.declare_speeds('u', 5)
 
 # Intermediate reference frames
 A = N.rotate("A", 3, q1)

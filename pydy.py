@@ -1592,7 +1592,7 @@ class NewtonianReferenceFrame(ReferenceFrame):
                         self.dependent_speed_transform).tolist()[0]
                 PorF._partialwrel = [pwrelc[i] + con[i] for i in range(len(con))]
             else:
-                PorF._partialwrel = pvrel
+                PorF._partialwrel = pwrel
         else:
             raise NotImplementedError()
 
@@ -1630,13 +1630,14 @@ class NewtonianReferenceFrame(ReferenceFrame):
             self.symbol_dict_back.update(d)
         return q_list, q_list, qdot_list
 
-    def declare_speeds(self, string, number, list=True):
+    def declare_speeds(self, string, number, lst=True):
         """Declare the generalized speeds and their time derivatives.
         """
-        u_list, u_list, udot_list = gcs(string, number, list)
+        u_list, u_list, udot_list = gcs(string, number, lst)
         self.u_list = u_list
         self.udot_list = udot_list
-
+        self.independent_speeds = u_list
+        self.udot_independent = udot_list
         # Generate lists of Symbol objects instead of Function objects
         self.u_list_s = [Symbol(str(u.func)) for u in u_list]
         self.udot_list_s = [Symbol(str(u.func)+'p') for u in u_list]
@@ -1645,6 +1646,7 @@ class NewtonianReferenceFrame(ReferenceFrame):
         for ui in u_list:
             for uj in u_list:
                 self.crossterms.update(set([ui*uj]))
+        self.crossterms = list(self.crossterms)
 
         # Generate substitution dictionaries between Symbol and Function
         # representation of the coordinates, generalized speeds, and their
@@ -1707,6 +1709,8 @@ class NewtonianReferenceFrame(ReferenceFrame):
         self.independent_speeds = [self.u_list[ji] for ji in independent_ci]
         self.independent_ci = independent_ci
         self.dependent_ci = dependent_ci
+        self.udot_dependent = [self.udot_list[i] for i in dependent_ci]
+        self.udot_independent = [self.udot_list[i] for i in independent_ci]
 
         # Put the equations in Matrix form and create a matrix with dummy
         # symbols representing non-zero entries
@@ -1748,8 +1752,11 @@ class NewtonianReferenceFrame(ReferenceFrame):
     def frstar(self):
         """Computes the generalized inertia forces of the system.
         """
+        self.mass_matrix = zeros((len(self.independent_speeds),
+            len(self.independent_speeds)))
         self.recursive_frstar(self.O)
         self.recursive_frstar(self)
+
 
     def recursive_frstar(self, PorF):
         """Recursively computes generalized inertia forces for each particle
@@ -1758,20 +1765,53 @@ class NewtonianReferenceFrame(ReferenceFrame):
         if isinstance(PorF, Point):
             if not hasattr(PorF, 'partialv'): self._partialv(PorF)
             if PorF.mass == 0:
-                PorF.gen_inertia_force = [0] * len(self.u_list)
+                PorF.gen_inertia_force = [(0, 0)] * len(self.u_list)
             else:
-                PorF.gen_inertia_force = [-PorF.mass * PorF.acc().dot(pv)
+                gifs = [-PorF.mass * PorF.acc().dot(pv)
                         for pv in PorF.partialv]
+                gif_ud_gyro = []
+                for i, gif in enumerate(gifs):
+                    if hasattr(self, 'udot_dependent'):
+                        ud_d_terms = [gif.coeff(ud_d) for ud_d in self.udot_dependent]
+                        s_ud_d = 0
+                        for c, ud_d in zip(ud_d_terms, self.udot_dependent):
+                            if c is not None: s_ud_d += c*ud_d
+                    else:
+                        s_ud_d = 0
+
+                    ud_i_terms = [gif.coeff(ud_i) for ud_i in self.udot_independent]
+                    gyro_terms = [gif.coeff(ct) for ct in self.crossterms]
+
+                    s_ud_i = 0
+                    s_gyro = 0
+                    for c, ud_i in zip(ud_i_terms, self.udot_independent):
+                        if c is not None: s_ud_i += c*ud_i
+                    for c, uu in zip(gyro_terms, self.crossterms):
+                        if c is not None: s_gyro += c*uu
+                    gif_ud_gyro.append((s_ud_i, s_gyro+s_ud_d))
+                PorF.gen_inertia_force = gif_ud_gyro
         elif isinstance(PorF, ReferenceFrame):
             if not hasattr(PorF, 'partialw'): self._partialw(PorF)
             if PorF.inertia == Inertia(self, (0,0,0,0,0,0)):
-                PorF.gen_inertia_force = [0] * len(self.independent_speeds)
+                PorF.gen_inertia_force = [(0, 0)] * len(self.independent_speeds)
             else:
                 alph = PorF.ang_acc()
                 I = PorF.inertia
                 w = PorF.ang_vel()
-                PorF.gen_inertia_force = [pw.dot(-alph.dot(I)
+                gifs = [pw.dot(-alph.dot(I)
                     - w.cross(I.rdot(w))) for pw in PorF.partialw]
+                gif_ud_gyro = []
+                for gif in gifs:
+                    ud_terms = [gif.coeff(ud) for ud in self.udot_independent]
+                    gyro_terms = [gif.coeff(ct) for ct in self.crossterms]
+                    s_ud = 0
+                    s_gyro = 0
+                    for c, ud in zip(ud_terms, self.udot_independent):
+                        if c is not None: s_ud += c*ud
+                    for c, ud in zip(gyro_terms, self.crossterms):
+                        if c is not None: s_gyro += c*ud
+                    gif_ud_gyro.append((s_ud, s_gyro))
+                PorF.gen_inertia_force = gif_ud_gyro
         else:
             raise NotImplementedError()
 
@@ -1866,17 +1906,25 @@ class NewtonianReferenceFrame(ReferenceFrame):
     def form_kanes_equations(self):
         self.fr()
         self.frstar()
-
-        self.kanes_equations = [0] * len(self.independent_speeds)
+        p = len(self.independent_speeds)
+        self.kanes_equations = []
+        for i in range(p):
+            self.kanes_equations.append([0,0])
         self.recursive_eoms(self.O)
         self.recursive_eoms(self)
+        kes = []
+        for i in range(p):
+            for j, ui in enumerate(self.udot_independent):
+                c = self.kanes_equations[i][0].coeff(ui)
+                if c is not None: self.mass_matrix[i, j] = c
+            kes.append(Eq(self.kanes_equations[i][0], self.kanes_equations[i][1]))
+        self.kanes_equations = kes
         return self.kanes_equations
 
     def recursive_eoms(self, PorF):
         for r in range(len(self.independent_speeds)):
-            self.kanes_equations[r] += PorF.gen_active_force[r] +\
-                PorF.gen_inertia_force[r]
-
+            self.kanes_equations[r][0] += PorF.gen_inertia_force[r][0]
+            self.kanes_equations[r][1] += -PorF.gen_inertia_force[r][1] - PorF.gen_active_force[r]
         if PorF.children == []:
             return
         else:
