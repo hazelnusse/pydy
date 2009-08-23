@@ -1,7 +1,7 @@
 from sympy import (Symbol, symbols, Basic, Function, Mul, Pow, Matrix, sin,
         cos, tan, cot, S, eye, Add, trigsimp, expand, pretty, Eq, collect, sqrt,
         sympify, factor, zeros, simplify, solve_linear_system, ratsimp,
-        powsimp)
+        powsimp, block_diag)
 from sympy.printing.pretty.pretty import PrettyPrinter
 from sympy.printing.str import StrPrinter
 import time
@@ -1892,6 +1892,9 @@ class NewtonianReferenceFrame(ReferenceFrame):
         self.recursive_gravity(self.O, v)
 
     def recursive_gravity(self, Point, v):
+        """Recursively apply gravity to all points which have been assigned a
+        nonzero mass."""
+
         gf = {}
         for k in v.dict:
             gf[k] = Point.mass * v.dict[k]
@@ -1904,6 +1907,14 @@ class NewtonianReferenceFrame(ReferenceFrame):
                 self.recursive_gravity(child, v)
 
     def form_kanes_equations(self):
+        """Forms Kanes equations in a slightly modified form.
+
+        Rather than returning:
+        Fr + Fr* = 0
+
+        It returns a set of equations which have the udot's on the left hand
+        side and everything else on the opposite side.
+        """
         self.fr()
         self.frstar()
         p = len(self.independent_speeds)
@@ -1920,6 +1931,51 @@ class NewtonianReferenceFrame(ReferenceFrame):
             kes.append(Eq(self.kanes_equations[i][0], self.kanes_equations[i][1]))
         self.kanes_equations = kes
         return self.kanes_equations
+
+    def solve_kanes_equations(self):
+        """Solves Kane's equations by inverting the mass matrix.
+
+        Returns a dictionary with the udots as the keys and the right hand side
+        as the values.
+        """
+        blocks = self.mass_matrix.get_diag_blocks()
+        dummy_blocks = []
+        d = {}
+        # Create a bunch of dummy blocks
+        for block in blocks:
+            dummy = zeros(block.shape)
+            for i in range(block.rows):
+                for j in range(block.cols):
+                    if block[i, j] != 0:
+                        s = Symbol('a%d%d'%(i,j), dummy=True)
+                        d[s] = block[i,j]
+                        dummy[i,j] = s
+            dummy_blocks.append(dummy)
+
+        # Invert each of the dummy blocks
+        inv_blocks = []
+        for block in dummy_blocks:
+            if block.shape == (1, 1):
+                bi = Matrix([1 / block[0]])
+            else:
+                bdet = block.det()
+                assert bdet != 0
+                bi = block.adjugate() / bdet
+            for i in range(bi.rows):
+                for j in range(bi.cols):
+                    if bi[i, j] != 0:
+                        num, den = bi[i, j].as_numer_denom()
+                        num = num.subs(d).expand()
+                        den = den.subs(d).expand()
+                        bi[i, j] = simplify(num/den)
+            inv_blocks.append(bi)
+        mass_matrix_inv = block_diag(inv_blocks)
+        soln = mass_matrix_inv * Matrix([ke.rhs for ke in\
+            self.kanes_equations])
+        dyndiffs = {}
+        for i, u in enumerate(self.udot_independent):
+            dyndiffs[u] = soln[i]
+        return dyndiffs
 
     def recursive_eoms(self, PorF):
         for r in range(len(self.independent_speeds)):
@@ -2086,13 +2142,12 @@ class NewtonianReferenceFrame(ReferenceFrame):
                         # XXX TODO allow for a general sympy expression for the
                         # angle
                         if arg[1] in self.q_list or arg[1] == 0:
-                            angle = arg[1] or S.Zero 
+                            angle = arg[1] or S.Zero
                             trig_terms = angle.atoms(sin, cos, tan)
                             if trig_terms:
                                 trig_func_set.update(trig_terms)
                         else:
-                            raise ValueError('Angle must be in the coordinate\
-                                    list')
+                            raise ValueError('Angle must be in the coordinate list')
                         for j, p in enumerate(axis):
                             nv = arg[0].frame.name + str(arg[0].i) + "_%d"%(j+1)
                             a_temp += "    " + nv + " = " + str(p) + "\n"
@@ -2121,7 +2176,7 @@ class NewtonianReferenceFrame(ReferenceFrame):
             if ret_string != "":
                 a_temp += "    return " + ret_string[:-2]
             a += a_temp
-        f.write('\n\n' + a)
+            f.write('\n\n' + a)
         f.close()
 
     def form_kindiffs(self, eqns, qdot_list, method='ADJ'):
@@ -2131,44 +2186,61 @@ class NewtonianReferenceFrame(ReferenceFrame):
         m = len(eqns)
         n = len(qdot_list)
         if m != n:
-            raise ValueError('Number of equations must equal number of unkowns.')
+            raise ValueError('Number of equations must equal number of unknowns.')
         M = zeros((m,n))
         for i in range(m):
             for j in range(n):
                 mij = eqns[i].rhs.coeff(qdot_list[j])
-                M[i,j] = mij if mij is not None else S(0)
+                if mij is not None:
+                    M[i,j] = mij
         self.transform_matrix = M
+        blocks = M.get_diag_blocks()
+        dummy_blocks = []
         d = {}
-        dummy = zeros((m,n))
-        for i in range(m):
-            for j in range(n):
-                if M[i,j] != 0:
-                    s = Symbol('a%d%d'%(i,j), dummy=True)
-                    d[s] = M[i,j]
-                    dummy[i,j] = s
-        Minv = dummy.inv(method=method)
-        for i in range(n):
-            for j in range(n):
-                if Minv[i,j] != 0:
-                    num,den = Minv[i,j].as_numer_denom()
-                    Mij = simplify(num.expand() / den.expand()).subs(d)
-                    num,den = Mij.as_numer_denom()
-                    Minv[i, j] = \
-                        (num.expand().subs(self.csqrd_dict).expand() / \
-                        den.expand().subs(self.csqrd_dict).expand())#.subs(self.tan_dict)
-                    sins = Minv[i,j].atoms(sin)
-                    coss = Minv[i,j].atoms(cos)
-                    tans = Minv[i,j].atoms(tan)
-                    if sins:
-                        self.trig_func_set.update(sins)
-                        self.sin_func_set.update(sins)
-                    if coss:
-                        self.trig_func_set.update(coss)
-                        self.cos_func_set.update(coss)
-                    if tans:
-                        self.trig_func_set.update(tans)
-                        self.tan_func_set.update(tans)
+        for block in blocks:
+            dummy = zeros(block.shape)
+            for i in range(block.rows):
+                for j in range(block.cols):
+                    if block[i,j] != 0:
+                        s = Symbol('a%d%d'%(i,j), dummy=True)
+                        d[s] = block[i,j]
+                        dummy[i,j] = s
+            dummy_blocks.append(dummy)
 
+        #blocks = dummy.get_diag_blocks()
+        blocks_inv = []
+        for block in dummy_blocks:
+            if block.shape == (1, 1):
+                bi = Matrix([1 / block[0]])
+                blocks_inv.append(bi)
+            else:
+                bdet = block.det()
+                assert bdet != 0
+                bi = block.adjugate() / bdet
+                blocks_inv.append(bi)
+        blocks_inv_s = []
+        for bi in blocks_inv:
+            for i in range(bi.rows):
+                for j in range(bi.cols):
+                    if bi[i, j] != 0:
+                        num, den = bi[i, j].as_numer_denom()
+                        num = num.subs(d).expand().subs(self.csqrd_dict).expand()
+                        den = den.subs(d).expand().subs(self.csqrd_dict).expand()
+                        bi[i, j] = simplify(num/den)
+                        sins = bi[i, j].atoms(sin)
+                        coss = bi[i, j].atoms(cos)
+                        tans = bi[i, j].atoms(tan)
+                        if sins:
+                            self.trig_func_set.update(sins)
+                            self.sin_func_set.update(sins)
+                        if coss:
+                            self.trig_func_set.update(coss)
+                            self.cos_func_set.update(coss)
+                        if tans:
+                            self.trig_func_set.update(tans)
+                            self.tan_func_set.update(tans)
+            blocks_inv_s.append(bi)
+        Minv = block_diag(blocks_inv_s)
         self.transform_matrix_inv = Minv
         kindiffs = {}
         rhs = Matrix([eqn.lhs for eqn in eqns])

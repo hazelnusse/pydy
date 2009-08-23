@@ -66,7 +66,7 @@ N.gravity(g*A[3])
 
 # Form Kane's equations and solve them for the udots
 kanes_eqns = N.form_kanes_equations()
-dyndiffs = solve(kanes_eqns, udot_list)
+dyndiffs = N.solve_kanes_equations()
 
 print 'Dynamic differential equations'
 for ud in udot_list[:3]:

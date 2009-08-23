@@ -1,4 +1,4 @@
-# Fri Aug 21 17:49:17 2009
+# Sat Aug 22 16:44:57 2009
 from numpy import sin, cos, tan, vectorize
 
 def f(x, t, parameter_list):
@@ -18,9 +18,9 @@ def f(x, t, parameter_list):
     q5p = u5
     q6p = u6
     # Dynamic differential equations
-    u1p = (I22*u2*u3 - I33*u2*u3)/I11
-    u2p = (I33*u1*u3 - I11*u1*u3)/I22
-    u3p = (I11*u1*u2 - I22*u1*u2)/I33
+    u1p = (I22 - I33)*u2*u3/I11
+    u2p = (I33 - I11)*u1*u3/I22
+    u3p = (I11 - I22)*u1*u2/I33
     u4p = 0
     u5p = 0
     u6p = g
