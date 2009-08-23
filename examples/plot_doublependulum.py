@@ -3,14 +3,14 @@ from scipy.integrate import odeint
 from numpy import array, arange, zeros, pi
 
 m1 = .1
-m2 = .1
+m2 = 1.1
 g = 9.8
 l1 = 0.1
-l2 = 0.1
-b1 = .1
+l2 = 2.1
+b1 = .01
 b2 = 0.001
 params = [m1, m2, g, l1, l2, b1, b2]
-x0 = [pi/4, 0., 0, -0.1]
+x0 = [pi/4, pi/2., 0, -0.1]
 
 # Integration time
 ti = 0.0

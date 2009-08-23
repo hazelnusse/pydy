@@ -96,7 +96,6 @@ trail.append(pos=(x[0,3], x[0,4], 0.0), color=white)
 
 i = 1
 while i<n:
-    rate(k/ts)
     body1.pos = CO_pos[i, :]
     body1.axis = C_axis_angle[i, :3]
     body2.pos = CO_pos[i, :]
@@ -107,3 +106,4 @@ while i<n:
     c1c3[1].axis = C3_axis[i,:3]
     trail.append(pos=(x[i,3], x[i,4], 0.0), color=white)
     i += 1
+    rate(k/ts)

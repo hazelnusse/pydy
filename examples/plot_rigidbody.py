@@ -53,15 +53,15 @@ black = (1,1,1)
 red = (1, 0, 0)
 green = (0, 1, 0)
 blue = (0, 0, 1)
-n = [arrow(pos=(0,0,0),axis=(.1,0,0),length=0.01,color=red),
+N = [arrow(pos=(0,0,0),axis=(.1,0,0),length=0.01,color=red),
      arrow(pos=(0,0,0),axis=(0,.1,0),length=0.01,color=green),
      arrow(pos=(0,0,0),axis=(0,0,.1),length=0.01,color=blue)]
 body = box(pos=CO_pos[0, :], axis=C_axis_angle[0, :3], angle=C_axis_angle[0, 3],\
         length=w, height=h, width=d, color=(0.5,0.5,0.5))
 i = 1
 while i<n:
-    rate(k/ts)
     body.pos = CO_pos[i, :]
     body.axis = C_axis_angle[i, :3]
     body.angle = C_axis_angle[i, 3]
     i += 1
+    rate(k/ts)
