@@ -1,4 +1,3 @@
-from sympy import solve
 from pydy import *
 
 # Create a Newtonian reference frame
