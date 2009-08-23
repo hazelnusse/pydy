@@ -1,4 +1,4 @@
-# Sat Aug 22 16:44:57 2009
+# Sun Aug 23 00:36:49 2009
 from numpy import sin, cos, tan, vectorize
 
 def f(x, t, parameter_list):
