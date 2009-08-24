@@ -1,85 +1,74 @@
-from math import sin, cos, pi
-
-from numpy import array, arange
-from sympy import symbols, Function, S, solve, simplify, \
-        collect, Matrix, lambdify, trigsimp, expand, Eq, pretty_print
-
+from sympy import solve, simplify
 from pydy import *
-
-# Constants
-m, g, r1, r2, t, I, J= symbols("m g r1 r2 t I J")
-
-I = (r1**2/2 + 5*r2**2/8)*m  # Central moment of inertia about any diameter
-J = (r1**2 + 3*r2**2/4)*m    # Central moment of inertia about normal axis
-
-# Declare generalized coordinates and generalized speeds
-(q1, q2, q3, q4, q5), q_list, qdot_list = gcs('q', 5, list=True)
-(u1, u2, u3), u_list, udot_list = gcs('u', 3, list=True)
-eoms = []
 
 # Create a Newtonian reference frame
 N = NewtonianReferenceFrame('N')
 
-# Assign all lists to N book keeping purposes
-N.setcoords(q_list, qdot_list, u_list, udot_list)
+# Constants
+m, g, r1, r2, I, J = N.declare_parameters("m g r1 r2 I J")
+
+# Declare generalized coordinates and generalized speeds
+(q1, q2, q3, q4, q5), q_list, qdot_list = N.declare_coords('q', 5)
+(u1, u2, u3, u4, u5), u_list, udot_list = N.declare_speeds('u', 5)
 
 # Intermediate reference frames
-A = N.rotate("A", 3, q3)
-B = A.rotate("B", 1, q4)
+A = N.rotate("A", 3, q1)
+B = A.rotate("B", 1, q2)
 
-# Frame fixed to the torus rigid body.
-C = B.rotate("C", 2, q5, I=(I, J, I, 0, 0, 0), I_frame=B)
+# Frame fixed to the torus
+C = B.rotate("C", 2, q3, I=(I, J, I, 0, 0, 0), I_frame=B)
 
 # Locate the mass center of torus
-CO = N.O.locate('CO', -r2*N[3] - r1*B[3], frame=C, mass=m)
+CO = N.O.locate('CO', -r2*A[3] - r1*B[3], frame=C, mass=m)
 
 # Fixed inertial reference point
-N1 = CO.locate('N1', r1*B[3] + r2*N[3] - q1*N[1] - q2*N[2])
+N1 = CO.locate('N1', r1*B[3] + r2*A[3] - q4*N[1] - q5*N[2])
 
 # Define the generalized speeds to be the B frame measure numbers of the angular
-u_rhs = [dot(C.ang_vel(N), B[i]) for i in (1, 2, 3)]
+# Must be of the form:  A*q' == u
+u_defs = N.define_speeds(
+        [Eq(u_list[i-1], dot(C.ang_vel(), B[i])) for i in (1, 2, 3)] + \
+        [Eq(u4, q4.diff(t)), Eq(u5, q5.diff(t))])
 
-# Simplest definition of generalized speeds
-#u_rhs = qdot_list[2:]
+T, Tinv, kindiffs = N.form_kindiffs(u_defs, qdot_list, method='ADJ')
 
-# Create the equations that define the generalized speeds, then solve them for
-# the time derivatives of the generalized coordinates
-u_definitions = [Eq(u_l, u_r) for u_l, u_r in zip(u_list, u_rhs)]
-kindiffs = solve(u_definitions, qdot_list)
+# Set angular velocity and velocity expressions to only involve generalized
+# speeds
+A._wrel = A._wrel.express(B).subs(kindiffs)
+B._wrel = B._wrel.express(B).subs(kindiffs)
+C._wrel = C._wrel.express(B).subs(kindiffs)
+CO._vrel = express(cross(C.ang_vel(), CO.rel(N.O)), B)
+# A little tricky, but basically, the velocity of N1 relative to the disc
+# center CO, as viewed by and observer fixed in N
+N1._vrel = Vector(-u4*N[1] - u5*N[2]) + dt(N.O.rel(CO), N)
+
+# Must be of the form:  B*u == 0
+constrainteqs = [Eq(dot(N1.vel(), N[1]), 0), Eq(dot(N1.vel(), N[2]), 0)]
+B_constraints, T, dependent_speeds = N.impose_constraints(constrainteqs, dependent=[u4,u5])
+
 print 'Kinematic differential equations'
-for qd in qdot_list[2:]:
-    kindiffs[qd] = expand(kindiffs[qd])
+for qd in qdot_list:
     print qd, '=', kindiffs[qd]
-    eoms.append(kindiffs[qd])
 
-# Form the expressions for q1' and q2', taken to be dependent speeds
-nh = [dot(N1.vel(), N[1]), dot(N1.vel(), N[2])]
-dependent_rates = solve(nh, q1.diff(t), q2.diff(t))
-print 'Dependent rates:'
-for qd in qdot_list[:2]:
-    dependent_rates[qd] = trigsimp(expand(dependent_rates[qd].subs(kindiffs)))
-    print qd, '=', dependent_rates[qd]
-    eoms.append(dependent_rates[qd])
+print 'Dependent speeds:'
+for u in u_list:
+    if u in dependent_speeds:
+        print u, '=', dependent_speeds[u]
 
-# Substitute the kinematic differential equations into velocity expressions,
-# form partial angular velocities and partial velocites, form angular
-# accelerations and accelerations
-N.setkindiffs(kindiffs, dependent_rates)
+# Set the kindiffs and dependent_speeds
+N.setkindiffs(kindiffs, dependent_speeds)
 
 # Apply gravity
 N.gravity(g*A[3])
 
 # Form Kane's equations and solve them for the udots
 kanes_eqns = N.form_kanes_equations()
-stop
 
-dyndiffs = solve(kanes_eqns, udot_list)
-
-stop
+dyndiffs = N.solve_kanes_equations()
 
 print 'Dynamic differential equations'
-for r, ud in enumerate(udot_list):
-    if r == 2: dyndiffs[ud] = expand(dyndiffs[ud])
+for ud in udot_list[:3]:
+    dyndiffs[ud] = dyndiffs[ud].expand()
     print ud, '=', dyndiffs[ud]
-    eoms.append(dyndiffs[ud])
-
+N.setdyndiffs(dyndiffs)
+N.output_eoms('rollingtorus_eoms.py', (CO, N1), (B[2], q3), (C[1], 0), (C[3], 0))

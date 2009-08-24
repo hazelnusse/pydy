@@ -18,10 +18,10 @@ J = m*r**2/2  # Central moment of inertia about normal axis
 A = N.rotate("A", 3, q1)
 B = A.rotate("B", 1, q2)
 
-# Frame fixed to the torus rigid body.
+# Frame fixed to the disc.
 C = B.rotate("C", 2, q3, I=(I, J, I, 0, 0, 0), I_frame=B)
 
-# Locate the mass center of torus
+# Locate the mass center of disc 
 CO = N.O.locate('CO', -r*B[3], frame=C, mass=m)
 
 # Fixed inertial reference point
