@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 from rollingtorus_eoms import *
 from scipy.integrate import odeint
 from numpy import array, arange, zeros, roots

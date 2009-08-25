@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 from sympy import solve, simplify
 from pydy import *
 

@@ -1,13 +1,24 @@
-from pydy import ReferenceFrame, dot, cross, UnitVector, express, \
-        Vector, dt
+from pydy import *
 
 from sympy import symbols, S, Symbol, Function, sin, cos, tan, Matrix, eye, \
     Rational, pprint, trigsimp, expand
 
+N = NewtonianReferenceFrame('N')
+(q1,q2,q3,q4,q5,q6), q_list, qdot_list = N.declare_coords('q', 6)
+A = N.rotate('A', 3, q1)
+B = A.rotate('B', 1, q2)
+C = B.rotate('C', 2, q3)
+q1p = qdot_list[0]
+q2p = qdot_list[1]
+q3p = qdot_list[2]
+q4p = qdot_list[3]
+q5p = qdot_list[4]
+q6p = qdot_list[5]
+
+
 zero = Vector({})
 
 def test_Mul_order():
-    A = ReferenceFrame('A')
     e1 = UnitVector(A, 1)
     e2 = UnitVector(A, 2)
     e3 = UnitVector(A, 3)
@@ -18,13 +29,11 @@ def test_Mul_order():
     assert e2*e1*e3 != e3*e2*e1
 
 def test_UnitVector():
-    A = ReferenceFrame('A')
     a1 = UnitVector(A, 1)
     a2 = UnitVector(A, 2)
     a3 = UnitVector(A, 3)
 
 def test_dot_cross():
-    A = ReferenceFrame('A')
     assert dot(A[1], A[1]) == 1
     assert dot(A[1], A[2]) == 0
     assert dot(A[1], A[3]) == 0
@@ -67,10 +76,6 @@ def test_ReferenceFrame():
     assert B.transforms[A] is not None
 
 def test_cross_different_frames1():
-    q1, q2, q3, t = symbols('q1 q2 q3 t')
-    u1 = Function("u1")(t)
-    N = ReferenceFrame('N')
-    A = N.rotate('A', 3, q1)
     assert cross(N[1], A[1]) == sin(q1)*A[3]
     assert cross(N[1], A[2]) == cos(q1)*A[3]
     assert cross(N[1], A[3]) == -sin(q1)*A[1]-cos(q1)*A[2]
@@ -80,11 +85,10 @@ def test_cross_different_frames1():
     assert cross(N[3], A[1]) == A[2]
     assert cross(N[3], A[2]) == -A[1]
     assert cross(N[3], A[3]) == 0
-    assert cross(u1*N[1], A[1]) == sin(q1)*u1*A[3]
 
 def test_cross_method():
-    q1, q2, q3, t = symbols('q1, q2, q3 t')
-    N = ReferenceFrame('N')
+    N = NewtonianReferenceFrame('N')
+    (q1, q2, q3), q_list, qdot_list = N.declare_coords('q', 3)
     A = N.rotate('A', 1, q1)
     B = N.rotate('B', 2, q2)
     C = N.rotate('C', 3, q3)
@@ -112,24 +116,22 @@ def test_cross_method():
     assert N[1].cross(B[2]) == N[3]
     assert N[1].cross(B[3]) == Vector(-cos(q2)*N[2])
 
+def test_cross_different_frames2():
+    assert cross(N[1], A[1]) == sin(q1)*A[3]
+    assert cross(N[1], A[2]) == cos(q1)*A[3]
+    assert cross(N[1], A[1] + A[2]) == sin(q1)*A[3] + cos(q1)*A[3]
+    assert cross(A[1] + A[2], N[1]) == -sin(q1)*A[3] - cos(q1)*A[3]
+
+
 def test_cross_different_frames3():
-    q1, q2, q3 = symbols('q1 q2 q3')
-    N = ReferenceFrame('N')
-    A = N.rotate('A', 3, q1)
-    B = A.rotate('B', 1, q2)
-    C = B.rotate('C', 2, q3)
     assert cross(A[1], C[1]) == sin(q3)*C[2]
-    #print "cross(A[1], C[2])" ,cross(A[1], C[2])
-    #print "-sin(q3)*C[1]+cos(q3)*C[3]"
-    assert cross(A[1], C[2]) == -sin(q3)*C[1]+cos(q3)*C[3]
+    assert cross(A[1], C[2]) == -sin(q3)*C[1] + cos(q3)*C[3]
     assert cross(A[1], C[3]) == -cos(q3)*C[2]
+    assert cross(C[1], A[1]) == -sin(q3)*C[2]
+    assert cross(C[2], A[1]) == sin(q3)*C[1] - cos(q3)*C[3]
+    assert cross(C[3], A[1]) == cos(q3)*C[2]
 
 def test_express1():
-    q1, q2, q3 = symbols('q1 q2 q3')
-    N = ReferenceFrame('N')
-    A = N.rotate('A', 3, q1)
-    B = A.rotate('B', 1, q2)
-    C = B.rotate('C', 2, q3)
     assert express(A[1], C) == cos(q3)*C[1] + sin(q3)*C[3]
     assert express(A[2], C) == sin(q2)*sin(q3)*C[1] + cos(q2)*C[2] - \
             sin(q2)*cos(q3)*C[3]
@@ -137,17 +139,8 @@ def test_express1():
             cos(q2)*cos(q3)*C[3]
 
 def test_express2():
-    q1, q2, q3 = symbols('q1 q2 q3')
-    N = ReferenceFrame('N')
-    A = N.rotate('A', 3, q1)
-    B = A.rotate('B', 1, q2)
-    C = B.rotate('C', 2, q3)
-    #print A[1].express(C)
-    #print cos(q3)*C[1] + sin(q3)*C[3]
     assert A[1].express(N) == Vector(cos(q1)*N[1] + sin(q1)*N[2])
     assert A[2].express(N) == Vector(-sin(q1)*N[1] + cos(q1)*N[2])
-    #print "A[3].express(N) = ", A[3].express(N), "type(A[3].express(N)) = ",\
-    #        type(A[3].express(N))
     assert A[3].express(N) == N[3]
     assert A[1].express(A) == A[1]
     assert A[2].express(A) == A[2]
@@ -162,329 +155,237 @@ def test_express2():
             cos(q2)*cos(q3)*C[3])
 
 def test_express3():
-    q3, q4, q5 = symbols('q3 q4 q5')
-    N = ReferenceFrame('N')
-    A = N.rotate('A', 3, q3)
-    B = A.rotate('B', 1, q4)
-    C = B.rotate('C', 2, q5)
     # Check to make sure UnitVectors get converted properly
     assert express(N[1], N) == N[1]
     assert express(N[2], N) == N[2]
     assert express(N[3], N) == N[3]
-    assert express(N[1], A) == Vector(cos(q3)*A[1] - sin(q3)*A[2])
-    assert express(N[2], A) == Vector(sin(q3)*A[1] + cos(q3)*A[2])
+    assert express(N[1], A) == Vector(cos(q1)*A[1] - sin(q1)*A[2])
+    assert express(N[2], A) == Vector(sin(q1)*A[1] + cos(q1)*A[2])
     assert express(N[3], A) == A[3]
-    assert express(N[1], B) == Vector(cos(q3)*B[1] - sin(q3)*cos(q4)*B[2] + \
-            sin(q3)*sin(q4)*B[3])
-    assert express(N[2], B) == Vector(sin(q3)*B[1] + cos(q3)*cos(q4)*B[2] - \
-            sin(q4)*cos(q3)*B[3])
-    assert express(N[3], B) == Vector(sin(q4)*B[2] + cos(q4)*B[3])
+    assert express(N[1], B) == Vector(cos(q1)*B[1] - sin(q1)*cos(q2)*B[2] + \
+            sin(q1)*sin(q2)*B[3])
+    assert express(N[2], B) == Vector(sin(q1)*B[1] + cos(q1)*cos(q2)*B[2] - \
+            sin(q2)*cos(q1)*B[3])
+    assert express(N[3], B) == Vector(sin(q2)*B[2] + cos(q2)*B[3])
     assert express(N[1], C) == Vector(
-            (cos(q3)*cos(q5)-sin(q3)*sin(q4)*sin(q5))*C[1] -
-            sin(q3)*cos(q4)*C[2] +
-            (sin(q5)*cos(q3)+sin(q3)*sin(q4)*cos(q5))*C[3])
+            (cos(q1)*cos(q3)-sin(q1)*sin(q2)*sin(q3))*C[1] -
+            sin(q1)*cos(q2)*C[2] +
+            (sin(q3)*cos(q1)+sin(q1)*sin(q2)*cos(q3))*C[3])
     assert express(N[2], C) == Vector(
-            (sin(q3)*cos(q5) + sin(q4)*sin(q5)*cos(q3))*C[1] +
-            cos(q3)*cos(q4)*C[2] +
-            (sin(q3)*sin(q5) - sin(q4)*cos(q3)*cos(q5))*C[3])
-    assert express(N[3], C) == Vector(-sin(q5)*cos(q4)*C[1] + sin(q4)*C[2] +
-            cos(q4)*cos(q5)*C[3])
+            (sin(q1)*cos(q3) + sin(q2)*sin(q3)*cos(q1))*C[1] +
+            cos(q1)*cos(q2)*C[2] +
+            (sin(q1)*sin(q3) - sin(q2)*cos(q1)*cos(q3))*C[3])
+    assert express(N[3], C) == Vector(-sin(q3)*cos(q2)*C[1] + sin(q2)*C[2] +
+            cos(q2)*cos(q3)*C[3])
 
-    assert express(A[1], N) == Vector(cos(q3)*N[1] + sin(q3)*N[2])
-    assert express(A[2], N) == Vector(-sin(q3)*N[1] + cos(q3)*N[2])
+    assert express(A[1], N) == Vector(cos(q1)*N[1] + sin(q1)*N[2])
+    assert express(A[2], N) == Vector(-sin(q1)*N[1] + cos(q1)*N[2])
     assert express(A[3], N) == N[3]
     assert express(A[1], A) == A[1]
     assert express(A[2], A) == A[2]
     assert express(A[3], A) == A[3]
     assert express(A[1], B) == B[1]
-    assert express(A[2], B) == Vector(cos(q4)*B[2] - sin(q4)*B[3])
-    assert express(A[3], B) == Vector(sin(q4)*B[2] + cos(q4)*B[3])
-    assert express(A[1], C) == Vector(cos(q5)*C[1] + sin(q5)*C[3])
-    assert express(A[2], C) == Vector(sin(q4)*sin(q5)*C[1] + cos(q4)*C[2] -
-            sin(q4)*cos(q5)*C[3])
-    assert express(A[3], C) == Vector(-sin(q5)*cos(q4)*C[1] + sin(q4)*C[2] +
-            cos(q4)*cos(q5)*C[3])
+    assert express(A[2], B) == Vector(cos(q2)*B[2] - sin(q2)*B[3])
+    assert express(A[3], B) == Vector(sin(q2)*B[2] + cos(q2)*B[3])
+    assert express(A[1], C) == Vector(cos(q3)*C[1] + sin(q3)*C[3])
+    assert express(A[2], C) == Vector(sin(q2)*sin(q3)*C[1] + cos(q2)*C[2] -
+            sin(q2)*cos(q3)*C[3])
+    assert express(A[3], C) == Vector(-sin(q3)*cos(q2)*C[1] + sin(q2)*C[2] +
+            cos(q2)*cos(q3)*C[3])
 
-    assert express(B[1], N) == Vector(cos(q3)*N[1] + sin(q3)*N[2])
-    assert express(B[2], N) == Vector(-sin(q3)*cos(q4)*N[1] +
-            cos(q3)*cos(q4)*N[2] + sin(q4)*N[3])
-    assert express(B[3], N) == Vector(sin(q3)*sin(q4)*N[1] -
-            sin(q4)*cos(q3)*N[2] + cos(q4)*N[3])
+    assert express(B[1], N) == Vector(cos(q1)*N[1] + sin(q1)*N[2])
+    assert express(B[2], N) == Vector(-sin(q1)*cos(q2)*N[1] +
+            cos(q1)*cos(q2)*N[2] + sin(q2)*N[3])
+    assert express(B[3], N) == Vector(sin(q1)*sin(q2)*N[1] -
+            sin(q2)*cos(q1)*N[2] + cos(q2)*N[3])
     assert express(B[1], A) == A[1]
-    assert express(B[2], A) == Vector(cos(q4)*A[2] + sin(q4)*A[3])
-    assert express(B[3], A) == Vector(-sin(q4)*A[2] + cos(q4)*A[3])
+    assert express(B[2], A) == Vector(cos(q2)*A[2] + sin(q2)*A[3])
+    assert express(B[3], A) == Vector(-sin(q2)*A[2] + cos(q2)*A[3])
     assert express(B[1], B) == B[1]
     assert express(B[2], B) == B[2]
     assert express(B[3], B) == B[3]
-    assert express(B[1], C) == Vector(cos(q5)*C[1] + sin(q5)*C[3])
+    assert express(B[1], C) == Vector(cos(q3)*C[1] + sin(q3)*C[3])
     assert express(B[2], C) == C[2]
-    assert express(B[3], C) == Vector(-sin(q5)*C[1] + cos(q5)*C[3])
+    assert express(B[3], C) == Vector(-sin(q3)*C[1] + cos(q3)*C[3])
 
     assert express(C[1], N) == Vector(
-            (cos(q3)*cos(q5)-sin(q3)*sin(q4)*sin(q5))*N[1] +
-            (sin(q3)*cos(q5)+sin(q4)*sin(q5)*cos(q3))*N[2] -
-                sin(q5)*cos(q4)*N[3])
+            (cos(q1)*cos(q3)-sin(q1)*sin(q2)*sin(q3))*N[1] +
+            (sin(q1)*cos(q3)+sin(q2)*sin(q3)*cos(q1))*N[2] -
+                sin(q3)*cos(q2)*N[3])
     assert express(C[2], N) == Vector(
-            -sin(q3)*cos(q4)*N[1] + cos(q3)*cos(q4)*N[2] + sin(q4)*N[3])
+            -sin(q1)*cos(q2)*N[1] + cos(q1)*cos(q2)*N[2] + sin(q2)*N[3])
     assert express(C[3], N) == Vector(
-            (sin(q5)*cos(q3)+sin(q3)*sin(q4)*cos(q5))*N[1] +
-            (sin(q3)*sin(q5)-sin(q4)*cos(q3)*cos(q5))*N[2] +
-            cos(q4)*cos(q5)*N[3])
-    assert express(C[1], A) == Vector(cos(q5)*A[1] + sin(q4)*sin(q5)*A[2] -
-            sin(q5)*cos(q4)*A[3])
-    assert express(C[2], A) == Vector(cos(q4)*A[2] + sin(q4)*A[3])
-    assert express(C[3], A) == Vector(sin(q5)*A[1] - sin(q4)*cos(q5)*A[2] +
-            cos(q4)*cos(q5)*A[3])
-    assert express(C[1], B) == Vector(cos(q5)*B[1] - sin(q5)*B[3])
+            (sin(q3)*cos(q1)+sin(q1)*sin(q2)*cos(q3))*N[1] +
+            (sin(q1)*sin(q3)-sin(q2)*cos(q1)*cos(q3))*N[2] +
+            cos(q2)*cos(q3)*N[3])
+    assert express(C[1], A) == Vector(cos(q3)*A[1] + sin(q2)*sin(q3)*A[2] -
+            sin(q3)*cos(q2)*A[3])
+    assert express(C[2], A) == Vector(cos(q2)*A[2] + sin(q2)*A[3])
+    assert express(C[3], A) == Vector(sin(q3)*A[1] - sin(q2)*cos(q3)*A[2] +
+            cos(q2)*cos(q3)*A[3])
+    assert express(C[1], B) == Vector(cos(q3)*B[1] - sin(q3)*B[3])
     assert express(C[2], B) == B[2]
-    assert express(C[3], B) == Vector(sin(q5)*B[1] + cos(q5)*B[3])
+    assert express(C[3], B) == Vector(sin(q3)*B[1] + cos(q3)*B[3])
     assert express(C[1], C) == C[1]
     assert express(C[2], C) == C[2]
     assert express(C[3], C) == C[3] == Vector(C[3])
 
     #  Check to make sure Vectors get converted back to UnitVectors
-    assert N[1] == express(Vector(cos(q3)*A[1] - sin(q3)*A[2]), N)
-    assert N[2] == express(Vector(sin(q3)*A[1] + cos(q3)*A[2]), N)
-    # Trigsimp doesn't work properly here so the test fails
-    #print express(Vector(cos(q3)*B[1] - sin(q3)*cos(q4)*B[2] + sin(q3)*sin(q4)*B[3]), N)
-    #print trigsimp(cos(q4)**2 + sin(q3)**2*sin(q4)**2 + cos(q3)**2*cos(q4)**2*tan(q4)**2)
-    #print trigsimp(cos(q4)**2 + cos(q3)**2*sin(q4)**2 + sin(q3)**2*sin(q4)**2)
-    #assert N[1] == express(Vector(cos(q3)*B[1] - sin(q3)*cos(q4)*B[2] +
-    #        sin(q3)*sin(q4)*B[3]), N)
-    assert N[2] == express(Vector(sin(q3)*B[1] + cos(q3)*cos(q4)*B[2] -
-        sin(q4)*cos(q3)*B[3]), N)
-    assert N[3] == express(Vector(sin(q4)*B[2] + cos(q4)*B[3]), N)
+    assert N[1] == express(Vector(cos(q1)*A[1] - sin(q1)*A[2]), N)
+    assert N[2] == express(Vector(sin(q1)*A[1] + cos(q1)*A[2]), N)
+    assert N[1] == express(Vector(cos(q1)*B[1] - sin(q1)*cos(q2)*B[2] +
+            sin(q1)*sin(q2)*B[3]), N)
+    assert N[2] == express(Vector(sin(q1)*B[1] + cos(q1)*cos(q2)*B[2] -
+        sin(q2)*cos(q1)*B[3]), N)
+    assert N[3] == express(Vector(sin(q2)*B[2] + cos(q2)*B[3]), N)
 
-    # Trigsimp also doesn't work on this one.
-    #print express(Vector(
-    #        (cos(q3)*cos(q5)-sin(q3)*sin(q4)*sin(q5))*C[1] -
-    #        sin(q3)*cos(q4)*C[2] +
-    #        (sin(q5)*cos(q3)+sin(q3)*sin(q4)*cos(q5))*C[3]), N)
 
-    #assert N[1] == express(Vector(
-    #        (cos(q3)*cos(q5)-sin(q3)*sin(q4)*sin(q5))*C[1] -
-    #        sin(q3)*cos(q4)*C[2] +
-    #        (sin(q5)*cos(q3)+sin(q3)*sin(q4)*cos(q5))*C[3]), N)
-    # Trigsimp doesn't like this one either.
-    #assert N[2] == express(Vector(
-    #        (sin(q3)*cos(q5) + sin(q4)*sin(q5)*cos(q3))*C[1] +
-    #        cos(q3)*cos(q4)*C[2] +
-    #        (sin(q3)*sin(q5) - sin(q4)*cos(q3)*cos(q5))*C[3]), N)
-    #print express(Vector(-sin(q5)*cos(q4)*C[1] + sin(q4)*C[2] + cos(q4)*cos(q5)*C[3]), N)
-    #assert N[3] == express(Vector(-sin(q5)*cos(q4)*C[1] + sin(q4)*C[2] +
-    #        cos(q4)*cos(q5)*C[3]), N)
+    assert N[1] == express(Vector(
+            (cos(q1)*cos(q3)-sin(q1)*sin(q2)*sin(q3))*C[1] -
+            sin(q1)*cos(q2)*C[2] +
+            (sin(q3)*cos(q1)+sin(q1)*sin(q2)*cos(q3))*C[3]), N)
+    assert N[2] == express(Vector(
+            (sin(q1)*cos(q3) + sin(q2)*sin(q3)*cos(q1))*C[1] +
+            cos(q1)*cos(q2)*C[2] +
+            (sin(q1)*sin(q3) - sin(q2)*cos(q1)*cos(q3))*C[3]), N)
+    assert N[3] == express(Vector(-sin(q3)*cos(q2)*C[1] + sin(q2)*C[2] +
+            cos(q2)*cos(q3)*C[3]), N)
 
-    assert A[1] == express(Vector(cos(q3)*N[1] + sin(q3)*N[2]), A)
-    assert A[2] == express(Vector(-sin(q3)*N[1] + cos(q3)*N[2]), A)
+    assert A[1] == express(Vector(cos(q1)*N[1] + sin(q1)*N[2]), A)
+    assert A[2] == express(Vector(-sin(q1)*N[1] + cos(q1)*N[2]), A)
 
-    assert A[2] == express(Vector(cos(q4)*B[2] - sin(q4)*B[3]), A)
-    assert A[3] == express(Vector(sin(q4)*B[2] + cos(q4)*B[3]), A)
+    assert A[2] == express(Vector(cos(q2)*B[2] - sin(q2)*B[3]), A)
+    assert A[3] == express(Vector(sin(q2)*B[2] + cos(q2)*B[3]), A)
 
-    assert A[1] == express(Vector(cos(q5)*C[1] + sin(q5)*C[3]), A)
+    assert A[1] == express(Vector(cos(q3)*C[1] + sin(q3)*C[3]), A)
 
     # Tripsimp messes up here too.
-    #print express(Vector(sin(q4)*sin(q5)*C[1] + cos(q4)*C[2] -
-    #        sin(q4)*cos(q5)*C[3]), A)
-    #assert A[2] == express(Vector(sin(q4)*sin(q5)*C[1] + cos(q4)*C[2] -
-    #        sin(q4)*cos(q5)*C[3]), A)
+    #print express(Vector(sin(q2)*sin(q3)*C[1] + cos(q2)*C[2] -
+    #        sin(q2)*cos(q3)*C[3]), A)
+    assert A[2] == express(Vector(sin(q2)*sin(q3)*C[1] + cos(q2)*C[2] -
+            sin(q2)*cos(q3)*C[3]), A)
 
-    assert A[3] == express(Vector(-sin(q5)*cos(q4)*C[1] + sin(q4)*C[2] +
-            cos(q4)*cos(q5)*C[3]), A)
-    assert B[1] == express(Vector(cos(q3)*N[1] + sin(q3)*N[2]), B)
-    assert B[2] == express(Vector(-sin(q3)*cos(q4)*N[1] +
-            cos(q3)*cos(q4)*N[2] + sin(q4)*N[3]), B)
+    assert A[3] == express(Vector(-sin(q3)*cos(q2)*C[1] + sin(q2)*C[2] +
+            cos(q2)*cos(q3)*C[3]), A)
+    assert B[1] == express(Vector(cos(q1)*N[1] + sin(q1)*N[2]), B)
+    assert B[2] == express(Vector(-sin(q1)*cos(q2)*N[1] +
+            cos(q1)*cos(q2)*N[2] + sin(q2)*N[3]), B)
 
-    # Trigsimp messes up here too.
-    #print express(Vector(sin(q3)*sin(q4)*N[1] - sin(q4)*cos(q3)*N[2]
-    #    + cos(q4)*N[3]), B)
-    #assert B[3] == express(Vector(sin(q3)*sin(q4)*N[1] -
-    #        sin(q4)*cos(q3)*N[2] + cos(q4)*N[3]), B)
+    assert B[3] == express(Vector(sin(q1)*sin(q2)*N[1] -
+            sin(q2)*cos(q1)*N[2] + cos(q2)*N[3]), B)
 
-    assert B[2] == express(Vector(cos(q4)*A[2] + sin(q4)*A[3]), B)
-    assert B[3] == express(Vector(-sin(q4)*A[2] + cos(q4)*A[3]), B)
-    assert B[1] == express(Vector(cos(q5)*C[1] + sin(q5)*C[3]), B)
-    #print express(Vector(-sin(q5)*C[1] + cos(q5)*C[3]), B)
-    assert B[3] == express(Vector(-sin(q5)*C[1] + cos(q5)*C[3]), B)
+    assert B[2] == express(Vector(cos(q2)*A[2] + sin(q2)*A[3]), B)
+    assert B[3] == express(Vector(-sin(q2)*A[2] + cos(q2)*A[3]), B)
+    assert B[1] == express(Vector(cos(q3)*C[1] + sin(q3)*C[3]), B)
+    assert B[3] == express(Vector(-sin(q3)*C[1] + cos(q3)*C[3]), B)
 
-    # Trigsimp fails here too.
-    #print express(Vector(
-    #        (cos(q3)*cos(q5)-sin(q3)*sin(q4)*sin(q5))*N[1] +
-    #        (sin(q3)*cos(q5)+sin(q4)*sin(q5)*cos(q3))*N[2] -
-    #            sin(q5)*cos(q4)*N[3]), C)
-    #assert C[1] == express(Vector(
-    #        (cos(q3)*cos(q5)-sin(q3)*sin(q4)*sin(q5))*N[1] +
-    #        (sin(q3)*cos(q5)+sin(q4)*sin(q5)*cos(q3))*N[2] -
-    #            sin(q5)*cos(q4)*N[3]), C)
-    # Trigsimp fails here too.
-    #print trigsimp(dot(express(Vector(
-    #        -sin(q3)*cos(q4)*N[1] + cos(q3)*cos(q4)*N[2] + sin(q4)*N[3]), C),
-    #        C[3]))
-    #assert C[2] == express(Vector(
-    #        -sin(q3)*cos(q4)*N[1] + cos(q3)*cos(q4)*N[2] + sin(q4)*N[3]), C)
-    #print express(Vector(
-    #        (sin(q5)*cos(q3)+sin(q3)*sin(q4)*cos(q5))*N[1] +
-    #        (sin(q3)*sin(q5)-sin(q4)*cos(q3)*cos(q5))*N[2] +
-    #        cos(q4)*cos(q5)*N[3]), C)
-    #assert C[3] == express(Vector(
-    #        (sin(q5)*cos(q3)+sin(q3)*sin(q4)*cos(q5))*N[1] +
-    #        (sin(q3)*sin(q5)-sin(q4)*cos(q3)*cos(q5))*N[2] +
-    #        cos(q4)*cos(q5)*N[3]), C)
-    #print express(Vector(cos(q5)*A[1] + sin(q4)*sin(q5)*A[2] -
-    #        sin(q5)*cos(q4)*A[3]), C)
-    #assert C[1] == express(Vector(cos(q5)*A[1] + sin(q4)*sin(q5)*A[2] -
-    #        sin(q5)*cos(q4)*A[3]), C)
-    assert C[2] == express(Vector(cos(q4)*A[2] + sin(q4)*A[3]), C)
-    assert C[3] == express(Vector(sin(q5)*A[1] - sin(q4)*cos(q5)*A[2] +
-            cos(q4)*cos(q5)*A[3]), C)
-    assert C[1] == express(Vector(cos(q5)*B[1] - sin(q5)*B[3]), C)
-    assert C[3] == express(Vector(sin(q5)*B[1] + cos(q5)*B[3]), C)
+    assert C[1] == express(Vector(
+            (cos(q1)*cos(q3)-sin(q1)*sin(q2)*sin(q3))*N[1] +
+            (sin(q1)*cos(q3)+sin(q2)*sin(q3)*cos(q1))*N[2] -
+                sin(q3)*cos(q2)*N[3]), C)
+    assert C[2] == express(Vector(
+            -sin(q1)*cos(q2)*N[1] + cos(q1)*cos(q2)*N[2] + sin(q2)*N[3]), C)
+    assert C[3] == express(Vector(
+            (sin(q3)*cos(q1)+sin(q1)*sin(q2)*cos(q3))*N[1] +
+            (sin(q1)*sin(q3)-sin(q2)*cos(q1)*cos(q3))*N[2] +
+            cos(q2)*cos(q3)*N[3]), C)
+    assert C[1] == express(Vector(cos(q3)*A[1] + sin(q2)*sin(q3)*A[2] -
+            sin(q3)*cos(q2)*A[3]), C)
+    assert C[2] == express(Vector(cos(q2)*A[2] + sin(q2)*A[3]), C)
+    assert C[3] == express(Vector(sin(q3)*A[1] - sin(q2)*cos(q3)*A[2] +
+            cos(q2)*cos(q3)*A[3]), C)
+    assert C[1] == express(Vector(cos(q3)*B[1] - sin(q3)*B[3]), C)
+    assert C[3] == express(Vector(sin(q3)*B[1] + cos(q3)*B[3]), C)
 
 def test_ang_vel():
-    t = Symbol('t')
-
-    q3 = Function('q3')(t)
-    q4 = Function('q4')(t)
-    q5 = Function('q5')(t)
-    q6 = Function('q6')(t)
-
-    N = ReferenceFrame('N')
-    A = N.rotate('A', 3, q3)
-    B = A.rotate('B', 1, q4)
-    C = B.rotate('C', 2, q5)
-    A2 = N.rotate('A2', 2, q6)
-
-    q3p = q3.diff(t)
-    q4p = q4.diff(t)
-    q5p = q5.diff(t)
-    q6p = q6.diff(t)
-
+    A2 = N.rotate('A2', 2, q4)
     assert N.ang_vel(N) == Vector(0)
-    assert N.ang_vel(A) == -q3p*N[3]
-    assert N.ang_vel(B) == -q3p*A[3] - q4p*B[1]
-    assert N.ang_vel(C) == -q3p*A[3] - q4p*B[1] - q5p*B[2]
-    assert N.ang_vel(A2) == -q6p*N[2]
+    assert N.ang_vel(A) == -q1p*N[3]
+    assert N.ang_vel(B) == -q1p*A[3] - q2p*B[1]
+    assert N.ang_vel(C) == -q1p*A[3] - q2p*B[1] - q3p*B[2]
+    assert N.ang_vel(A2) == -q4p*N[2]
 
-    assert A.ang_vel(N) == q3p*N[3]
+    assert A.ang_vel(N) == q1p*N[3]
     assert A.ang_vel(A) == Vector(0)
-    assert A.ang_vel(B) == - q4p*B[1]
-    assert A.ang_vel(C) == - q4p*B[1] - q5p*B[2]
-    assert A.ang_vel(A2) == q3p*N[3] - q6p*N[2]
+    assert A.ang_vel(B) == - q2p*B[1]
+    assert A.ang_vel(C) == - q2p*B[1] - q3p*B[2]
+    assert A.ang_vel(A2) == q1p*N[3] - q4p*N[2]
 
-    assert B.ang_vel(N) == q3p*A[3] + q4p*A[1]
-    assert B.ang_vel(A) == q4p*A[1]
+    assert B.ang_vel(N) == q1p*A[3] + q2p*A[1]
+    assert B.ang_vel(A) == q2p*A[1]
     assert B.ang_vel(B) == Vector(0)
-    assert B.ang_vel(C) == -q5p*B[2]
-    assert B.ang_vel(A2) == q3p*A[3] + q4p*A[1] - q6p*N[2]
+    assert B.ang_vel(C) == -q3p*B[2]
+    assert B.ang_vel(A2) == q1p*A[3] + q2p*A[1] - q4p*N[2]
 
-    assert C.ang_vel(N) == q3p*A[3] + q4p*A[1] + q5p*B[2]
-    assert C.ang_vel(A) == q4p*A[1] + q5p*C[2]
-    assert C.ang_vel(B) == q5p*B[2]
+    assert C.ang_vel(N) == q1p*A[3] + q2p*A[1] + q3p*B[2]
+    assert C.ang_vel(A) == q2p*A[1] + q3p*C[2]
+    assert C.ang_vel(B) == q3p*B[2]
     assert C.ang_vel(C) == Vector(0)
-    assert C.ang_vel(A2) == q3p*A[3] + q4p*A[1] + q5p*B[2] - q6p*N[2]
+    assert C.ang_vel(A2) == q1p*A[3] + q2p*A[1] + q3p*B[2] - q4p*N[2]
 
-    assert A2.ang_vel(N) == q6p*A2[2]
-    assert A2.ang_vel(A) == q6p*A2[2] - q3p*N[3]
-    assert A2.ang_vel(B) == q6p*N[2] - q3p*A[3] - q4p*A[1]
-    assert A2.ang_vel(C) == q6p*N[2] - q3p*A[3] - q4p*A[1] - q5p*B[2]
+    assert A2.ang_vel(N) == q4p*A2[2]
+    assert A2.ang_vel(A) == q4p*A2[2] - q1p*N[3]
+    assert A2.ang_vel(B) == q4p*N[2] - q1p*A[3] - q2p*A[1]
+    assert A2.ang_vel(C) == q4p*N[2] - q1p*A[3] - q2p*A[1] - q3p*B[2]
     assert A2.ang_vel(A2) == Vector(0)
 
 def test_dt():
-    t = Symbol('t')
-
-    q1 = Function('q1')(t)
-    q2 = Function('q2')(t)
-    q3 = Function('q3')(t)
-    q4 = Function('q4')(t)
-    q5 = Function('q5')(t)
-
-    q3p = q3.diff(t)
-    q4p = q4.diff(t)
-    q5p = q5.diff(t)
-
-    N = ReferenceFrame('N')
-    A = N.rotate('A', 3, q3)
-    B = A.rotate('B', 1, q4)
-    C = B.rotate('C', 2, q5)
     assert dt(N[1], N) == Vector({})
     assert dt(N[2], N) == Vector({})
     assert dt(N[3], N) == Vector({})
-    assert dt(N[1], A) == Vector(-q3p*N[2])
-    assert dt(N[2], A) == Vector(q3p*N[1])
+    assert dt(N[1], A) == Vector(-q1p*N[2])
+    assert dt(N[2], A) == Vector(q1p*N[1])
     assert dt(N[3], A) == Vector({})
-    assert dt(N[1], B) == Vector(-q3p*N[2] + sin(q3)*q4p*N[3])
-    assert dt(N[2], B) == Vector(q3p*N[1] - cos(q3)*q4p*N[3])
-    assert dt(N[3], B) == Vector(q4p*A[2])
+    assert dt(N[1], B) == Vector(-q1p*N[2] + sin(q1)*q2p*N[3])
+    assert dt(N[2], B) == Vector(q1p*N[1] - cos(q1)*q2p*N[3])
+    assert dt(N[3], B) == Vector(q2p*A[2])
 
-    #assert express(dt(N[1], C), N) == Vector((-q3p -
-    #    sin(q4)*q5p)*N[2] + (sin(q3)*q4p +
-    #        cos(q3)*cos(q4)*q5p)*N[3])
+    assert express(dt(N[1], C), N) == Vector((-q1p -
+        sin(q2)*q3p)*N[2] + (sin(q1)*q2p +
+            cos(q1)*cos(q2)*q3p)*N[3])
 
-    #assert express(dt(N[2], C), N) == Vector((q3p +
-    #    sin(q4)*q5p)*N[1] + (sin(q3)*cos(q4)*q5p -
-    #        cos(q3)*q4p)*N[3])
+    assert express(dt(N[2], C), N) == Vector((q1p +
+        sin(q2)*q3p)*N[1] + (sin(q1)*cos(q2)*q3p -
+            cos(q1)*q2p)*N[3])
 
-    assert dt(N[3], C) == Vector(q4p*A[2] - cos(q4)*q5p*B[1])
+    assert dt(N[3], C) == Vector(q2p*A[2] - cos(q2)*q3p*B[1])
 
-    assert dt(A[1], N) == Vector(q3p*A[2]) == q3p*A[2]
-    assert dt(A[2], N) == Vector(-q3p*A[1]) == -q3p*A[1]
+    assert dt(A[1], N) == Vector(q1p*A[2]) == q1p*A[2]
+    assert dt(A[2], N) == Vector(-q1p*A[1]) == -q1p*A[1]
     assert dt(A[3], N) == Vector({}) == 0
     assert dt(A[1], A) == Vector({}) == 0
     assert dt(A[2], A) == Vector({}) == 0
     assert dt(A[3], A) == Vector({}) == 0
     assert dt(A[1], B) == Vector({}) == 0
-    assert dt(A[2], B) == Vector(-q4p*A[3]) == -q4p*A[3]
-    assert dt(A[3], B) == Vector(q4p*A[2]) == q4p*A[2]
-    assert dt(A[1], C) == Vector(q5p*B[3]) == q5p*B[3]
-    assert dt(A[2], C) == Vector(sin(q4)*q5p*A[1] - q4p*A[3]) ==\
-            sin(q4)*q5p*A[1] - q4p*A[3]
-    assert dt(A[3], C) == Vector(-cos(q4)*q5p*A[1] + q4p*A[2]) \
-            == -cos(q4)*q5p*A[1] + q4p*A[2]
+    assert dt(A[2], B) == Vector(-q2p*A[3]) == -q2p*A[3]
+    assert dt(A[3], B) == Vector(q2p*A[2]) == q2p*A[2]
+    assert dt(A[1], C) == Vector(q3p*B[3]) == q3p*B[3]
+    assert dt(A[2], C) == Vector(sin(q2)*q3p*A[1] - q2p*A[3]) ==\
+            sin(q2)*q3p*A[1] - q2p*A[3]
+    assert dt(A[3], C) == Vector(-cos(q2)*q3p*A[1] + q2p*A[2]) \
+            == -cos(q2)*q3p*A[1] + q2p*A[2]
 
-    assert dt(B[1], N) == Vector(cos(q4)*q3p*B[2] -
-            sin(q4)*q3p*B[3]) == cos(q4)*q3p*B[2] - \
-                    sin(q4)*q3p*B[3]
-    assert dt(B[2], N) == Vector(-cos(q4)*q3p*B[1] + q4p*B[3]) \
-            == -cos(q4)*q3p*B[1] + q4p*B[3]
-    assert dt(B[3], N) == Vector(sin(q4)*q3p*B[1] - q4p*B[2]) ==\
-            sin(q4)*q3p*B[1] - q4p*B[2]
+    assert dt(B[1], N) == Vector(cos(q2)*q1p*B[2] -
+            sin(q2)*q1p*B[3]) == cos(q2)*q1p*B[2] - \
+                    sin(q2)*q1p*B[3]
+    assert dt(B[2], N) == Vector(-cos(q2)*q1p*B[1] + q2p*B[3]) \
+            == -cos(q2)*q1p*B[1] + q2p*B[3]
+    assert dt(B[3], N) == Vector(sin(q2)*q1p*B[1] - q2p*B[2]) ==\
+            sin(q2)*q1p*B[1] - q2p*B[2]
     assert dt(B[1], A) == Vector({}) == 0
-    assert dt(B[2], A) == Vector(q4p*B[3]) == q4p*B[3]
-    assert dt(B[3], A) == Vector(-q4p*B[2]) == -q4p*B[2]
-
-
-def test_cross_different_frames2():
-    q1, q2, q3 = symbols('q1 q2 q3')
-    N = ReferenceFrame('N')
-    A = N.rotate('A', 3, q1)
-    assert cross(N[1], A[1]) == sin(q1)*A[3]
-    assert cross(N[1], A[2]) == cos(q1)*A[3]
-    assert cross(N[1], A[1] + A[2]) == sin(q1)*A[3] + cos(q1)*A[3]
-    #assert cross(A[1] + A[2], N[1]) == -sin(q1)*A[3] - cos(q1)*A[3]
+    assert dt(B[2], A) == Vector(q2p*B[3]) == q2p*B[3]
+    assert dt(B[3], A) == Vector(-q2p*B[2]) == -q2p*B[2]
 
 def test_get_frames_list1():
-    q1, q2, q3 = symbols('q1 q2 q3')
-    N = ReferenceFrame('N')
-    A = N.rotate('A', 3, q1)
-    B = A.rotate('B', 1, q2)
-    C = B.rotate('C', 2, q3)
-
     assert B.get_frames_list(A) == [B, A]
     assert A.get_frames_list(B) == [A, B]
     assert A.get_frames_list(C) == [A, B, C]
     assert A.get_frames_list(C) == [A, B, C]
     assert C.get_frames_list(A) == [C, B, A]
-
-def test_get_frames_list2():
-    q1, q2, q3 = symbols('q1 q2 q3')
-    N = ReferenceFrame('N')
-    A = N.rotate('A', 3, q1)
-    B = A.rotate('B', 1, q2)
-    C = A.rotate('C', 2, q3)
-
     assert B.get_frames_list(C) == [B, A, C]
     assert C.get_frames_list(B) == [C, A, B]
 
-def test_get_frames_list3():
+def test_get_frames_list1():
     q1, q2, q3 = symbols('q1 q2 q3')
     N = ReferenceFrame('N')
     A = N.rotate('A', 3, q1)
@@ -608,14 +509,9 @@ def test_get_frames_list3():
     assert I.get_frames_list(I) == [I]
 
 def test_get_frames_list4():
-    q1, q2, q3 = symbols('q1 q2 q3')
-    N = ReferenceFrame('N')
-    A = N.rotate('A', 3, q1)
-    B = A.rotate('B', 1, q2)
-    C = B.rotate('C', 2, q3)
-    D = A.rotate('D', 2, q3)
-    E = D.rotate('E', 2, q3)
-    F = E.rotate('F', 2, q3)
+    D = A.rotate('D', 1, q4)
+    E = D.rotate('E', 3, q5)
+    F = E.rotate('F', 2, q6)
 
     assert B.get_frames_list(N) == [B, A, N]
     assert N.get_frames_list(B) == [N, A, B]
@@ -623,12 +519,6 @@ def test_get_frames_list4():
     assert N.get_frames_list(C) == [N, A, B, C]
 
 def test_get_rot_matrices1():
-    q1, q2, q3 = symbols('q1 q2 q3')
-    N = ReferenceFrame('N')
-    A = N.rotate('A', 3, q1)
-    B = A.rotate('B', 1, q2)
-    C = B.rotate('C', 2, q3)
-
     B_A = Matrix([
         [1, 0, 0],
         [0, cos(q2), sin(q2)],
@@ -657,11 +547,6 @@ def test_get_rot_matrices1():
     assert C.get_rot_matrices(A) == [A_B, B_C]
 
 def test_get_rot_matrices2():
-    q1, q2, q3, q4, q5, q6 = symbols('q1 q2 q3 q4 q5 q6')
-    N = ReferenceFrame('N')
-    A = N.rotate('A', 3, q1)
-    B = A.rotate('B', 1, q2)
-    C = B.rotate('C', 2, q3)
     D = A.rotate('D', 2, q4)
     E = D.rotate('E', 1, q5)
     F = E.rotate('F', 3, q6)
@@ -705,10 +590,6 @@ def test_get_rot_matrices2():
     assert F.get_rot_matrices(C) == [C_B, B_A, A_D, D_E, E_F]
 
 def test_cross2():
-    q1, q2, q3 = symbols('q1 q2 q3')
-    N = ReferenceFrame('N')
-    A = N.rotate('A', 3, q1)
-    B = A.rotate('B', 1, q2)
     for i in (1, 2, 3):
         for j in (1, 2, 3):
             a = cross(N[i], A[j])
@@ -722,11 +603,6 @@ def test_cross2():
             assert a == -b
 
 def test_dot2():
-    q1, q2, q3 = symbols('q1 q2 q3')
-    print "q1", q1
-    N = ReferenceFrame('N')
-    A = N.rotate('A', 3, q1)
-    B = A.rotate('A', 1, q2)
     for i in range(1, 4):
         for j in range(1, 4):
             a = dot(N[i], A[j])
@@ -740,11 +616,8 @@ def test_dot2():
             assert a == b
 
 def test_Vector_class():
-    q1, q2, q3, t = symbols('q1 q2 q3 t')
+    t = symbols('t')
     u1 = Function('u1')(t)
-    N = ReferenceFrame('N')
-    A = N.rotate('A', 3, q1)
-    B = A.rotate('B', 1, q2)
     v1 = Vector(0)
     v2 = Vector(q1*u1*A[1] + q2*t*sin(t)*A[2])
     v3 = Vector({B[1]: q1*sin(q2), B[2]: t*u1*q1*sin(q2)})
@@ -758,8 +631,6 @@ def test_Vector_class():
     assert v1.parse_terms(test) == {A[3]: sin(q1)*sin(q1)*q2, \
             A[2]:cos(q3) + q1}
     # Equality tests
-    #print "v2: ", v2, "type(v2): ", type(v2), "v2.dict: ", v2.dict
-    #print "v3: ", v3, "type(v3): ", type(v3), "v3.dict: ", v3.dict
     v4 = v2 + v3
     assert v4 == v2 + v3
     v3 = Vector({B[1]: q1*sin(q2), B[2]: t*u1*q1*sin(q2)})
@@ -781,24 +652,13 @@ def test_mag():
     assert v3.mag == 3**Rational(1,2)
     assert v4.mag == 1
 
-
 def test_rotate_Euler_Space():
-    t = Symbol('t')
-    q1 = Function('q1')(t)
-    q2 = Function('q2')(t)
-    q3 = Function('q3')(t)
-    A = ReferenceFrame('A')
-
     c1 = cos(q1)
     c2 = cos(q2)
     c3 = cos(q3)
     s1 = sin(q1)
     s2 = sin(q2)
     s3 = sin(q3)
-
-    q1p = q1.diff(t)
-    q2p = q2.diff(t)
-    q3p = q3.diff(t)
 
     #### Rotation matrices from Spacecraft Dynamics, by Kane, Likins, Levinson,
     #### 1982, Appendix I, pg. 422
@@ -813,15 +673,8 @@ def test_rotate_Euler_Space():
                          [-c1*s2*c3 + s3*s1, c1*s2*s3 + c3*s1, c1*c2]])
     W_B_A = Vector((q1p*c2*c3 + q2p*s3)*B[1] + (-q1p*c2*s3+q2p*c3)*B[2] +
             (q1p*s2 + q3p)*B[3])
-    #print B.get_rot_matrices(A)[0]
-    #print R123_Body
     assert B.get_rot_matrices(A)[0] == R123_Body
-    #print W_B_A
-    #print 'b1>', dot(B.ang_vel(A), B[1])
-    #print 'b2>', dot(B.ang_vel(A), B[2])
-    #print 'b3>', dot(B.ang_vel(A), B[3])
-    # Currently trigsimp can't handle this kind of thing...
-    #assert B.ang_vel(A) == W_B_A
+    assert B.ang_vel(A) == W_B_A
 
     #### Body 1-3-2
     B = A.rotate('B', 'BODY132', (q1, q2, q3))
@@ -830,12 +683,8 @@ def test_rotate_Euler_Space():
                          [s1*s2*c3 - s3*c1, s1*c2, s1*s2*s3 + c3*c1]])
     W_B_A = Vector((q1p*c2*c3 - q2p*s3)*B[1] + (-q1p*s2+q3p)*B[2] + (q1p*c2*s3
         + q2p*c3)*B[3])
-    #print W_B_A
-    #print B.ang_vel(A)
-    #print B.get_rot_matrices(A)[0]
-    #print R132_Body
     assert B.get_rot_matrices(A)[0] == R132_Body
-    #assert B.ang_vel(A) == W_B_A
+    assert B.ang_vel(A) == W_B_A
 
     #### Space Fixed rotations ####
     #### Space 1-2-3
@@ -843,8 +692,6 @@ def test_rotate_Euler_Space():
     R123_Space = Matrix([ [c2*c3, s1*s2*c3 - s3*c1, c1*s2*c3 + s3*s1],
                           [c2*s3, s1*s2*s3 + c3*c1, c1*s2*s3 - c3*s1],
                           [-s2, s1*c2, c1*c2]])
-    #print B.get_rot_matrices(A)[0]
-    #print R123_Space
     assert B.get_rot_matrices(A)[0] == R123_Space
 
     #### Space 1-3-2
@@ -856,13 +703,9 @@ def test_rotate_Euler_Space():
     print R132_Space
     assert B.get_rot_matrices(A)[0] == R132_Space
 
-
 def test_Point_get_point_list():
-    t = Symbol('t')
-    x = Function('x')(t)
     l1, l2, l3 = symbols('l1 l2 l3')
-    N = ReferenceFrame("N")
-    A = N.rotate('A', 1, x)
+    A = N.rotate('A', 1, q1)
     P1 = N.O.locate('P1', l1*N[1])
     P2 = N.O.locate('P2', l2*A[2])
     P3 = P2.locate('P3', l3*A[3])
@@ -900,14 +743,7 @@ def test_Point_get_point_list():
     assert P5.get_point_list(P5) == [P5]
 
 def test_point_rel():
-    t, l1, l2, l3 = symbols('t l1 l2 l3')
-    q1 = Function('q1')(t)
-    q2 = Function('q2')(t)
-
-    x = Function('x')(t)
-    N = ReferenceFrame('N')
-    A = N.rotate('A', 1, q1)
-    B = A.rotate('B', 2, q2)
+    l1, l2, l3 = symbols('l1 l2 l3')
     P1 = N.O.locate('P1', l1*N[1])
     P2 = P1.locate('P2', l2*A[1])
     assert N.O.rel(N.O) == zero
@@ -921,12 +757,7 @@ def test_point_rel():
     assert P2.rel(P2) == zero
 
 def test_point_rel2():
-    t, l1, l2, l3, r1, r2 = symbols('t l1 l2 l3 r1 r2')
-    q1, q2, q3, q4, q5 = [Function('q%i' % i)(t) for i in (1, 2, 3, 4, 5)]
-    N = ReferenceFrame('N')
-    A = N.rotate('A', 3, q3)
-    B = A.rotate('B', 1, q4)
-    C = B.rotate('C', 2, q5)
+    l1, l2, l3, r1, r2 = symbols('l1 l2 l3 r1 r2')
     P1 = N.O.locate('P1', q1*N[1] + q2*N[2])
     P2 = P1.locate('P2', -r2*N[3] - r1*B[3])
     CP = P2.locate('CP', r2*N[3] + r1*B[3], C)
@@ -943,27 +774,22 @@ def test_point_rel2():
     assert CP.rel(CP) == Vector(0)
 
 def test_point_vel():
-    t, l1, l2, l3, r1, r2 = symbols('t l1 l2 l3 r1 r2')
-    q1, q2, q3, q4, q5 = [Function('q%i' % i)(t) for i in (1, 2, 3, 4, 5)]
-    N = ReferenceFrame('N')
-    A = N.rotate('A', 3, q3)
-    B = A.rotate('B', 1, q4)
-    C = B.rotate('C', 2, q5)
+    l1, l2, l3, r1, r2 = symbols('l1 l2 l3 r1 r2')
     P1 = N.O.locate('P1', q1*N[1] + q2*N[2])
     P2 = P1.locate('P2', -r2*A[3] - r1*B[3])
     CP = P2.locate('CP', r2*A[3] + r1*B[3], C)
     # These are checking that the inertial velocities of the 4 points are
     # correct
     assert N.O.vel() == Vector(0)
-    assert P1.vel() == Vector(q1.diff(t)*N[1] + q2.diff(t)*N[2])
-    assert P2.vel() == P1.vel() + Vector(-r1*q3.diff(t)*sin(q4)*B[1] \
-            + r1*q4.diff(t)*B[2])
+    assert P1.vel() == Vector(q1p*N[1] + q2p*N[2])
+    assert P2.vel() == P1.vel() + Vector(-r1*q1p*sin(q2)*B[1] \
+            + r1*q2p*B[2])
     print 'P2.vel()', P2.vel()
     print 'CP.vel()', CP.vel()
-    print P1.vel() + Vector(-r2*q4.diff(t)*A[2] + \
-            (r1*q5.diff(t) + r2*q5.diff(t)*cos(q4))*B[1])
-    assert CP.vel() == P1.vel() + Vector(-r2*q4.diff(t)*A[2] + \
-            (r1*q5.diff(t) + r2*q5.diff(t)*cos(q4))*B[1])
+    print P1.vel() + Vector(-r2*q3p*A[2] + \
+            (r1*q3p + r2*q3p*cos(q2))*B[1])
+    assert CP.vel() == P1.vel() + Vector(-r2*q2p*A[2] + \
+            (r1*q3p + r2*q3p*cos(q2))*B[1])
 
     # These are just checking that v_p1_p2_N == -v_p2_p1_N
     assert N.O.vel(N.O, N) == Vector(0)

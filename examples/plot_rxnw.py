@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 from rxnw_eoms import f, animate
 from scipy.integrate import odeint
 from numpy import arange, zeros
@@ -76,7 +77,7 @@ red = (1, 0, 0)
 green = (0, 1, 0)
 blue = (0, 0, 1)
 grey = (0.5,0.5,0.5)
-n = [arrow(pos=(0,0,0),axis=(.5,0,0),color=red),
+N = [arrow(pos=(0,0,0),axis=(.5,0,0),color=red),
      arrow(pos=(0,0,0),axis=(0,.5,0),color=green),
      arrow(pos=(0,0,0),axis=(0,0,.5),color=blue)]
 body = box(pos=AO[0, :], axis=A[0, :3], angle=A[0, 3],\

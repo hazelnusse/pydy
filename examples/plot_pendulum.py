@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 from pendulum_eoms import f, animate
 from scipy.integrate import odeint
 from numpy import array, arange, zeros, pi

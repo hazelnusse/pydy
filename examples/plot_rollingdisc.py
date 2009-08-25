@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 from rollingdisc_eoms import *
 
 from scipy.integrate import odeint

@@ -633,7 +633,8 @@ class Vector(Basic):
                             self.dict[uv]*coef)
 
         for uv in new.keys():
-            new[uv] = expand(trigsimp(new[uv]))
+            new[uv] = new[uv].expand().subs(uv.frame.NewtonianReferenceFrame.csqrd_dict).expand()
+            #new[uv] = expand(trigsimp(new[uv]))
             #new[uv] = trigsimp(expand(trigsimp(new[uv])))
             if new[uv] == 0: new.pop(uv)
 
