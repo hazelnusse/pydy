@@ -1,4 +1,4 @@
-# Tue Aug 25 15:20:16 2009
+# Tue Aug 25 17:42:58 2009
 from numpy import sin, cos, tan, vectorize
 
 def f(x, t, parameter_list):
@@ -62,11 +62,15 @@ def animate(q, parameter_list):
     q1, q2, q3, q4, q5, q6, q7, q8 = q
     # Trigonometric functions needed
     c3 = cos(q3)
+    s5 = sin(q5)
     c2 = cos(q2)
+    c5 = cos(q5)
     s1 = sin(q1)
     s2 = sin(q2)
     c1 = cos(q1)
+    c4 = cos(q4)
     s3 = sin(q3)
+    s4 = sin(q4)
     # Position of Points and Axis/Angle Calculations
     p_NO_AO_1 = q6
     p_NO_AO_2 = q7
@@ -77,13 +81,25 @@ def animate(q, parameter_list):
     p_NO_CO_1 = -l*c2*s3 + q6
     p_NO_CO_2 = l*(c1*c3 - s1*s2*s3) + q7
     p_NO_CO_3 = l*(c3*s1 + c1*s2*s3) + q8
+    A1_1 = c2*c3
+    A1_2 = c1*s3 + c3*s1*s2
+    A1_3 = s1*s3 - c1*c3*s2
+    A2_1 = -c2*s3
+    A2_2 = c1*c3 - s1*s2*s3
+    A2_3 = c3*s1 + c1*s2*s3
     A3_1 = s2
     A3_2 = -c2*s1
     A3_3 = c1*c2
-    A2_1 = -c2*s3
-    A2_2 = c1*c3 - s1*s2*s3
-    A2_3 = c3*s1 + c1*s2*s3
-    A2_1 = -c2*s3
-    A2_2 = c1*c3 - s1*s2*s3
-    A2_3 = c3*s1 + c1*s2*s3
-    return [p_NO_AO_1, p_NO_AO_2, p_NO_AO_3], [p_NO_BO_1, p_NO_BO_2, p_NO_BO_3], [p_NO_CO_1, p_NO_CO_2, p_NO_CO_3], [A3_1, A3_2, A3_3, q3], [A2_1, A2_2, A2_3, q4], [A2_1, A2_2, A2_3, q5]
+    B1_1 = -s2*s4 + c2*c3*c4
+    B1_2 = c1*c4*s3 + c2*s1*s4 + c3*c4*s1*s2
+    B1_3 = c4*s1*s3 - c1*c2*s4 - c1*c3*c4*s2
+    B3_1 = c4*s2 + c2*c3*s4
+    B3_2 = c1*s3*s4 - c2*c4*s1 + c3*s1*s2*s4
+    B3_3 = c1*c2*c4 + s1*s3*s4 - c1*c3*s2*s4
+    C1_1 = -s2*s5 + c2*c3*c5
+    C1_2 = c1*c5*s3 + c2*s1*s5 + c3*c5*s1*s2
+    C1_3 = c5*s1*s3 - c1*c2*s5 - c1*c3*c5*s2
+    C3_1 = c5*s2 + c2*c3*s5
+    C3_2 = c1*s3*s5 - c2*c5*s1 + c3*s1*s2*s5
+    C3_3 = c1*c2*c5 + s1*s3*s5 - c1*c3*s2*s5
+    return [p_NO_AO_1, p_NO_AO_2, p_NO_AO_3], [p_NO_BO_1, p_NO_BO_2, p_NO_BO_3], [p_NO_CO_1, p_NO_CO_2, p_NO_CO_3], [A1_1, A1_2, A1_3, 0], [A2_1, A2_2, A2_3, 0], [A3_1, A3_2, A3_3, 0], [B1_1, B1_2, B1_3, 0], [B3_1, B3_2, B3_3, 0], [C1_1, C1_2, C1_3, 0], [C3_1, C3_2, C3_3, 0]

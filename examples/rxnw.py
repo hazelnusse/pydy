@@ -57,4 +57,6 @@ for u in udot_list:
     print u, '=', dyn_diffs[u]
 
 N.setdyndiffs(dyn_diffs)
-N.output_eoms('rxnw_eoms.py', (AO, N.O), (BO, N.O), (CO, N.O), (A[3], q3), (A[2], q4), (A[2], q5))
+
+N.output_eoms('rxnw_eoms.py', (AO, N.O), (BO, N.O), (CO, N.O), (A[1], 0),
+        (A[2], 0), (A[3], 0), (B[1], 0), (B[3], 0), (C[1], 0), (C[3], 0))
