@@ -1,4 +1,4 @@
-# Tue Aug 25 15:16:01 2009
+# Tue Aug 25 18:43:59 2009
 from numpy import sin, cos, tan, vectorize
 
 def f(x, t, parameter_list):
@@ -51,15 +51,20 @@ def animate(q, parameter_list):
     # Unpacking the coordinates
     q1, q2, q3, q4, q5, q6 = q
     # Trigonometric functions needed
+    c3 = cos(q3)
+    c2 = cos(q2)
     s1 = sin(q1)
     s2 = sin(q2)
     c1 = cos(q1)
-    c2 = cos(q2)
+    s3 = sin(q3)
     # Position of Points and Axis/Angle Calculations
     p_NO_CO_1 = q4
     p_NO_CO_2 = q5
     p_NO_CO_3 = q6
-    C2_1 = -c2*s1
-    C2_2 = c1*c2
-    C2_3 = s2
-    return [p_NO_CO_1, p_NO_CO_2, p_NO_CO_3], [C2_1, C2_2, C2_3, q3]
+    C1_1 = c1*c3 - s1*s2*s3
+    C1_2 = c3*s1 + c1*s2*s3
+    C1_3 = -c2*s3
+    C3_1 = c1*s3 + c3*s1*s2
+    C3_2 = s1*s3 - c1*c3*s2
+    C3_3 = c2*c3
+    return [p_NO_CO_1, p_NO_CO_2, p_NO_CO_3], [C1_1, C1_2, C1_3, 0], [C3_1, C3_2, C3_3, 0]

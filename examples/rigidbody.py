@@ -50,4 +50,4 @@ for r, ud in enumerate(udot_list):
     print ud, ' = ', dyndiffs[ud]
 
 N.setdyndiffs(dyndiffs)
-N.output_eoms('rigidbody_eoms.py', (CO, N.O), (C[2], q3))
+N.output_eoms('rigidbody_eoms.py', (CO, N.O), (C[1], 0), (C[3], 0))
