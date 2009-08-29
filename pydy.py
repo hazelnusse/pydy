@@ -1714,7 +1714,7 @@ class NewtonianReferenceFrame(ReferenceFrame):
                     B[i, j] = bij
         return B
 
-    def form_speed_transform_matrix(self, B, dependent, ret_adj_det=False):
+    def form_speed_transform_matrix(self, B, dependent)
         """Form the matrix transform between independent and dependent speeds.
 
         Linear velocity constraints can be written as:
@@ -1727,11 +1727,7 @@ class NewtonianReferenceFrame(ReferenceFrame):
            = -1/det(Bd)*adj(Bd)*Bi*ui
            = T*ui
 
-        Returns T.
-
-        If optional keyword argument ret_adj_det==True, also return
-        -adj(Bd) and det(Bd) so that further simplification is possible by the
-        user.
+        Returns -adj(Bd), det(Bd)
         """
         m, n = B.shape
         md = len(dependent)
@@ -1786,11 +1782,7 @@ class NewtonianReferenceFrame(ReferenceFrame):
         BdaBi = -(Bd.adjugate() * Bi).subs(d).expand().subs(self.csqrd_dict).expand()
         Bd_det = Bd.det().subs(d).expand().subs(self.csqrd_dict).expand()
         assert Bd_det != 0, "Constraint equations are singular."
-        T = BdaBi / Bd_det
-        if ret_adj_det:
-            return T, BdaBi, Bd_det
-        else:
-            return T
+        return BdaBi, Bd_det
 
     def impose_constraints(self, eqns, dependent, method='ADJ', trig_subs=True):
         """Form the constraint matrix associated with linear velocity
@@ -1806,6 +1798,15 @@ class NewtonianReferenceFrame(ReferenceFrame):
 
         Requires that both kinematic_chain and/or self.set_nhc_eqns has been
         called.
+
+        If you want to do each of the steps that impose_constraints does, but
+        one a time, see:
+        form_constraint_matrix
+        set_constraint_matrix
+        form_speed_transform_matrix
+        set_speed_transform_matrix
+        form_dependent_speeds
+        set_dependent_speeds
         """
         #  Check to make sure the user passes compatible equations and
         #  determine the columns associated with the independent and dependent

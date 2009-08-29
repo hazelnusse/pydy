@@ -169,7 +169,7 @@ B_con[1,0] = B_con[1,0].subs({sin(q5)**2:1-cos(q5)**2}).expand()
 B_con[2,0] = B_con[2,0].subs({sin(q5)**2:1-cos(q5)**2}).expand()
 
 # Form speed transform matrix for ud = T*ui
-T, adj, det = N.form_speed_transform_matrix(B_con, [u1, u3, u4],
+adj, det = N.form_speed_transform_matrix(B_con, [u1, u3, u4],
         ret_adj_det=True)
 
 # Hand simplifications on the adjugate matrix
