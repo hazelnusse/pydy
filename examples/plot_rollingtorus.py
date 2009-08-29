@@ -69,7 +69,7 @@ NO = (0,0,0)
 #        uniform=1, background=black, forward=(1,0,0), exit=0)
 
 scene = display(title='Rigid body animation @ %0.2f realtime'%k, width=800,
-        height=800, up=(0,0,-1), uniform=1, background=(0,0,0), forward=(1,0,0), exit=0)
+        height=800, up=(0,0,-1), uniform=1, background=(0,0,0), forward=(1,0,0))
 # Inertial reference frame arrows
 N = [arrow(pos=NO,axis=(.001,0,0),color=red),
      arrow(pos=NO,axis=(0,.001,0),color=green),

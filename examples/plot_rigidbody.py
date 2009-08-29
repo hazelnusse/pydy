@@ -25,7 +25,7 @@ params = [m, 0, I11, I22, I33]
 # Specify the initial conditions of the coordinates and the generalized speeds
 q0 = [0.0, 0.0, 0.0, .05, 0., 0.]
 # Intermediate inertia axis is the body-2 axis, exhibits instability
-u0 = [0.0, 2.0, 0.05, 0., 0., 0.0]
+u0 = [0.0, 2.0, 0.15, 0., 0., 0.0]
 x0 = q0 + u0
 
 # Integration time
@@ -59,6 +59,7 @@ scene = display(title='Rigid body animation @ %0.2f realtime'%k, width=800, heig
 N = [arrow(pos=(0,0,0),axis=(.1,0,0),length=0.01,color=red),
      arrow(pos=(0,0,0),axis=(0,.1,0),length=0.01,color=green),
      arrow(pos=(0,0,0),axis=(0,0,.1),length=0.01,color=blue)]
+
 body = box(pos=CO[0, :], axis=C1[0, :3], up=C3[0,:3],\
         height=d, width=w, color=red)
 i = 1

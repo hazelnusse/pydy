@@ -15,9 +15,6 @@ C = N.rotate("C", 'BODY312', (q1, q2, q3), I=(I11, I22, I33, 0, 0, 0))
 # Locate the mass center
 CO = N.O.locate('CO', q4*N[1] + q5*N[2] + q6*N[3], mass=m)
 
-u_defs = [Eq(u_list[i-1], dot(C.ang_vel(), C[i])) for i in (1, 2, 3)] + \
-        [Eq(u_list[i-1], dot(CO.vel(), N[i-3])) for i in (4, 5, 6)]
-
 # Define the generalized speeds
 u_defs = N.define_speeds(
         [Eq(u_list[i-1], dot(C.ang_vel(), C[i])) for i in (1, 2, 3)] + \

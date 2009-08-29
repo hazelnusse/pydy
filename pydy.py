@@ -788,6 +788,14 @@ class Vector(Basic):
         return Vector(dict([(k, self.dict[k].subs(subs_dict)) for k in
             self.dict]))
 
+    def expandv(self):
+        """Expands each coefficient of a Vector's UnitVectors
+        """
+        ex = {}
+        for uv, c in self.dict.items():
+            ex[uv] = c.expand()
+        return Vector(ex)
+
 class Point(object):
     """
     A class for keeping track of the relative position, velocity, and
@@ -956,8 +964,11 @@ class Point(object):
 
         v = Vector(0)
         if point == frame == None:
-            for p in self.point_list:
-                v += p._vrel
+            if hasattr(self, 'abs_vel'):
+                return self.abs_vel
+            else:
+                for p in self.point_list:
+                    v += p._vrel
         elif isinstance(point, Point) and isinstance(frame, ReferenceFrame):
             # Get the point list from point to self
             point_list = point.get_point_list(self)
@@ -989,25 +1000,32 @@ class Point(object):
 
         a = Vector(0)
         if point == frame == None:
-            for p in self.point_list:
-                a += p._arel
+            if hasattr(self, 'abs_acc'):
+                return self.abs_acc
+            else:
+                for p in self.point_list:
+                    a += p._arel
         elif isinstance(point, Point) and isinstance(frame, ReferenceFrame):
-            # Get the point list from point to self
-            point_list = point.get_point_list(self)
-            for i, pa in enumerate(point_list[:-1]):
-                pb = point_list[i+1]
-                set_intersect = pa._fixedin & pb._fixedin
-                # Case when the two points are not fixed in the same frame
-                if len(set_intersect) == 0:
-                    a += dt(pb.vel(pa), frame)
-                # Case when the two points are fixed in the same frame
-                elif len(set_intersect) == 1:
-                    a += cross(set_intersect.pop().ang_vel(frame),
-                            pb._vrel)
-                else:
-                    raise NotImplementedError('Somehow these two points are \
-                        both fixed in 2 or more of the same frames')
-        return a
+            if isinstance(frame, NewtonianReferenceFrame) and hasattr(self,
+                    'abs_acc'):
+                return self.abs_acc
+            else:
+                # Get the point list from point to self
+                point_list = point.get_point_list(self)
+                for i, pa in enumerate(point_list[:-1]):
+                    pb = point_list[i+1]
+                    set_intersect = pa._fixedin & pb._fixedin
+                    # Case when the two points are not fixed in the same frame
+                    if len(set_intersect) == 0:
+                        a += dt(pb.vel(pa), frame)
+                    # Case when the two points are fixed in the same frame
+                    elif len(set_intersect) == 1:
+                        a += cross(set_intersect.pop().ang_vel(frame),
+                                pb._vrel)
+                    else:
+                        raise NotImplementedError('Somehow these two points are \
+                            both fixed in 2 or more of the same frames')
+            return a
 
     def get_point_list(self, other=None):
         """
@@ -1381,16 +1399,19 @@ class ReferenceFrame(object):
         if frame == self:
             return Vector(0)
         else:
-            if frame == None: frame = self.NewtonianReferenceFrame
-            om = Vector(0)
-            fl = frame.get_frames_list(self)
-            n = len(fl)
-            for i, f in enumerate(fl[:-1]):
-                if f == fl[i+1].parentframe:
-                    om += fl[i+1]._wrel
-                else:
-                    om -= fl[i]._wrel
-        return om
+            if hasattr(self, 'abs_ang_vel'):
+                return self.abs_ang_vel
+            else:
+                if frame == None: frame = self.NewtonianReferenceFrame
+                om = Vector(0)
+                fl = frame.get_frames_list(self)
+                n = len(fl)
+                for i, f in enumerate(fl[:-1]):
+                    if f == fl[i+1].parentframe:
+                        om += fl[i+1]._wrel
+                    else:
+                        om -= fl[i]._wrel
+            return om
 
     def ang_acc(self, frame=None):
         """Angular acceleration relative to another frame.
@@ -1400,15 +1421,18 @@ class ReferenceFrame(object):
             return Vector(0)
         else:
             if frame == None: frame = self.NewtonianReferenceFrame
-            alpha = Vector(0)
-            fl = frame.get_frames_list(self)
-            n = len(fl)
-            for i, f in enumerate(fl[:-1]):
-                if f == fl[i+1].parentframe:
-                    alpha += fl[i+1]._alpharel
-                else:
-                    alpha -= fl[i]._alpharel
-        return alpha
+            if hasattr(self, 'abs_ang_acc'):
+                return self.abs_ang_acc
+            else:
+                alpha = Vector(0)
+                fl = frame.get_frames_list(self)
+                n = len(fl)
+                for i, f in enumerate(fl[:-1]):
+                    if f == fl[i+1].parentframe:
+                        alpha += fl[i+1]._alpharel
+                    else:
+                        alpha -= fl[i]._alpharel
+            return alpha
 
     def get_omega_list(self, frame):
         """
@@ -1457,7 +1481,7 @@ class NewtonianReferenceFrame(ReferenceFrame):
         self.csqrd_dict = {}
         self.crossterms = set([])
 
-    def setkindiffs(self, expr_dict, dependent_speeds=None):
+    def setkindiffs(self, expr_dict, dependent_speeds=None, acc=True):
         """Recursivly apply kinematic differential equations to velocity and
         angular velocity expressions of every Point and ReferenceFrame,
         respectively.
@@ -1487,7 +1511,7 @@ class NewtonianReferenceFrame(ReferenceFrame):
                     self.trig_func_set.update(coss)
                     self.cos_func_set.update(coss)
         else:
-            self.independent_speeds = self.u_list
+            self.u_independent = self.u_list
 
         for c in self.cos_func_set:
             if c**2 not in self.csqrd_dict:
@@ -1499,8 +1523,10 @@ class NewtonianReferenceFrame(ReferenceFrame):
 
         # Form angular accelerations of ReferenceFrames and accelerations of
         # Points
-        self.recursive_acc(self)
-        self.recursive_acc(self.O)
+        if acc == True:
+            self.recursive_acc(self)
+            self.recursive_acc(self.O)
+
 
     def setdyndiffs(self, eqns):
         """
@@ -1542,7 +1568,8 @@ class NewtonianReferenceFrame(ReferenceFrame):
                         closest.ang_acc(self).cross(PorF.rel(
                         PorF.parentpoint)))
         elif isinstance(PorF, ReferenceFrame):
-            PorF._alpharel = PorF._wrel.subs(self.kindiffs).dt(PorF.NewtonianReferenceFrame)
+            #PorF._alpharel = PorF._wrel.dt(PorF.NewtonianReferenceFrame).subs(self.kindiffs)
+            PorF._alpharel = PorF._wrel.dt(PorF.NewtonianReferenceFrame)
 
         #  Initiate recursion
         if PorF.children == []:
@@ -1575,22 +1602,22 @@ class NewtonianReferenceFrame(ReferenceFrame):
             # Case when the system has no constraints
             pvrel = PorF._vrel.partials(self.u_list)
             #PorF._partialvrel = pvrel
-            if hasattr(self, 'dependent_speeds'):
+            if hasattr(self, 'u_dependent'):
                 pvrelc = [pvrel[i] for i in self.independent_ci]
                 pvreld = Matrix([pvrel[i] for i in self.dependent_ci]).T
                 con = matrixv_multiply(pvreld,\
-                        self.dependent_speed_transform).tolist()[0]
+                        self.u_dependent_transform).tolist()[0]
                 PorF._partialvrel = [pvrelc[i] + con[i] for i in range(len(con))]
             else:
                 PorF._partialvrel = pvrel
         elif isinstance(PorF, ReferenceFrame):
             pwrel = PorF._wrel.partials(self.u_list)
             #PorF._partialwrel = pwrel
-            if hasattr(self, 'dependent_speeds'):
+            if hasattr(self, 'u_dependent'):
                 pwrelc = [pwrel[i] for i in self.independent_ci]
                 pwreld = Matrix([pwrel[i] for i in self.dependent_ci]).T
                 con = matrixv_multiply(pwreld,\
-                        self.dependent_speed_transform).tolist()[0]
+                        self.u_dependent_transform).tolist()[0]
                 PorF._partialwrel = [pwrelc[i] + con[i] for i in range(len(con))]
             else:
                 PorF._partialwrel = pwrel
@@ -1637,8 +1664,10 @@ class NewtonianReferenceFrame(ReferenceFrame):
         u_list, u_list, udot_list = gcs(string, number, lst)
         self.u_list = u_list
         self.udot_list = udot_list
-        self.independent_speeds = u_list
+        self.u_independent = u_list
+        self.u_dependent = []
         self.udot_independent = udot_list
+        self.udot_dedependent = []
         # Generate lists of Symbol objects instead of Function objects
         self.u_list_s = [Symbol(str(u.func)) for u in u_list]
         self.udot_list_s = [Symbol(str(u.func)+'p') for u in u_list]
@@ -1670,7 +1699,100 @@ class NewtonianReferenceFrame(ReferenceFrame):
         self.parameter_list = symbols(string)
         return self.parameter_list
 
-    def impose_constraints(self, eqns, dependent, method='ADJ'):
+    def form_constraint_matrix(self, eqns, linear_terms):
+        """Form the matrix associated with linear motion constraint
+        equations."""
+        m = len(eqns)
+        n = len(linear_terms)
+        B = zeros((m, n))
+        d = {}
+        for i in range(m):
+            for j in range(n):
+                bij = eqns[i].lhs.expand().coeff(self.u_list[j])
+
+                if bij is not None:
+                    B[i, j] = bij
+        return B
+
+    def form_speed_transform_matrix(self, B, dependent, ret_adj_det=False):
+        """Form the matrix transform between independent and dependent speeds.
+
+        Linear velocity constraints can be written as:
+        B*u = 0
+        Bd*ud + Bi*ui = 0
+
+        so:
+
+        ud = -inv(Bd)*Bi*ui
+           = -1/det(Bd)*adj(Bd)*Bi*ui
+           = T*ui
+
+        Returns T.
+
+        If optional keyword argument ret_adj_det==True, also return
+        -adj(Bd) and det(Bd) so that further simplification is possible by the
+        user.
+        """
+        m, n = B.shape
+        md = len(dependent)
+        if m != md:
+            raise ValueError('Number of equations must equal number of\
+                dependent speeds.')
+        independent_ci = []
+        dependent_ci = []
+        try:
+            for ud in dependent:
+                dependent_ci.append(self.u_list.index(ud))
+            dependent_ci.sort()
+            independent_ci = list(set(range(n)) - set(dependent_ci))
+            independent_ci.sort()
+        except ValueError:
+            print('Each of the dependent speeds must be in the speed list used\
+                in the declare_speeds.')
+        # Assign the dependent and independent speeds
+        self.u_dependent = [self.u_list[jd] for jd in dependent_ci]
+        self.u_independent = [self.u_list[ji] for ji in independent_ci]
+        # Independent and dependent column indices of self.ulist and
+        # self.udot_list
+        self.independent_ci = independent_ci
+        self.dependent_ci = dependent_ci
+        self.udot_dependent = [self.udot_list[i] for i in dependent_ci]
+        self.udot_independent = [self.udot_list[i] for i in independent_ci]
+
+        # Put the equations in Matrix form and create a matrix with dummy
+        # symbols representing non-zero entries
+        B_dummy = zeros((m, n))
+        d = {}
+        for i in range(m):
+            for j in range(n):
+                if B[i, j] != 0:
+                    dummy_sym = Symbol('B%d%d'%(i,j), dummy=True)
+                    d[dummy_sym] = B[i, j]
+                    B_dummy[i, j] = dummy_sym
+
+        # Generate the independent and dependent matrices
+        # i.e. Bd * ud + Bi * ui = 0
+        # Where Bd is m x m and Bi is m x (n-m)
+        Bd = zeros((m, m))
+        Bi = zeros((m, n-m))
+        for j, jd in enumerate(dependent_ci):
+            Bd[:, j] = B_dummy[:, jd]
+        for j, ji in enumerate(independent_ci):
+            Bi[:, j] = B_dummy[:, ji]
+
+        # Invert the Bd matrix and determine the dependent speeds
+        # ud = -inv(Bd) * Bi * ui = T * ui
+        # inv(Bd) = adjugate(Bd) / det(Bd)
+        BdaBi = -(Bd.adjugate() * Bi).subs(d).expand().subs(self.csqrd_dict).expand()
+        Bd_det = Bd.det().subs(d).expand().subs(self.csqrd_dict).expand()
+        assert Bd_det != 0, "Constraint equations are singular."
+        T = BdaBi / Bd_det
+        if ret_adj_det:
+            return T, BdaBi, Bd_det
+        else:
+            return T
+
+    def impose_constraints(self, eqns, dependent, method='ADJ', trig_subs=True):
         """Form the constraint matrix associated with linear velocity
         constraints.
 
@@ -1706,8 +1828,10 @@ class NewtonianReferenceFrame(ReferenceFrame):
             print('Each of the dependent speeds must be in the speed list used\
                 in the declare_speeds.')
         # Assign the dependent and independent speeds
-        self.dependent_speeds = [self.u_list[jd] for jd in dependent_ci]
-        self.independent_speeds = [self.u_list[ji] for ji in independent_ci]
+        self.u_dependent = [self.u_list[jd] for jd in dependent_ci]
+        self.u_independent = [self.u_list[ji] for ji in independent_ci]
+        # Independent and dependent column indices of self.ulist and
+        # self.udot_list
         self.independent_ci = independent_ci
         self.dependent_ci = dependent_ci
         self.udot_dependent = [self.udot_list[i] for i in dependent_ci]
@@ -1720,12 +1844,17 @@ class NewtonianReferenceFrame(ReferenceFrame):
         d = {}
         for i in range(m):
             for j in range(n):
-                bij = eqns[i].lhs.expand().coeff(self.u_list[j])
+                if trig_subs:
+                    bij = eqns[i].lhs.expand().subs(self.csqrd_dict).expand().coeff(self.u_list[j])
+                else:
+                    bij = eqns[i].lhs.expand().coeff(self.u_list[j])
+
                 if bij is not None:
-                    dummy_sym = Symbol('a', dummy=True)
+                    dummy_sym = Symbol('a%d%d'%(i,j), dummy=True)
                     d[dummy_sym] = bij
                     B[i, j] = bij
                     B_dummy[i, j] = dummy_sym
+        self.constraint_matrix = B
 
         # Generate the independent and dependent matrices
         # i.e. Bd * ud + Bi * ui = 0
@@ -1738,23 +1867,69 @@ class NewtonianReferenceFrame(ReferenceFrame):
             Bi[:, j] = B_dummy[:, ji]
 
         # Invert the Bd matrix and determine the dependent speeds
-        # ud = -inv(Bd) * Bi * ui
-        Bdinv = Bd.inv(method=method)
-        T = - (Bdinv * Bi).subs(d)
+        # ud = -inv(Bd) * Bi * ui = T * ui
+        # inv(Bd) = adjugate(Bd) / det(Bd)
+        BdaBi = -(Bd.adjugate() * Bi).subs(d).expand().subs(self.csqrd_dict).expand()
+        Bd_det = Bd.det().subs(d).expand().subs(self.csqrd_dict).expand()
+        assert Bd_det != 0, "Constraint equations are singular."
+        T = BdaBi / Bd_det
+        self.u_dependent_transform = T
+
         # Create dictionary for dependent speeds
-        dep = {}
-        for i, u in enumerate(dependent):
-            dep[u] = (T[i, :] * Matrix(self.independent_speeds))[0]
-        self.constraint_matrix = B
-        self.dependent_speeds_eqs = dep
-        self.dependent_speed_transform = T
-        return B, T, dep
+        ud = {}
+        ui = Matrix(self.u_independent)
+        uidot = Matrix(self.udot_independent)
+        #T_ui = T*ui
+        for i, ud_i in enumerate(self.u_dependent):
+            s = 0
+            for j, ui_j in enumerate(self.u_independent):
+                s += BdaBi[i, j] * ui_j
+            ud[ud_i] = s / Bd_det
+        self.u_dependent_eqs = ud
+
+        # Compute the time derivatives of the dependent speeds.
+        # Hand code the quotient rule so that we can prevent so much
+        # unnecessary expansion from occuring.  All entries in the T matrix are
+        # of the form num / den, where num comes from -Bd.adjugate()*Bi and
+        # den from the determinant of Bd
+        ud_dot = {}
+        T_dot = zeros(T.shape)
+        T_dot_no_qdot = zeros(T.shape)
+        Bd_det_dot = Bd_det.diff(t)
+        #print Bd_det_dot
+        #print self.kindiffs
+        #Bd_det_dot_no_qdot =\
+        #    Bd_det_dot.subs(self.csqrd_dict).expand().subs(self.kindiffs).expand()#.subs(self.csqrd_dict).expand()
+        #print Bd_det_dot_no_qdot
+        #stop
+        for i in range(T.shape[0]):
+            for j in range(T.shape[1]):
+                BdaBi_ij = BdaBi[i,j]
+                BdaBi_ij_dot = BdaBi_ij.diff(t)
+                T_dot[i, j] = (BdaBi_ij_dot*Bd_det - BdaBi_ij*Bd_det_dot) / (Bd_det**2)
+                #T_dot_no_qdot[i, j] =\
+                #    (BdaBi_ij_dot.subs(self.kindiffs).expand()*Bd_det - \
+                #     BdaBi_ij*Bd_det_dot_no_qdot) / (Bd_det**2)
+        self.u_dependent_transform_dot = T_dot
+        #self.u_dependent_transform_dot_no_qdot = T_dot_no_qdot
+
+        # Create a dictionary for dependent speeds time derivatives
+        ud_dot = {}
+        #ud_dot_no_qdot = {}
+        Tdot_ui_plus_T_uidot = T_dot*ui + T*uidot
+        #Tdot_ui_plus_T_uidot_noqdot = T_dot_no_qdot*ui + T*uidot
+        for i, u_dot in enumerate(self.udot_independent):
+            ud_dot[u_dot] = Tdot_ui_plus_T_uidot[i]
+            #ud_dot_no_qdot[u_dot] = Tdot_ui_plus_T_uidot[i]
+
+        return B, T, T_dot, ud, ud_dot
+        #return B, T, T_dot, T_dot_no_qdot, ud, ud_dot, ud_dot_no_qdot
 
     def frstar(self):
         """Computes the generalized inertia forces of the system.
         """
-        self.mass_matrix = zeros((len(self.independent_speeds),
-            len(self.independent_speeds)))
+        self.mass_matrix = zeros((len(self.u_independent),
+            len(self.u_independent)+len(self.u_dependent)))
         self.recursive_frstar(self.O)
         self.recursive_frstar(self)
 
@@ -1768,9 +1943,11 @@ class NewtonianReferenceFrame(ReferenceFrame):
             if PorF.mass == 0:
                 PorF.gen_inertia_force = [(0, 0)] * len(self.u_list)
             else:
+                # Compute the generalized inertia forces
                 gifs = [-PorF.mass * PorF.acc().dot(pv)
                         for pv in PorF.partialv]
                 gif_ud_gyro = []
+                # Split them up into terms involving u' and u*u
                 for i, gif in enumerate(gifs):
                     if hasattr(self, 'udot_dependent'):
                         ud_d_terms = [gif.coeff(ud_d) for ud_d in self.udot_dependent]
@@ -1794,7 +1971,7 @@ class NewtonianReferenceFrame(ReferenceFrame):
         elif isinstance(PorF, ReferenceFrame):
             if not hasattr(PorF, 'partialw'): self._partialw(PorF)
             if PorF.inertia == Inertia(self, (0,0,0,0,0,0)):
-                PorF.gen_inertia_force = [(0, 0)] * len(self.independent_speeds)
+                PorF.gen_inertia_force = [(0, 0)] * len(self.u_independent)
             else:
                 alph = PorF.ang_acc()
                 I = PorF.inertia
@@ -1836,14 +2013,14 @@ class NewtonianReferenceFrame(ReferenceFrame):
         if isinstance(PorF, Point):
             if not hasattr(PorF, 'partialv'): self._partialv(PorF)
             if PorF.force == Vector(0):
-                PorF.gen_active_force = [0] * len(self.independent_speeds)
+                PorF.gen_active_force = [0] * len(self.u_independent)
             else:
                 PorF.gen_active_force = [PorF.force.dot(pv) for pv in
                     PorF.partialv]
         elif isinstance(PorF, ReferenceFrame):
             if not hasattr(PorF, 'partialw'): self._partialw(PorF)
             if PorF.torque == Vector(0):
-                PorF.gen_active_force = [0] * len(self.independent_speeds)
+                PorF.gen_active_force = [0] * len(self.u_independent)
             else:
                 PorF.gen_active_force = [PorF.torque.dot(pw) for pw in
                     PorF.partialw]
@@ -1861,21 +2038,25 @@ class NewtonianReferenceFrame(ReferenceFrame):
         """Computes the r absolute partial velocities of a point
         """
         if point.parentpoint == None:
-            point.partialv = [Vector(0)] * len(self.independent_speeds)
+            point.partialv = [Vector(0)] * len(self.u_independent)
+        elif hasattr(point, 'abs_vel'):
+            point.partialv = point.abs_vel.partials(self.u_list)
         else:
             point.partialv = [Vector(point.parentpoint.partialv[r] +\
                     point._partialvrel[r]) for r in \
-                    range(len(self.independent_speeds))]
+                    range(len(self.u_independent))]
 
     def _partialw(self, frame):
         """Computes the r absolute partial velocities of a ReferenceFrame
         """
         if frame.parentframe == None:
-            frame.partialw = [Vector(0)] * len(self.independent_speeds)
+            frame.partialw = [Vector(0)] * len(self.u_independent)
+        elif hasattr(frame, 'abs_ang_vel'):
+            frame.partialw = frame.abs_ang_vel.partials(self.u_list)
         else:
             frame.partialw = [Vector(frame.parentframe.partialw[r] +
                     frame._partialwrel[r]) for r in \
-                    range(len(self.independent_speeds))]
+                    range(len(self.u_independent))]
 
     def set_nhc_eqns(self, *args):
         """Assigns nonholonomic constraint equations, forms constraint matrix.
@@ -1917,8 +2098,10 @@ class NewtonianReferenceFrame(ReferenceFrame):
         side and everything else on the opposite side.
         """
         self.fr()
+        raw_input('Active forces computes press enter')
         self.frstar()
-        p = len(self.independent_speeds)
+        raw_input('Inertia forces computes press enter')
+        p = len(self.u_independent)
         self.kanes_equations = []
         for i in range(p):
             self.kanes_equations.append([0,0])
@@ -1979,7 +2162,7 @@ class NewtonianReferenceFrame(ReferenceFrame):
         return dyndiffs
 
     def recursive_eoms(self, PorF):
-        for r in range(len(self.independent_speeds)):
+        for r in range(len(self.u_independent)):
             self.kanes_equations[r][0] += PorF.gen_inertia_force[r][0]
             self.kanes_equations[r][1] += -PorF.gen_inertia_force[r][1] - PorF.gen_active_force[r]
         if PorF.children == []:
@@ -2030,11 +2213,11 @@ class NewtonianReferenceFrame(ReferenceFrame):
 
         dxdt_list = ""
 
-        if hasattr(self, 'dependent_speeds'):
+        if hasattr(self, 'u_dependent'):
             ode_func_string += '    # Dependent generalized speeds\n'
-            for u in self.dependent_speeds:
+            for u in self.u_dependent:
                 ode_func_string += '    ' + str(u) + ' = ' +\
-                    str(self.dependent_speeds_eqs[u].subs(self.qdot_list_dict)) + '\n'
+                    str(self.u_dependent_eqs[u].subs(self.qdot_list_dict)) + '\n'
 
         ode_func_string += '    # Kinematic differential equations\n'
         qdl = []
