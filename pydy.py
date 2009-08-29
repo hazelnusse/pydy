@@ -2206,6 +2206,8 @@ class NewtonianReferenceFrame(ReferenceFrame):
                         Md_dummy[i, j_d] = dummy
                         d[dummy] = mm_ij
                     j_d += 1
+                j_i = 0
+                j_d = 0
             # Kanes equations as we generate them are of the form:
             # Fr* = -Fr
             # Mi*ui' + Md*ud' = -Fr
@@ -2215,26 +2217,50 @@ class NewtonianReferenceFrame(ReferenceFrame):
             # So we just need to invert (Mi+Md*T), and multiply by everything
             # on the right hand side.
             T_dummy = zeros((m, n-m))
+            Tdot_dummy = zeros((m, n-m))
             for i in range(m):
                 for j in range(n-m):
                     T_ij = self.u_dependent_transform[i,j]
+                    T_ij_dot = self.u_dependent_transform_dot[i,j]
                     if T_ij != 0:
                         dummy = Symbol('T%d%d'%(i,j), dummy=True)
                         T_dummy[i, j] = dummy
                         d[dummy] = T_ij
+                    if T_ij_dot != 0:
+                        dummy = Symbol('Tdot%d%d'%(i,j), dummy=True)
+                        Tdot_dummy[i, j] = dummy
+                        d[dummy] = T_ij_dot
+
             Mi_plus_Md_T = Mi_dummy + Md_dummy*T_dummy
             Mi_plus_Md_T_adj = Mi_plus_Md_T.adjugate()
             Mi_plus_Md_T_det = Mi_plus_Md_T.det()
             assert Mi_plus_Md_T_det != 0, "Mass matrix inversion is singular"
+            Md_T_dot_ui = Md_dummy*Tdot_dummy*Matrix(self.u_independent)
+            Fr = Matrix([-self.kanes_equations[k].rhs for k in range(m)])
+            Fr_dummy = zeros(Fr.shape)
+            for i in range(m):
+                dummy = Symbol('Fr%d'%i, dummy=True)
+                Fr_dummy[i] = dummy
+                d[dummy] = Fr[i]
+
+            Fr_Md_Tdot_ui = Fr_dummy + Md_T_dot_ui
+            # These are the expression for the udots, without the determinant
+            dyndiff_vec = -Mi_plus_Md_T_adj*Fr_Md_Tdot_ui
+
+            dyndiffs = {}
+            det = Mi_plus_Md_T_det.subs(d)
+            for i, ud in enumerate(self.udot_independent):
+                dyndiffs[ud] = dyndiffs_vec[i].subs(d) / det
+            return dyndiffs
 
 
 
     def recursive_eoms(self, PorF):
         for r in range(len(self.u_independent)):
-            #self.kanes_equations[r][0] += PorF.gen_inertia_force[r][0]
+            # Term on the left hand side of Fr* = -Fr
             self.kanes_equations[r][0] += PorF.gen_inertia_force[r][0] +\
                 PorF.gen_inertia_force[r][1]
-            #self.kanes_equations[r][1] += -PorF.gen_inertia_force[r][1] - PorF.gen_active_force[r]
+            # Term on the right hand side of Fr* = -Fr
             self.kanes_equations[r][1] +=  -PorF.gen_active_force[r]
         if PorF.children == []:
             return

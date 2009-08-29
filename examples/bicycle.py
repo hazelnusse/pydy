@@ -186,6 +186,5 @@ N.gravity(g*N[3])
 
 # Form Kane's equations and solve them for the udots
 kanes_eqns = N.form_kanes_equations()
-stop
 
 dyndiffs = N.solve_kanes_equations()
