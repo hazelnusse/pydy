@@ -1399,18 +1399,19 @@ class ReferenceFrame(object):
         if frame == self:
             return Vector(0)
         else:
-            if hasattr(self, 'abs_ang_vel'):
-                return self.abs_ang_vel
-            else:
-                if frame == None: frame = self.NewtonianReferenceFrame
-                om = Vector(0)
-                fl = frame.get_frames_list(self)
-                n = len(fl)
-                for i, f in enumerate(fl[:-1]):
-                    if f == fl[i+1].parentframe:
-                        om += fl[i+1]._wrel
-                    else:
-                        om -= fl[i]._wrel
+            if frame == None:
+                if hasattr(self, 'abs_ang_vel'):
+                    return self.abs_ang_vel
+                else:
+                    frame = self.NewtonianReferenceFrame
+            om = Vector(0)
+            fl = frame.get_frames_list(self)
+            n = len(fl)
+            for i, f in enumerate(fl[:-1]):
+                if f == fl[i+1].parentframe:
+                    om += fl[i+1]._wrel
+                else:
+                    om -= fl[i]._wrel
             return om
 
     def ang_acc(self, frame=None):
@@ -1600,27 +1601,23 @@ class NewtonianReferenceFrame(ReferenceFrame):
         # Substitute into appropriate velocity/angular velocity
         if isinstance(PorF, Point):
             # Case when the system has no constraints
-            pvrel = PorF._vrel.partials(self.u_list)
-            #PorF._partialvrel = pvrel
+            pv = PorF.vel().partials(self.u_list)
             if hasattr(self, 'u_dependent'):
-                pvrelc = [pvrel[i] for i in self.independent_ci]
-                pvreld = Matrix([pvrel[i] for i in self.dependent_ci]).T
-                con = matrixv_multiply(pvreld,\
-                        self.u_dependent_transform).tolist()[0]
-                PorF._partialvrel = [pvrelc[i] + con[i] for i in range(len(con))]
+                pv_i = [pv[i] for i in self.independent_ci]
+                pv_d = Matrix([pv[i] for i in self.dependent_ci]).T
+                con = matrixv_multiply(pv_d, self.u_dependent_transform).tolist()[0]
+                PorF.partialv = [pv_i[i] + con[i] for i in range(len(con))]
             else:
-                PorF._partialvrel = pvrel
+                PorF.partialv = pv
         elif isinstance(PorF, ReferenceFrame):
-            pwrel = PorF._wrel.partials(self.u_list)
-            #PorF._partialwrel = pwrel
+            pw = PorF.ang_vel().partials(self.u_list)
             if hasattr(self, 'u_dependent'):
-                pwrelc = [pwrel[i] for i in self.independent_ci]
-                pwreld = Matrix([pwrel[i] for i in self.dependent_ci]).T
-                con = matrixv_multiply(pwreld,\
-                        self.u_dependent_transform).tolist()[0]
-                PorF._partialwrel = [pwrelc[i] + con[i] for i in range(len(con))]
+                pw_i = [pw[i] for i in self.independent_ci]
+                pw_d = Matrix([pw[i] for i in self.dependent_ci]).T
+                con = matrixv_multiply(pw_d, self.u_dependent_transform).tolist()[0]
+                PorF.partialw = [pw_i[i] + con[i] for i in range(len(con))]
             else:
-                PorF._partialwrel = pwrel
+                PorF.partialw = pw
         else:
             raise NotImplementedError()
 
@@ -1677,7 +1674,7 @@ class NewtonianReferenceFrame(ReferenceFrame):
             for uj in u_list:
                 self.crossterms.update(set([ui*uj]))
         self.crossterms = list(self.crossterms)
-
+        self.crossterms.sort()
         # Generate substitution dictionaries between Symbol and Function
         # representation of the coordinates, generalized speeds, and their
         # respective time derivatives
@@ -1714,7 +1711,12 @@ class NewtonianReferenceFrame(ReferenceFrame):
                     B[i, j] = bij
         return B
 
-    def form_speed_transform_matrix(self, B, dependent)
+    def set_constraint_matrix(self, B):
+        """Sets the linear speed constraint matrix.
+        """
+        self.constraint_matrix = B
+
+    def form_speed_transform_matrix(self, B, dependent):
         """Form the matrix transform between independent and dependent speeds.
 
         Linear velocity constraints can be written as:
@@ -1784,6 +1786,49 @@ class NewtonianReferenceFrame(ReferenceFrame):
         assert Bd_det != 0, "Constraint equations are singular."
         return BdaBi, Bd_det
 
+    def set_speed_transform_matrix(self, adj, det):
+        """Set the speed transform matrix, form dependent speed expressions and
+        their time derivatives.
+
+        Returns the dependent speeds and their time derivatives in dictionary
+        form.
+        """
+        # Create dictionary for dependent speeds
+        ud = {}
+        for i, ud_i in enumerate(self.u_dependent):
+            s = 0
+            for j, ui_j in enumerate(self.u_independent):
+                s += adj[i, j] * ui_j
+            ud[ud_i] = s / det
+        self.u_dependent_eqs = ud
+        T = adj / det
+        self.u_dependent_transform = T
+
+        # Compute the time derivatives of the dependent speeds.
+        # Hand code the quotient rule so that we can prevent so much
+        # unnecessary expansion from occuring.  All entries in the T matrix are
+        # of the form num / den, where num comes from -Bd.adjugate()*Bi and
+        # den from the determinant of Bd
+        # T_dot is needed to form the independent speed differential equations
+        T_dot = zeros(adj.shape)
+        det_dot = det.diff(t)
+        for i in range(adj.shape[0]):
+            for j in range(adj.shape[1]):
+                adj_ij = adj[i,j]
+                adj_ij_dot = adj_ij.diff(t)
+                T_dot[i, j] = (adj_ij_dot*det - adj_ij*det_dot) / (det**2)
+        self.u_dependent_transform_dot = T_dot
+        """
+        # Create a dictionary for dependent speeds time derivatives
+        ud_dot = {}
+        ui = Matrix(self.u_independent)
+        ui_dot = Matrix(self.udot_independent)
+        Tdot_ui_plus_T_uidot = T_dot*ui + T*ui_dot
+        for i, u_dot in enumerate(self.udot_dependent):
+            ud_dot[u_dot] = Tdot_ui_plus_T_uidot[i]
+        """
+        return ud # , ud_dot
+
     def impose_constraints(self, eqns, dependent, method='ADJ', trig_subs=True):
         """Form the constraint matrix associated with linear velocity
         constraints.
@@ -1805,8 +1850,7 @@ class NewtonianReferenceFrame(ReferenceFrame):
         set_constraint_matrix
         form_speed_transform_matrix
         set_speed_transform_matrix
-        form_dependent_speeds
-        set_dependent_speeds
+
         """
         #  Check to make sure the user passes compatible equations and
         #  determine the columns associated with the independent and dependent
@@ -1940,56 +1984,70 @@ class NewtonianReferenceFrame(ReferenceFrame):
         and rigid body in the system.
         """
         if isinstance(PorF, Point):
-            if not hasattr(PorF, 'partialv'): self._partialv(PorF)
             if PorF.mass == 0:
-                PorF.gen_inertia_force = [(0, 0)] * len(self.u_list)
+                PorF.gen_inertia_force = [(0, 0)] * len(self.u_independent)
             else:
                 # Compute the generalized inertia forces
-                gifs = [-PorF.mass * PorF.acc().dot(pv)
-                        for pv in PorF.partialv]
+                acc = PorF.acc()
+                acc_udot_coefs = []
+                acc_gyro_coefs = []
                 gif_ud_gyro = []
-                # Split them up into terms involving u' and u*u
-                for i, gif in enumerate(gifs):
-                    if hasattr(self, 'udot_dependent'):
-                        ud_d_terms = [gif.coeff(ud_d) for ud_d in self.udot_dependent]
-                        s_ud_d = 0
-                        for c, ud_d in zip(ud_d_terms, self.udot_dependent):
-                            if c is not None: s_ud_d += c*ud_d
-                    else:
-                        s_ud_d = 0
+                for ud in self.udot_list:
+                    acc_udot_coefs.append(acc.coeffv(ud))
+                for uu in self.crossterms:
+                    acc_gyro_coefs.append(acc.coeffv(uu))
 
-                    ud_i_terms = [gif.coeff(ud_i) for ud_i in self.udot_independent]
-                    gyro_terms = [gif.coeff(ct) for ct in self.crossterms]
-
+                for i, pv in enumerate(PorF.partialv):
+                    # Increment the mass matrix
                     s_ud_i = 0
+                    s_ud_d = 0
                     s_gyro = 0
-                    for c, ud_i in zip(ud_i_terms, self.udot_independent):
-                        if c is not None: s_ud_i += c*ud_i
-                    for c, uu in zip(gyro_terms, self.crossterms):
-                        if c is not None: s_gyro += c*uu
+                    for j, acc_udot_coef in enumerate(acc_udot_coefs):
+                        if acc_udot_coef != Vector(0):
+                            ud_coef = -PorF.mass*pv.dot(acc_udot_coef)
+                            self.mass_matrix[i, j] += ud_coef
+                            if j in self.independent_ci:
+                                s_ud_i += ud_coef*self.udot_list[j]
+                            elif j in self.dependent_ci:
+                                s_ud_d += ud_coef*self.udot_list[j]
+                    for j, acc_gyro_coef in enumerate(acc_gyro_coefs):
+                        if acc_gyro_coef != Vector(0):
+                            s_gyro += -PorF.mass*pv.dot(acc_gyro_coef)*self.crossterms[j]
                     gif_ud_gyro.append((s_ud_i, s_gyro+s_ud_d))
                 PorF.gen_inertia_force = gif_ud_gyro
         elif isinstance(PorF, ReferenceFrame):
-            if not hasattr(PorF, 'partialw'): self._partialw(PorF)
             if PorF.inertia == Inertia(self, (0,0,0,0,0,0)):
                 PorF.gen_inertia_force = [(0, 0)] * len(self.u_independent)
             else:
                 alph = PorF.ang_acc()
                 I = PorF.inertia
                 w = PorF.ang_vel()
-                gifs = [pw.dot(-alph.dot(I)
-                    - w.cross(I.rdot(w))) for pw in PorF.partialw]
+                inertia_torque = (-alph.dot(I)-w.cross(I.rdot(w))).expandv()
+                it_udot_coefs = []
+                it_gyro_coefs = []
                 gif_ud_gyro = []
-                for gif in gifs:
-                    ud_terms = [gif.coeff(ud) for ud in self.udot_independent]
-                    gyro_terms = [gif.coeff(ct) for ct in self.crossterms]
-                    s_ud = 0
+                for ud in self.udot_list:
+                    it_udot_coefs.append(inertia_torque.coeffv(ud))
+                for uu in self.crossterms:
+                    it_gyro_coefs.append(inertia_torque.coeffv(uu))
+
+                for i, pv in enumerate(PorF.partialw):
+                    # Increment the mass matrix
+                    s_ud_i = 0
+                    s_ud_d = 0
                     s_gyro = 0
-                    for c, ud in zip(ud_terms, self.udot_independent):
-                        if c is not None: s_ud += c*ud
-                    for c, ud in zip(gyro_terms, self.crossterms):
-                        if c is not None: s_gyro += c*ud
-                    gif_ud_gyro.append((s_ud, s_gyro))
+                    for j, it_udot_coef in enumerate(it_udot_coefs):
+                        if it_udot_coef != Vector(0):
+                            ud_coef = pv.dot(it_udot_coef)
+                            self.mass_matrix[i, j] += ud_coef
+                            if j in self.independent_ci:
+                                s_ud_i += ud_coef*self.udot_list[j]
+                            elif j in self.dependent_ci:
+                                s_ud_d += ud_coef*self.udot_list[j]
+                    for j, it_gyro_coef in enumerate(it_gyro_coefs):
+                        if it_gyro_coef != Vector(0):
+                            s_gyro += pv.dot(it_gyro_coef)*self.crossterms[j]
+                    gif_ud_gyro.append((s_ud_i, s_gyro+s_ud_d))
                 PorF.gen_inertia_force = gif_ud_gyro
         else:
             raise NotImplementedError()
@@ -2012,14 +2070,12 @@ class NewtonianReferenceFrame(ReferenceFrame):
         and rigid body in the system.
         """
         if isinstance(PorF, Point):
-            if not hasattr(PorF, 'partialv'): self._partialv(PorF)
             if PorF.force == Vector(0):
                 PorF.gen_active_force = [0] * len(self.u_independent)
             else:
                 PorF.gen_active_force = [PorF.force.dot(pv) for pv in
                     PorF.partialv]
         elif isinstance(PorF, ReferenceFrame):
-            if not hasattr(PorF, 'partialw'): self._partialw(PorF)
             if PorF.torque == Vector(0):
                 PorF.gen_active_force = [0] * len(self.u_independent)
             else:
@@ -2034,38 +2090,6 @@ class NewtonianReferenceFrame(ReferenceFrame):
         else:
             for child in PorF.children:
                 self.recursive_fr(child)
-
-    def _partialv(self, point):
-        """Computes the r absolute partial velocities of a point
-        """
-        if point.parentpoint == None:
-            point.partialv = [Vector(0)] * len(self.u_independent)
-        elif hasattr(point, 'abs_vel'):
-            point.partialv = point.abs_vel.partials(self.u_list)
-        else:
-            point.partialv = [Vector(point.parentpoint.partialv[r] +\
-                    point._partialvrel[r]) for r in \
-                    range(len(self.u_independent))]
-
-    def _partialw(self, frame):
-        """Computes the r absolute partial velocities of a ReferenceFrame
-        """
-        if frame.parentframe == None:
-            frame.partialw = [Vector(0)] * len(self.u_independent)
-        elif hasattr(frame, 'abs_ang_vel'):
-            frame.partialw = frame.abs_ang_vel.partials(self.u_list)
-        else:
-            frame.partialw = [Vector(frame.parentframe.partialw[r] +
-                    frame._partialwrel[r]) for r in \
-                    range(len(self.u_independent))]
-
-    def set_nhc_eqns(self, *args):
-        """Assigns nonholonomic constraint equations, forms constraint matrix.
-        """
-        for arg in args:
-            for eqn in arg:
-                self.nhc_eqns.append(eqn)
-        self.form_constraint_matrix()
 
     def gravity(self, v):
         """Applies a gravitational force to each particle and rigid body in the
@@ -2099,9 +2123,7 @@ class NewtonianReferenceFrame(ReferenceFrame):
         side and everything else on the opposite side.
         """
         self.fr()
-        raw_input('Active forces computes press enter')
         self.frstar()
-        raw_input('Inertia forces computes press enter')
         p = len(self.u_independent)
         self.kanes_equations = []
         for i in range(p):
@@ -2110,12 +2132,12 @@ class NewtonianReferenceFrame(ReferenceFrame):
         self.recursive_eoms(self)
         kes = []
         for i in range(p):
-            for j, ui in enumerate(self.udot_independent):
-                c = self.kanes_equations[i][0].coeff(ui)
-                if c is not None: self.mass_matrix[i, j] = c
+        #    for j, ui in enumerate(self.udot_independent):
+        #        c = self.kanes_equations[i][0].coeff(ui)
+        #        if c is not None: self.mass_matrix[i, j] = c
             kes.append(Eq(self.kanes_equations[i][0], self.kanes_equations[i][1]))
         self.kanes_equations = kes
-        return self.kanes_equations
+        return kes
 
     def solve_kanes_equations(self):
         """Solves Kane's equations by inverting the mass matrix.
@@ -2123,49 +2145,97 @@ class NewtonianReferenceFrame(ReferenceFrame):
         Returns a dictionary with the udots as the keys and the right hand side
         as the values.
         """
-        blocks = self.mass_matrix.get_diag_blocks()
-        dummy_blocks = []
-        d = {}
-        # Create a bunch of dummy blocks
-        for block in blocks:
-            dummy = zeros(block.shape)
-            for i in range(block.rows):
-                for j in range(block.cols):
-                    if block[i, j] != 0:
-                        s = Symbol('a%d%d'%(i,j), dummy=True)
-                        d[s] = block[i,j]
-                        dummy[i,j] = s
-            dummy_blocks.append(dummy)
+        m, n = self.mass_matrix.shape
+        if m == n:
+            blocks = self.mass_matrix.get_diag_blocks()
+            dummy_blocks = []
+            d = {}
+            # Create a bunch of dummy blocks
+            for block in blocks:
+                dummy = zeros(block.shape)
+                for i in range(block.rows):
+                    for j in range(block.cols):
+                        if block[i, j] != 0:
+                            s = Symbol('a%d%d'%(i,j), dummy=True)
+                            d[s] = block[i,j]
+                            dummy[i,j] = s
+                dummy_blocks.append(dummy)
 
-        # Invert each of the dummy blocks
-        inv_blocks = []
-        for block in dummy_blocks:
-            if block.shape == (1, 1):
-                bi = Matrix([1 / block[0]])
-            else:
-                bdet = block.det()
-                assert bdet != 0
-                bi = block.adjugate() / bdet
-            for i in range(bi.rows):
-                for j in range(bi.cols):
-                    if bi[i, j] != 0:
-                        num, den = bi[i, j].as_numer_denom()
-                        num = num.subs(d).expand()
-                        den = den.subs(d).expand()
-                        bi[i, j] = simplify(num/den)
-            inv_blocks.append(bi)
-        mass_matrix_inv = block_diag(inv_blocks)
-        soln = mass_matrix_inv * Matrix([ke.rhs for ke in\
-            self.kanes_equations])
-        dyndiffs = {}
-        for i, u in enumerate(self.udot_independent):
-            dyndiffs[u] = soln[i]
-        return dyndiffs
+            # Invert each of the dummy blocks
+            inv_blocks = []
+            for block in dummy_blocks:
+                if block.shape == (1, 1):
+                    bi = Matrix([1 / block[0]])
+                else:
+                    bdet = block.det()
+                    assert bdet != 0
+                    bi = block.adjugate() / bdet
+                for i in range(bi.rows):
+                    for j in range(bi.cols):
+                        if bi[i, j] != 0:
+                            num, den = bi[i, j].as_numer_denom()
+                            num = num.subs(d).expand()
+                            den = den.subs(d).expand()
+                            bi[i, j] = simplify(num/den)
+                inv_blocks.append(bi)
+            mass_matrix_inv = block_diag(inv_blocks)
+            soln = mass_matrix_inv * Matrix([ke.rhs for ke in\
+                self.kanes_equations])
+            dyndiffs = {}
+            for i, u in enumerate(self.udot_independent):
+                dyndiffs[u] = soln[i]
+            return dyndiffs
+        else:
+            Mi_dummy = zeros((m, n-m))
+            Md_dummy = zeros((m, n-m))
+            d = {}
+            j_i = 0
+            j_d = 0
+            for i in range(m):
+                for j in self.independent_ci:
+                    mm_ij = self.mass_matrix[i,j]
+                    if mm_ij != 0:
+                        dummy = Symbol('Mi%d%d'%(i,j), dummy=True)
+                        Mi_dummy[i, j_i] = dummy
+                        d[dummy] = mm_ij
+                    j_i += 1
+                for j in self.dependent_ci:
+                    mm_ij = self.mass_matrix[i,j]
+                    if mm_ij != 0:
+                        dummy = Symbol('Md%d%d'%(i,j), dummy=True)
+                        Md_dummy[i, j_d] = dummy
+                        d[dummy] = mm_ij
+                    j_d += 1
+            # Kanes equations as we generate them are of the form:
+            # Fr* = -Fr
+            # Mi*ui' + Md*ud' = -Fr
+            # Mi*ui' + Md*(T_dot*ui + T*ui') = -Fr
+            # (Mi + Md*T)*ui' = -(Fr + Md*T_dot*ui)
+            # ui' = -inv(Mi+Md*T)*(Fr+ Md*T_dot*ui)
+            # So we just need to invert (Mi+Md*T), and multiply by everything
+            # on the right hand side.
+            T_dummy = zeros((m, n-m))
+            for i in range(m):
+                for j in range(n-m):
+                    T_ij = self.u_dependent_transform[i,j]
+                    if T_ij != 0:
+                        dummy = Symbol('T%d%d'%(i,j), dummy=True)
+                        T_dummy[i, j] = dummy
+                        d[dummy] = T_ij
+            Mi_plus_Md_T = Mi_dummy + Md_dummy*T_dummy
+            Mi_plus_Md_T_adj = Mi_plus_Md_T.adjugate()
+            Mi_plus_Md_T_det = Mi_plus_Md_T.det()
+            assert Mi_plus_Md_T_det != 0, "Mass matrix inversion is singular"
+
+
 
     def recursive_eoms(self, PorF):
         for r in range(len(self.u_independent)):
-            self.kanes_equations[r][0] += PorF.gen_inertia_force[r][0]
-            self.kanes_equations[r][1] += -PorF.gen_inertia_force[r][1] - PorF.gen_active_force[r]
+            #self.kanes_equations[r][0] += PorF.gen_inertia_force[r][0]
+            self.kanes_equations[r][0] += PorF.gen_inertia_force[r][0] +\
+                PorF.gen_inertia_force[r][1]
+            #self.kanes_equations[r][1] += -PorF.gen_inertia_force[r][1] - PorF.gen_active_force[r]
+            self.kanes_equations[r][1] +=  -PorF.gen_active_force[r]
         if PorF.children == []:
             return
         else:

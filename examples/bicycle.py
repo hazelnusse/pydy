@@ -32,24 +32,22 @@ F = E.rotate('F', 2, q6, I=(IF11, IF22, IF11, 0, 0, 0), I_frame=E)
 F._wrel = Vector(q6.diff(t)*E[2])
 
 # Unit vector in the plane of the front wheel, pointed towards the ground
-#fo_fn = Vector(A[3] - (dot(E[2], A[3]))*E[2]).normalized
 fo_fn = Vector(N[3] - (dot(E[2], N[3]))*E[2]).normalized
 
 # Some manual manipulations to express g in the E frame without expanding the
 # coefficients
-#A3inE = A[3].express(E)
 N3inE = N[3].express(E)
-#e1c = rf*A3inE.dict[E[1]]*fo_fn.dict[A[3]]
-#e3c = rf*A3inE.dict[E[3]]*fo_fn.dict[A[3]]
 e1c = rf*N3inE.dict[E[1]]*fo_fn.dict[N[3]]
 e3c = rf*N3inE.dict[E[3]]*fo_fn.dict[N[3]]
-fo_fn_e1 = Function('fo_fn_e1')(t)
-fo_fn_e3 = Function('fo_fn_e3')(t)
 
-fo_fn = Vector({E[1]:fo_fn_e1, E[3]:fo_fn_e3})
-fo_fn_subs_dict = {fo_fn_e1:e1c, fo_fn_e3:e3c}
-#print B[3].express(D)
-#stop
+# Necessary to prevent the denominatory from getting expanded and making things
+# messy
+num1, den1 = (rf*N3inE.dict[E[1]]*fo_fn.dict[N[3]]).as_numer_denom()
+num2, den2 = (rf*N3inE.dict[E[3]]*fo_fn.dict[N[3]]).as_numer_denom()
+assert den1==den2
+den = Function('den')(t)
+fo_fn = Vector({E[1]:num1/den, E[3]:num2/den})
+den_subs_dict = {den: den1}
 
 # Locate rear wheel center relative to point fixed in N, coincident with rear
 # wheel contact
@@ -163,39 +161,28 @@ constraint_eqs = [Eq(dot(FN.vel(), A[i]).expand().subs({cos(q1)**2:
 
 # Form the constraint matrix for B*u = 0
 B_con = N.form_constraint_matrix(constraint_eqs, u_list)
-
 # Hand simplifications
-B_con[1,0] = B_con[1,0].subs({sin(q5)**2:1-cos(q5)**2}).expand()
+B_con[0,0] = B_con[0,0].subs({sin(q4)**2:1-cos(q4)**2}).expand()
+B_con[1,5] = B_con[1,5].subs({cos(q2)**2:1-sin(q2)**2}).expand()
 B_con[2,0] = B_con[2,0].subs({sin(q5)**2:1-cos(q5)**2}).expand()
 
-# Form speed transform matrix for ud = T*ui
-adj, det = N.form_speed_transform_matrix(B_con, [u1, u3, u4],
-        ret_adj_det=True)
+N.set_constraint_matrix(B_con)
+
+# Form speed transform matrix for ud = (adj/det)*ui = T*ui
+adj, det = N.form_speed_transform_matrix(B_con, [u1, u3, u4])
 
 # Hand simplifications on the adjugate matrix
 adj[1,0] = adj[1,0].subs({sin(q4)**2:1-cos(q4)**2}).expand()
 adj[1,2] = adj[1,2].subs({sin(q4)**2:1-cos(q4)**2}).expand()
 
-T = adj / det
-
-stop
-
-
-# Returns
-# 1) B_con from B_con*u = 0
-# 2) T from ud = T * ui
-# 3) u_dep dependent speeds in terms of indpendent ones (as a dictionary)
-# 4) ud_dep dependent udots in terms of qdots and ui(as a dictionary)
-B_con, T, T_dot, ud, ud_dot = N.impose_constraints(constraint_eqs,
-        dependent=[u1,u3,u4], trig_subs=False)
-print B_con
-stop
+# Set the speed transform matrix and determine the dependent speeds
+ud = N.set_speed_transform_matrix(adj, det)
 
 # Set the kindiffs and dependent_speeds
 N.setkindiffs(kindiffs, ud, acc=False)
 
 # Apply gravity
-N.gravity(g*A[3])
+N.gravity(g*N[3])
 
 # Form Kane's equations and solve them for the udots
 kanes_eqns = N.form_kanes_equations()
