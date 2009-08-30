@@ -2186,8 +2186,10 @@ class NewtonianReferenceFrame(ReferenceFrame):
                 dyndiffs[u] = soln[i]
             return dyndiffs
         else:
-            Mi_dummy = zeros((m, n-m))
-            Md_dummy = zeros((m, n-m))
+            Mi = zeros((m,n-m))
+            Md = zeros((m,n-m))
+            #Mi_dummy = zeros((m, n-m))
+            #Md_dummy = zeros((m, n-m))
             d = {}
             j_i = 0
             j_d = 0
@@ -2195,16 +2197,18 @@ class NewtonianReferenceFrame(ReferenceFrame):
                 for j in self.independent_ci:
                     mm_ij = self.mass_matrix[i,j]
                     if mm_ij != 0:
-                        dummy = Symbol('Mi%d%d'%(i,j), dummy=True)
-                        Mi_dummy[i, j_i] = dummy
-                        d[dummy] = mm_ij
+                        #dummy = Symbol('Mi%d%d'%(i,j), dummy=True)
+                        #Mi_dummy[i, j_i] = dummy
+                        Mi[i, j_i] = mm_ij
+                        #d[dummy] = mm_ij
                     j_i += 1
                 for j in self.dependent_ci:
                     mm_ij = self.mass_matrix[i,j]
                     if mm_ij != 0:
-                        dummy = Symbol('Md%d%d'%(i,j), dummy=True)
-                        Md_dummy[i, j_d] = dummy
-                        d[dummy] = mm_ij
+                        #dummy = Symbol('Md%d%d'%(i,j), dummy=True)
+                        #Md_dummy[i, j_d] = dummy
+                        Md[i, j_d] = mm_ij
+                        #d[dummy] = mm_ij
                     j_d += 1
                 j_i = 0
                 j_d = 0
@@ -2216,6 +2220,35 @@ class NewtonianReferenceFrame(ReferenceFrame):
             # ui' = -inv(Mi+Md*T)*(Fr+ Md*T_dot*ui)
             # So we just need to invert (Mi+Md*T), and multiply by everything
             # on the right hand side.
+            Lh_matrix = Mi+Md*self.u_dependent_transform
+            Rh_matrix = -(Matrix([-self.kanes_equations[r].rhs for r in
+                range(m)]) +
+                Md*self.u_dependent_transform_dot*Matrix(self.u_independent))
+            Lh_dummy = zeros((m,m))
+            d = {}
+            for i in range(m):
+                for j in range(m):
+                    Lij = Lh_matrix[i,j]
+                    if Lij != 0:
+                        dummy = Symbol('Lh%d%d'%(i,j), dummy=True)
+                        Lh_dummy[i,j] = dummy
+                        d[dummy] = Lij
+
+            Lh_d_adj = Lh_dummy.adjugate().expand()
+            raw_input('Formed dummy adjugate')
+            Lh_d_det = Lh_dummy.det().expand().subs(d)
+            raw_input('Formed determinant')
+            assert Lh_d_det != 0, "mass matrix is singular"
+            Lh_adj = Lh_d_adj.subs(d)
+            raw_input('Back substituted into Lh_adj')
+            soln = Lh_adj * Rh_matrix
+            raw_input('Multiplied Lh_adj by Rh_matrix')
+            for i in range(m):
+                soln[i] /= Lh_d_det
+            raw_input('Finished!')
+            # Takes forever!
+            #soln = Lh_matrix.adjugate() / Lh_matrix.det() * Rh_matrix
+
             T_dummy = zeros((m, n-m))
             Tdot_dummy = zeros((m, n-m))
             for i in range(m):
@@ -2236,21 +2269,25 @@ class NewtonianReferenceFrame(ReferenceFrame):
             Mi_plus_Md_T_det = Mi_plus_Md_T.det()
             assert Mi_plus_Md_T_det != 0, "Mass matrix inversion is singular"
             Md_T_dot_ui = Md_dummy*Tdot_dummy*Matrix(self.u_independent)
-            Fr = Matrix([-self.kanes_equations[k].rhs for k in range(m)])
-            Fr_dummy = zeros(Fr.shape)
+            Fr_dummy = zeros((m, 1))
             for i in range(m):
                 dummy = Symbol('Fr%d'%i, dummy=True)
                 Fr_dummy[i] = dummy
-                d[dummy] = Fr[i]
-
+                d[dummy] = -self.kanes_equations[i].rhs
+            raw_input('Made Fr_dummy')
             Fr_Md_Tdot_ui = Fr_dummy + Md_T_dot_ui
             # These are the expression for the udots, without the determinant
             dyndiff_vec = -Mi_plus_Md_T_adj*Fr_Md_Tdot_ui
-
+            raw_input('Multiplied the dummy matrices')
             dyndiffs = {}
+            print Mi_plus_Md_T_det
+            print Mi_plus_Md_T_det.expand()
+            stop
             det = Mi_plus_Md_T_det.subs(d)
+            raw_input('back substituted into the determinant')
             for i, ud in enumerate(self.udot_independent):
                 dyndiffs[ud] = dyndiffs_vec[i].subs(d) / det
+            raw_input('ahhh finally done')
             return dyndiffs
 
 
