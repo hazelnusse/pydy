@@ -5,7 +5,7 @@ N = NewtonianReferenceFrame('N')
 
 rr, rf, lr, ls, lf, l1, l2, l3, l4, mc, md, me, mf, IC11, IC22, ID11, ID13, ID33, ID22, IE11, IE13, IE33, IE22, IF11, IF22, g = N.declare_parameters('rr rf lr ls lf l1 l2 l3 l4 mc md me mf IC11 IC22 ID11 ID13 ID33 ID22 IE11 IE13 IE33 IE22 IF11 IF22 g')
 (q1, q2, q3, q4, q5, q6), q_list, qdot_list = N.declare_coords('q', 6)
-(u1, u2, u3, u4, u5, u6), u_list, udot_list = N.declare_speeds('u', 6)
+(u1, u2, u3, u4, u5, u6, u7, u8, u9), u_list, udot_list = N.declare_speeds('u', 9)
 
 # Reference Frames
 # Yaw frame
@@ -29,7 +29,7 @@ F = E.rotate('F', 2, q6, I=(IF11, IF22, IF11, 0, 0, 0), I_frame=E)
 # this prevents the ignorable coordinate q8 from appearing in the nonholonomic
 # constraint equations.
 #C._wrel = Vector(q3.diff(t)*D[2])
-F._wrel = Vector(q6.diff(t)*E[2])
+#F._wrel = Vector(q6.diff(t)*E[2])
 
 # Unit vector in the plane of the front wheel, pointed towards the ground
 fo_fn = Vector(N[3] - (dot(E[2], N[3]))*E[2]).normalized
@@ -92,9 +92,9 @@ D.abs_ang_vel = D.ang_vel().express(D).expandv().subs(N.csqrd_dict).expandv()
 E.abs_ang_vel = E.ang_vel().express(E).expandv()
 F.abs_ang_vel = F.ang_vel().express(E).expandv()
 
-CO._vrel = cross(C.ang_vel(), CO.rel(N.O))
+CO._vrel = Vector(u7*D[1] + u8*D[2] + u9*D[3])
+#CO._vrel = cross(C.ang_vel(), CO.rel(N.O))
 DO._vrel = cross(D.ang_vel(), DO.rel(CO))
-
 DE._vrel = cross(D.ang_vel(), DE.rel(CO)).express(E)
 EO._vrel = cross(E.ang_vel(), EO.rel(DE)).express(E)
 FO._vrel = cross(E.ang_vel(), FO.rel(DE)).express(E)
@@ -155,13 +155,18 @@ print 'FO', FO.acc()
 print 'FN', FN.acc()
 stop
 """
-
-constraint_eqs = [Eq(dot(FN.vel(), A[i]).expand().subs({cos(q1)**2:
-    1-sin(q1)**2, cos(q5)**2:1-sin(q5)**2, cos(q4)**2:1-sin(q4)**2}).expand(), 0) for i in (1,2,3)]
+wxr = cross(C.ang_vel(), Vector(rr*sin(q4)*D[1] - rr*cos(q4)*D[3]))
+#constraint_eqs = [Eq(dot(FN.vel(), A[i]).expand().subs({cos(q1)**2:
+#    1-sin(q1)**2, cos(q5)**2:1-sin(q5)**2, cos(q4)**2:1-sin(q4)**2}).expand(), 0) for i in (1,2,3)]
+constraint_eqs = [Eq(dot(FN.vel(), A[i]).expand().subs(
+                    {cos(q1)**2:1-sin(q1)**2, cos(q5)**2:1-sin(q5)**2,
+                     cos(q4)**2:1-sin(q4)**2}).expand(), 0) for i in (1,2,3)]+\
+                 [Eq(dot(CO.vel() - wxr, D[i]), 0) for i in (1,2,3)]
 
 # Form the constraint matrix for B*u = 0
 B_con = N.form_constraint_matrix(constraint_eqs, u_list)
 # Hand simplifications
+
 B_con[0,0] = B_con[0,0].subs({sin(q4)**2:1-cos(q4)**2}).expand()
 B_con[1,5] = B_con[1,5].subs({cos(q2)**2:1-sin(q2)**2}).expand()
 B_con[2,0] = B_con[2,0].subs({sin(q5)**2:1-cos(q5)**2}).expand()
@@ -169,11 +174,13 @@ B_con[2,0] = B_con[2,0].subs({sin(q5)**2:1-cos(q5)**2}).expand()
 N.set_constraint_matrix(B_con)
 
 # Form speed transform matrix for ud = (adj/det)*ui = T*ui
-adj, det = N.form_speed_transform_matrix(B_con, [u1, u3, u4])
+#adj, det = N.form_speed_transform_matrix(B_con, [u1, u3, u4])
+adj, det = N.form_speed_transform_matrix(B_con, [u1, u3, u4, u7, u8, u9])
+
 
 # Hand simplifications on the adjugate matrix
-adj[1,0] = adj[1,0].subs({sin(q4)**2:1-cos(q4)**2}).expand()
-adj[1,2] = adj[1,2].subs({sin(q4)**2:1-cos(q4)**2}).expand()
+#adj[1,0] = adj[1,0].subs({sin(q4)**2:1-cos(q4)**2}).expand()
+#adj[1,2] = adj[1,2].subs({sin(q4)**2:1-cos(q4)**2}).expand()
 
 # Set the speed transform matrix and determine the dependent speeds
 ud = N.set_speed_transform_matrix(adj, det)
@@ -188,3 +195,7 @@ N.gravity(g*N[3])
 kanes_eqns = N.form_kanes_equations()
 
 dyndiffs = N.solve_kanes_equations()
+N.setdyndiffs(dyndiffs)
+stop
+N.output_eoms('bicycle_eoms.py', CO, DO, DE, EO, FO, FN, C[1], C[2], C[3],
+        D[1], D[2], D[3], E[1], E[2], E[3], F[1], F[2], F[3])

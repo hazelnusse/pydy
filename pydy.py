@@ -1600,14 +1600,17 @@ class NewtonianReferenceFrame(ReferenceFrame):
         """
         # Substitute into appropriate velocity/angular velocity
         if isinstance(PorF, Point):
-            # Case when the system has no constraints
             pv = PorF.vel().partials(self.u_list)
             if hasattr(self, 'u_dependent'):
                 pv_i = [pv[i] for i in self.independent_ci]
                 pv_d = Matrix([pv[i] for i in self.dependent_ci]).T
+                #  Maybe should use a dummy matrix instead of
+                #  u_dependent_transform... then back substitute once final
+                #  equations are derived.
                 con = matrixv_multiply(pv_d, self.u_dependent_transform).tolist()[0]
                 PorF.partialv = [pv_i[i] + con[i] for i in range(len(con))]
             else:
+                # Case when the system has no constraints
                 PorF.partialv = pv
         elif isinstance(PorF, ReferenceFrame):
             pw = PorF.ang_vel().partials(self.u_list)
@@ -1982,10 +1985,31 @@ class NewtonianReferenceFrame(ReferenceFrame):
     def recursive_frstar(self, PorF):
         """Recursively computes generalized inertia forces for each particle
         and rigid body in the system.
+
+        Generalized inertia forces will be linear in the time derivatives of
+        the generalized speeds and the gyroscopic terms of the form u_j*u_k.
+        As such, when computing the generalized inertia forces it makes sense
+        to collect all like terms, so that simplifications on each of the
+        coefficients of these linear terms can be simplified individually.
+
+        We store these coefficients as a Matrix of length: n + (n**2+n)/2.
+        Where n is the number of generalized speeds (both dependent and
+        independent).  The (n**2 + n)/2 comes from the numer of unique possible
+        gyroscopic terms.  The coefficients are ordered from u1,..., un, while
+        the gyroscopic terms are ordered according to the ordering of the
+        "crossterms" attribute.
         """
+        # XXX TODO: Implement the vector of coefficients for the generalized
+        # speeds instead of the current approach which uses a 2-tuple with the
+        # accelerative terms in the first entry and the gyroscopic terms in the
+        # second entry.
+        uduu_list = self.udot_list + self.crossterms
+        n = len(self.udot_list)
+        assert (n**2 + n)/2 == n + len(self.crossterms)
         if isinstance(PorF, Point):
             if PorF.mass == 0:
                 PorF.gen_inertia_force = [(0, 0)] * len(self.u_independent)
+                #PorF.gen_inertia_force = zeros((1, (n**2+n)/2))
             else:
                 # Compute the generalized inertia forces
                 acc = PorF.acc()
@@ -2021,7 +2045,10 @@ class NewtonianReferenceFrame(ReferenceFrame):
             else:
                 alph = PorF.ang_acc()
                 I = PorF.inertia
-                w = PorF.ang_vel()
+                if hasattr(self, 'steady'):
+                    w = PorF.ang_vel().subs(self.steady)
+                else:
+                    w = PorF.ang_vel()
                 inertia_torque = (-alph.dot(I)-w.cross(I.rdot(w))).expandv()
                 it_udot_coefs = []
                 it_gyro_coefs = []
@@ -2186,10 +2213,8 @@ class NewtonianReferenceFrame(ReferenceFrame):
                 dyndiffs[u] = soln[i]
             return dyndiffs
         else:
-            Mi = zeros((m,n-m))
+            Mi = zeros((m,m))
             Md = zeros((m,n-m))
-            #Mi_dummy = zeros((m, n-m))
-            #Md_dummy = zeros((m, n-m))
             d = {}
             j_i = 0
             j_d = 0
@@ -2197,18 +2222,12 @@ class NewtonianReferenceFrame(ReferenceFrame):
                 for j in self.independent_ci:
                     mm_ij = self.mass_matrix[i,j]
                     if mm_ij != 0:
-                        #dummy = Symbol('Mi%d%d'%(i,j), dummy=True)
-                        #Mi_dummy[i, j_i] = dummy
                         Mi[i, j_i] = mm_ij
-                        #d[dummy] = mm_ij
                     j_i += 1
                 for j in self.dependent_ci:
                     mm_ij = self.mass_matrix[i,j]
                     if mm_ij != 0:
-                        #dummy = Symbol('Md%d%d'%(i,j), dummy=True)
-                        #Md_dummy[i, j_d] = dummy
                         Md[i, j_d] = mm_ij
-                        #d[dummy] = mm_ij
                     j_d += 1
                 j_i = 0
                 j_d = 0
@@ -2235,62 +2254,14 @@ class NewtonianReferenceFrame(ReferenceFrame):
                         d[dummy] = Lij
 
             Lh_d_adj = Lh_dummy.adjugate().expand()
-            raw_input('Formed dummy adjugate')
             Lh_d_det = Lh_dummy.det().expand().subs(d)
-            raw_input('Formed determinant')
             assert Lh_d_det != 0, "mass matrix is singular"
             Lh_adj = Lh_d_adj.subs(d)
-            raw_input('Back substituted into Lh_adj')
             soln = Lh_adj * Rh_matrix
-            raw_input('Multiplied Lh_adj by Rh_matrix')
-            for i in range(m):
-                soln[i] /= Lh_d_det
-            raw_input('Finished!')
-            # Takes forever!
-            #soln = Lh_matrix.adjugate() / Lh_matrix.det() * Rh_matrix
-
-            T_dummy = zeros((m, n-m))
-            Tdot_dummy = zeros((m, n-m))
-            for i in range(m):
-                for j in range(n-m):
-                    T_ij = self.u_dependent_transform[i,j]
-                    T_ij_dot = self.u_dependent_transform_dot[i,j]
-                    if T_ij != 0:
-                        dummy = Symbol('T%d%d'%(i,j), dummy=True)
-                        T_dummy[i, j] = dummy
-                        d[dummy] = T_ij
-                    if T_ij_dot != 0:
-                        dummy = Symbol('Tdot%d%d'%(i,j), dummy=True)
-                        Tdot_dummy[i, j] = dummy
-                        d[dummy] = T_ij_dot
-
-            Mi_plus_Md_T = Mi_dummy + Md_dummy*T_dummy
-            Mi_plus_Md_T_adj = Mi_plus_Md_T.adjugate()
-            Mi_plus_Md_T_det = Mi_plus_Md_T.det()
-            assert Mi_plus_Md_T_det != 0, "Mass matrix inversion is singular"
-            Md_T_dot_ui = Md_dummy*Tdot_dummy*Matrix(self.u_independent)
-            Fr_dummy = zeros((m, 1))
-            for i in range(m):
-                dummy = Symbol('Fr%d'%i, dummy=True)
-                Fr_dummy[i] = dummy
-                d[dummy] = -self.kanes_equations[i].rhs
-            raw_input('Made Fr_dummy')
-            Fr_Md_Tdot_ui = Fr_dummy + Md_T_dot_ui
-            # These are the expression for the udots, without the determinant
-            dyndiff_vec = -Mi_plus_Md_T_adj*Fr_Md_Tdot_ui
-            raw_input('Multiplied the dummy matrices')
             dyndiffs = {}
-            print Mi_plus_Md_T_det
-            print Mi_plus_Md_T_det.expand()
-            stop
-            det = Mi_plus_Md_T_det.subs(d)
-            raw_input('back substituted into the determinant')
-            for i, ud in enumerate(self.udot_independent):
-                dyndiffs[ud] = dyndiffs_vec[i].subs(d) / det
-            raw_input('ahhh finally done')
+            for i, ud_i in enumerate(self.udot_independent):
+                dyndiffs[ud_i] = soln[i] / Lh_d_det
             return dyndiffs
-
-
 
     def recursive_eoms(self, PorF):
         for r in range(len(self.u_independent)):
@@ -2319,16 +2290,10 @@ class NewtonianReferenceFrame(ReferenceFrame):
         ode_func_string += '    ' + s[:-2] + ' = ' + 'parameter_list\n'
         ode_func_string += '    # Unpacking the states (q\'s and u\'s)\n'
         s = ""
-        udsort = []
-        usort = []
-        for i, ud in enumerate(self.udot_list):
-            if ud in self.dyndiffs:
-                udsort.append(ud)
-                usort.append(self.u_list[i])
 
         for q in self.q_list:
             s += str(q) + ', '
-        for u in usort:
+        for u in self.u_independent:
             s += str(u) + ', '
         ode_func_string += '    ' + s[:-2] + ' = ' + 'x\n'
 
@@ -2364,7 +2329,7 @@ class NewtonianReferenceFrame(ReferenceFrame):
 
         ode_func_string += '    # Dynamic differential equations\n'
 
-        for ud in udsort:
+        for ud in self.udot_independent:
             ode_func_string += '    ' + str(ud)[:-1] + 'p' +  ' = ' + str(self.dyndiffs[ud]) + '\n'
             dxdt_list += str(ud)[:-1] + 'p, '
 
@@ -2428,55 +2393,30 @@ class NewtonianReferenceFrame(ReferenceFrame):
             s = ""
             for p in self.parameter_list:
                 s += str(p) + ', '
-            a += '    ' + s[:-2] + ' = ' + 'parameter_list\n'
+            a += '    ' + s[:-2] + ' = parameter_list\n'
             a += '    # Unpacking the coordinates\n'
             s = ""
             for q in self.q_list:
                 s += str(q) + ', '
-            a += '    ' + s[:-2] + ' = ' + 'q\n'
+            a += '    ' + s[:-2] + ' = q\n'
 
             trig_func_set = set([])
             a_temp = ""
             ret_string = ""
-            for arg in args:
+            for k, arg in enumerate(args):
                 ret_string += "["
-                if isinstance(arg, tuple) and len(arg) == 2:
-                    if isinstance(arg[0], Point) and isinstance(arg[1], Point):
-                        pos = [arg[0].rel(arg[1]).dot(self[i]) for i in (1,2,3)]
-                        for i, p in enumerate(pos):
-                            nv = "p_" + arg[1].name + "_" + arg[0].name +\
-                                "_%d"%(i+1)
-                            a_temp += "    " + nv + " = " + str(p) + "\n"
-                            ret_string += nv + ", "
-                            trig_terms = p.atoms(sin, cos, tan)
-                            if trig_terms:
-                                trig_func_set.update(trig_terms)
-                        ret_string = ret_string[:-2] + "], "
-                    elif isinstance(arg[0], (UnitVector, Vector)):
-                        if isinstance(arg[0], (UnitVector, Vector)):
-                            axis = [arg[0].dot(self[i]) for i in (1,2,3)]
-                        else:
-                            raise ValueError('Axis must be a Vector or UnitVector')
-                        # XXX TODO allow for a general sympy expression for the
-                        # angle
-                        if arg[1] in self.q_list or arg[1] == 0:
-                            angle = arg[1] or S.Zero
-                            trig_terms = angle.atoms(sin, cos, tan)
-                            if trig_terms:
-                                trig_func_set.update(trig_terms)
-                        else:
-                            raise ValueError('Angle must be in the coordinate list')
-                        for j, p in enumerate(axis):
-                            nv = arg[0].frame.name + str(arg[0].i) + "_%d"%(j+1)
-                            a_temp += "    " + nv + " = " + str(p) + "\n"
-                            ret_string += nv + ", "
-                            trig_terms = p.atoms(sin, cos, tan)
-                            if trig_terms:
-                                trig_func_set.update(trig_terms)
-                        ret_string += str(angle) +"], "
+                if isinstance(arg, (UnitVector, Vector)):
+                    pos_or_axis = [arg.dot(self[i]) for i in (1,2,3)]
+                    for i, p in enumerate(pos_or_axis):
+                        nv = "out_%d_%d"%(k,i)
+                        a_temp += "    " + nv + " = " + str(p) + "\n"
+                        ret_string += nv + ", "
+                        trig_terms = p.atoms(sin, cos, tan)
+                        if trig_terms:
+                            trig_func_set.update(trig_terms)
+                    ret_string = ret_string[:-2] + "], "
                 else:
-                    raise TypeError('Optional parameters must be 2-tuples with\
-                        either two Point objects or an Axis and an Angle')
+                    raise TypeError('Optional parameters must be Vector/UniVectors')
 
             a += "    # Trigonometric functions needed\n"
             trig_func_string = ""
