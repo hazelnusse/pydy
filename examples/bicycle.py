@@ -71,26 +71,30 @@ u_defs = N.define_speeds(
          Eq(u_list[4], dot(E.ang_vel(N), D[3])),
          Eq(u_list[5], dot(F.ang_vel(N), E[2]))])
 
+for u_def in u_defs:
+    print u_def.lhs, ':=', u_def.rhs
+
 # Solve u_defs for the qdots in terms of the u's
 T, Tinv, kindiffs = N.form_kindiffs(u_defs, qdot_list)
 
-print 'Kinematic differential equations'
+print 'Resulting kinematic differential equations'
 for qd in qdot_list:
     print qd, '=', kindiffs[qd]
+stop
 
 #A._wrel = A._wrel.express(D).subs(kindiffs)
 #B._wrel = B._wrel.express(D).subs(kindiffs)
-C._wrel =\
-    C._wrel.express(D).subs(kindiffs).expandv().subs(N.csqrd_dict).expandv()
-D._wrel =\
-        D._wrel.express(D).subs(kindiffs).expandv().subs(N.csqrd_dict).expandv()
-E._wrel = E._wrel.express(E).subs(kindiffs).expandv().subs(N.csqrd_dict).expandv()
-F._wrel = F._wrel.express(E).subs(kindiffs).expandv().subs(N.csqrd_dict).expandv()
+#C._wrel =\
+#    C._wrel.express(D).subs(kindiffs).expandv().subs(N.csqrd_dict).expandv()
+#D._wrel =\
+#        D._wrel.express(D).subs(kindiffs).expandv().subs(N.csqrd_dict).expandv()
+#E._wrel = E._wrel.express(E).subs(kindiffs).expandv().subs(N.csqrd_dict).expandv()
+#F._wrel = F._wrel.express(E).subs(kindiffs).expandv().subs(N.csqrd_dict).expandv()
 
-C.abs_ang_vel = C.ang_vel().express(D).expandv().subs(N.csqrd_dict).expandv()
-D.abs_ang_vel = D.ang_vel().express(D).expandv().subs(N.csqrd_dict).expandv()
-E.abs_ang_vel = E.ang_vel().express(E).expandv()
-F.abs_ang_vel = F.ang_vel().express(E).expandv()
+C.abs_ang_vel = Vector(u1*D[1] + (u4-u2)*D[2] + u3*D[3])
+D.abs_ang_vel = Vector(u1*D[1] + u2*D[2] + u3*D[3])
+E.abs_ang_vel = Vector(u1*D[1] + u2*D[2] + (u5-u3)*D[3])
+#F.abs_ang_vel = Vector(
 
 CO._vrel = Vector(u7*D[1] + u8*D[2] + u9*D[3])
 #CO._vrel = cross(C.ang_vel(), CO.rel(N.O))
