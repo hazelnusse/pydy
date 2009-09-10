@@ -9,9 +9,6 @@ import time
 e1 = Matrix([1, 0, 0])
 e2 = Matrix([0, 1, 0])
 e3 = Matrix([0, 0, 1])
-e1n = Matrix([-1, 0, 0])
-e2n = Matrix([0, -1, 0])
-e3n = Matrix([0, 0, -1])
 zero = Matrix([0, 0, 0])
 t = Symbol("t")
 

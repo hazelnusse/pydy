@@ -4,12 +4,13 @@ from pydy import *
 N = NewtonianReferenceFrame('N')
 
 rr, rf, lr, ls, lf, l1, l2, l3, l4, mc, md, me, mf, IC11, IC22, ID11, ID13, ID33, ID22, IE11, IE13, IE33, IE22, IF11, IF22, g = N.declare_parameters('rr rf lr ls lf l1 l2 l3 l4 mc md me mf IC11 IC22 ID11 ID13 ID33 ID22 IE11 IE13 IE33 IE22 IF11 IF22 g')
-(q1, q2, q3, q4, q5, q6), q_list, qdot_list = N.declare_coords('q', 6)
-(u1, u2, u3, u4, u5, u6, u7, u8, u9), u_list, udot_list = N.declare_speeds('u', 9)
+(q1, q2, q3, q4, q5, q6, q7, q8), q_list, qdot_list = N.declare_coords('q', 8)
+(u1, u2, u3, u4, u5, u6, u7, u8, u9, u10, u11), u_list, udot_list = N.declare_speeds('u', 11)
 
 # Reference Frames
 # Yaw frame
 A = N.rotate('A', 3, q1)
+B = A.rotate('B', 1, q2)
 # Lean frame
 #B = A.rotate('B', 1, q2)
 # Bicycle frame pitch frame
@@ -18,41 +19,37 @@ A = N.rotate('A', 3, q1)
 #stop
 D = N.rotate('D', 'BODY312', (q1, q2, q4), I=(ID11, ID22, ID33, 0, 0, ID13))
 # Rear wheel spin frame
-#C = B.rotate('C', 2, q3, I=(IC11, IC22, IC11, 0, 0, 0), I_frame=D)
 C = N.rotate('C', 'BODY312', (q1, q2, q3), I=(IC11, IC22, IC11, 0, 0, 0), I_frame=D)
 # Steer frame
 E = D.rotate('E', 3, q5, I=(IE11, IE22, IE33, 0, 0, IE13))
 # Front wheel spin frame
 F = E.rotate('F', 2, q6, I=(IF11, IF22, IF11, 0, 0, 0), I_frame=E)
 
-# In last reference frame, use E[2] instead of F[2] for the angular velocity,
-# this prevents the ignorable coordinate q8 from appearing in the nonholonomic
-# constraint equations.
-#C._wrel = Vector(q3.diff(t)*D[2])
-#F._wrel = Vector(q6.diff(t)*E[2])
-
 # Unit vector in the plane of the front wheel, pointed towards the ground
-fo_fn = Vector(N[3] - (dot(E[2], N[3]))*E[2]).normalized
+fo_fn_uv = Vector(N[3] - dot(E[2], N[3])*E[2]).normalized
 
 # Some manual manipulations to express g in the E frame without expanding the
 # coefficients
 N3inE = N[3].express(E)
-e1c = rf*N3inE.dict[E[1]]*fo_fn.dict[N[3]]
-e3c = rf*N3inE.dict[E[3]]*fo_fn.dict[N[3]]
-
-# Necessary to prevent the denominatory from getting expanded and making things
-# messy
-num1, den1 = (rf*N3inE.dict[E[1]]*fo_fn.dict[N[3]]).as_numer_denom()
-num2, den2 = (rf*N3inE.dict[E[3]]*fo_fn.dict[N[3]]).as_numer_denom()
-assert den1==den2
-den = Function('den')(t)
-fo_fn = Vector({E[1]:num1/den, E[3]:num2/den})
-den_subs_dict = {den: den1}
+e1c_expr = rf*N3inE.dict[E[1]]*fo_fn_uv.dict[N[3]]
+e3c_expr = rf*N3inE.dict[E[3]]*fo_fn_uv.dict[N[3]]
+n1, d1 = e1c_expr.as_numer_denom()
+n2, d2 = e3c_expr.as_numer_denom()
+assert d1 == d2
+# Compute time derivatives using quotient rule and prevent unneccessary expansion
+e1c_expr_dt = (n1.diff(t)*d1 - n1*d1.diff(t))/d1**2
+e3c_expr_dt = (n2.diff(t)*d2 - n2*d2.diff(t))/d2**2
+# Create variables for to act as place holders in the vector for FO to FN
+e1c = Function('e1c')(t)
+e3c = Function('e3c')(t)
+fo_fn_subs_dict = {e1c: e1c_expr, e3c: e3c_expr, e1c.diff(t): e1c_expr_dt,
+        e3c.diff(t): e3c_expr_dt}
+fo_fn = Vector({E[1]: e1c, E[3]: e3c})
 
 # Locate rear wheel center relative to point fixed in N, coincident with rear
 # wheel contact
-#CO = N.O.locate('CO', - rr*B[3], C, mass=mc)
-CO = N.O.locate('CO', rr*sin(q4)*D[1] - rr*cos(q4)*D[3], C, mass=mc)
+CO = N.O.locate('CO', - rr*B[3], C, mass=mc)
+#CO = N.O.locate('CO', rr*sin(q4)*D[1] - rr*cos(q4)*D[3], C, mass=mc)
 # Locate mass center of ricycle with rigidly attached rider
 DO = CO.locate('DO', l1*D[1] + l2*D[3], D, mass=md)
 # Locate top of steer axis
@@ -63,16 +60,21 @@ EO = DE.locate('EO', l3*E[1] + l4*E[3], E, mass=me)
 FO = DE.locate('FO', lf*E[1] + ls*E[3], E, mass=mf)
 # Locate front wheel contact point (fixed in the front wheel)
 FN = FO.locate('FN', fo_fn, F)
+# Locate another point fixed in N
+N1 = CO.locate('N1', rr*B[3] - q7*N[1] - q8*N[2])
 
 # Definitions of the generalized speeds
 u_defs = N.define_speeds(
         [Eq(u_list[i-1], dot(D.ang_vel(), D[i])) for i in (1, 2, 3)] + \
         [Eq(u_list[3], dot(C.ang_vel(N), D[2])),
          Eq(u_list[4], dot(E.ang_vel(N), D[3])),
-         Eq(u_list[5], dot(F.ang_vel(N), E[2]))])
+         Eq(u_list[5], dot(F.ang_vel(N), E[2])),
+         Eq(u_list[6], dot(N1.vel(), N[1])),
+         Eq(u_list[7], dot(N1.vel(), N[2]))])
 
 for u_def in u_defs:
     print u_def.lhs, ':=', u_def.rhs
+
 
 # Solve u_defs for the qdots in terms of the u's
 T, Tinv, kindiffs = N.form_kindiffs(u_defs, qdot_list)
@@ -80,21 +82,11 @@ T, Tinv, kindiffs = N.form_kindiffs(u_defs, qdot_list)
 print 'Resulting kinematic differential equations'
 for qd in qdot_list:
     print qd, '=', kindiffs[qd]
-stop
 
-#A._wrel = A._wrel.express(D).subs(kindiffs)
-#B._wrel = B._wrel.express(D).subs(kindiffs)
-#C._wrel =\
-#    C._wrel.express(D).subs(kindiffs).expandv().subs(N.csqrd_dict).expandv()
-#D._wrel =\
-#        D._wrel.express(D).subs(kindiffs).expandv().subs(N.csqrd_dict).expandv()
-#E._wrel = E._wrel.express(E).subs(kindiffs).expandv().subs(N.csqrd_dict).expandv()
-#F._wrel = F._wrel.express(E).subs(kindiffs).expandv().subs(N.csqrd_dict).expandv()
-
-C.abs_ang_vel = Vector(u1*D[1] + (u4-u2)*D[2] + u3*D[3])
 D.abs_ang_vel = Vector(u1*D[1] + u2*D[2] + u3*D[3])
+C.abs_ang_vel = Vector(u1*D[1] + (u4-u2)*D[2] + u3*D[3])
 E.abs_ang_vel = Vector(u1*D[1] + u2*D[2] + (u5-u3)*D[3])
-#F.abs_ang_vel = Vector(
+F.abs_ang_vel = Vector(
 
 CO._vrel = Vector(u7*D[1] + u8*D[2] + u9*D[3])
 #CO._vrel = cross(C.ang_vel(), CO.rel(N.O))
