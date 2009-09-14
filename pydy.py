@@ -1604,7 +1604,7 @@ class NewtonianReferenceFrame(ReferenceFrame):
                 #  Maybe should use a dummy matrix instead of
                 #  u_dependent_transform... then back substitute once final
                 #  equations are derived.
-                con = matrixv_multiply(pv_d, self.u_dependent_transform).tolist()[0]
+                con = matrixv_multiply(pv_d, self.u_dependent_transform_dummy).tolist()[0]
                 PorF.partialv = [pv_i[i] + con[i] for i in range(len(con))]
             else:
                 # Case when the system has no constraints
@@ -1614,7 +1614,7 @@ class NewtonianReferenceFrame(ReferenceFrame):
             if hasattr(self, 'u_dependent'):
                 pw_i = [pw[i] for i in self.independent_ci]
                 pw_d = Matrix([pw[i] for i in self.dependent_ci]).T
-                con = matrixv_multiply(pw_d, self.u_dependent_transform).tolist()[0]
+                con = matrixv_multiply(pw_d, self.u_dependent_transform_dummy).tolist()[0]
                 PorF.partialw = [pw_i[i] + con[i] for i in range(len(con))]
             else:
                 PorF.partialw = pw
@@ -1631,7 +1631,7 @@ class NewtonianReferenceFrame(ReferenceFrame):
     def declare_coords(self, string, number, list=True):
         """Declare the generalized coordinates and their time derivatives.
         """
-        q_list, q_list, qdot_list = gcs(string, number, list)
+        q_list, qdot_list = gcs(string, number, list)
         self.q_list = q_list
         self.qdot_list = qdot_list
         # Generate lists of Symbol objects instead of Function objects
@@ -1653,12 +1653,12 @@ class NewtonianReferenceFrame(ReferenceFrame):
             self.symbol_dict.update(d)
         for d in (self.q_list_dict_back, self.qdot_list_dict_back):
             self.symbol_dict_back.update(d)
-        return q_list, q_list, qdot_list
+        return q_list, qdot_list
 
     def declare_speeds(self, string, number, lst=True):
         """Declare the generalized speeds and their time derivatives.
         """
-        u_list, u_list, udot_list = gcs(string, number, lst)
+        u_list, udot_list = gcs(string, number, lst)
         self.u_list = u_list
         self.udot_list = udot_list
         self.u_independent = u_list
@@ -1688,28 +1688,13 @@ class NewtonianReferenceFrame(ReferenceFrame):
         for d in (self.u_list_dict_back, self.udot_list_dict_back):
             self.symbol_dict_back.update(d)
 
-        return u_list, u_list, udot_list
+        return u_list, udot_list
 
     def declare_parameters(self, string):
         """Declare the parameters (constants) of the system.
         """
         self.parameter_list = symbols(string)
         return self.parameter_list
-
-    def form_constraint_matrix(self, eqns, linear_terms):
-        """Form the matrix associated with linear motion constraint
-        equations."""
-        m = len(eqns)
-        n = len(linear_terms)
-        B = zeros((m, n))
-        d = {}
-        for i in range(m):
-            for j in range(n):
-                bij = eqns[i].lhs.expand().coeff(self.u_list[j])
-
-                if bij is not None:
-                    B[i, j] = bij
-        return B
 
     def set_constraint_matrix(self, B):
         """Sets the linear speed constraint matrix.
@@ -1777,12 +1762,15 @@ class NewtonianReferenceFrame(ReferenceFrame):
             Bd[:, j] = B_dummy[:, jd]
         for j, ji in enumerate(independent_ci):
             Bi[:, j] = B_dummy[:, ji]
-
         # Invert the Bd matrix and determine the dependent speeds
         # ud = -inv(Bd) * Bi * ui = T * ui
         # inv(Bd) = adjugate(Bd) / det(Bd)
-        BdaBi = -(Bd.adjugate() * Bi).subs(d).expand().subs(self.csqrd_dict).expand()
-        Bd_det = Bd.det().subs(d).expand().subs(self.csqrd_dict).expand()
+        Bda = Bd.adjugate().expand()
+        for i in range(m):
+            for j in range(m):
+                Bda[i,j] = factor(Bda[i,j])
+        BdaBi = -(Bda * Bi).subs(d)
+        Bd_det = Bd.det().subs(d)
         assert Bd_det != 0, "Constraint equations are singular."
         return BdaBi, Bd_det
 
@@ -1803,6 +1791,14 @@ class NewtonianReferenceFrame(ReferenceFrame):
         self.u_dependent_eqs = ud
         T = adj / det
         self.u_dependent_transform = T
+        m, n = adj.shape
+        T_dummy = zeros((m,n))
+        for i in range(m):
+            for j in range(n):
+                if T[i, j] != 0:
+                    T_dummy[i, j] = Symbol('T%d%d'%(i, j), dummy=True)
+        self.u_dependent_transform_dummy = T_dummy
+
 
         # Compute the time derivatives of the dependent speeds.
         # Hand code the quotient rule so that we can prevent so much
@@ -2002,7 +1998,8 @@ class NewtonianReferenceFrame(ReferenceFrame):
         # second entry.
         uduu_list = self.udot_list + self.crossterms
         n = len(self.udot_list)
-        assert (n**2 + n)/2 == n + len(self.crossterms)
+        from math import factorial
+        assert n + factorial(n)/factorial(2)/factorial(n-2) == len(self.crossterms)
         if isinstance(PorF, Point):
             if PorF.mass == 0:
                 PorF.gen_inertia_force = [(0, 0)] * len(self.u_independent)
@@ -2794,7 +2791,7 @@ def GeneralizedCoordinate(s, constant=False):
     return gc
 
 def gcs(s, number=1, list=False):
-    gc_list = [GeneralizedCoordinate(s[0]+str(i)) for i in range(1, number + 1)]
+    gc_list = [GeneralizedCoordinate(s[0]+str(i)) for i in range(0, number)]
     if list == False:
         if number == 1:
             return gc_list[0]
@@ -2802,7 +2799,7 @@ def gcs(s, number=1, list=False):
             return gc_list
     elif list == True:
         gcd_list = [gc.diff(t) for gc in gc_list]
-        return (gc_list, gc_list, gcd_list)
+        return (gc_list, gcd_list)
 
 class PyDyStrPrinter(StrPrinter):
     #printmethod = '_sympystr_'
@@ -3133,6 +3130,107 @@ def sort_UnitVector(a, b):
     else:
         return (len(a.frame.ref_frame_list) > len(b.frame.ref_frame_list)) -\
             (len(a.frame.ref_frame_list) < len(b.frame.ref_frame_list))
+
+def coefficient_matrix(eqns, linear_terms):
+    """Given a list of equations linear in some specified terms, form the
+    matrix of coefficients of those linear terms.
+
+    """
+    m = len(eqns)
+    n = len(linear_terms)
+    B = zeros((m, n))
+    d = {}
+    for i in range(m):
+        for j in range(n):
+            B_ij = eqns[i].expand().coeff(linear_terms[j])
+            if B_ij is not None:
+                B[i, j] = B_ij
+    return B
+
+def transform_matrix(B, x, x_dependent):
+    """Given an m x n coefficent matrix B, n linear terms x, and m linear terms
+    xd taken to be dependent, return the transform matrix between the
+    independent linear terms and the dependent ones.
+
+    Given:
+
+        B*x = 0
+
+    Where:
+        B \in R^{m x n}
+        x \in R^{n x 1}
+        0 \in R^{m x 1}
+
+    we can partition x into dependent and indepent terms and rewrite as:
+
+        Bd*xd + Bi*xi = 0
+
+    Where:
+        Bd \in R^{m x m}
+        Bi \in R^{m x (n-m)}
+        xd \in R^{m x 1}
+        xi \in R^{(n-m) x 1}
+
+    so:
+
+    xd = -inv(Bd)*Bi*xi
+       = -1/det(Bd)*adj(Bd)*Bi*xi
+       = T*xi
+
+    The transformation between the independent xi and the dependent xd is:
+
+    T := -adj(Bd)*Bi/det(Bd)
+
+    Returns: adj(Bd)*Bi, -det(Bd), dependent_index, independent_index
+
+    """
+    m, n = B.shape
+    md = len(x_dependent)
+    if m != md:
+        raise ValueError('Number of equations must equal number of\
+            dependent terms.')
+    independent_ci = []
+    dependent_ci = []
+    try:
+        for xd in x_dependent:
+            dependent_ci.append(x.index(xd))
+        dependent_ci.sort()
+        independent_ci = list(set(range(n)) - set(dependent_ci))
+        independent_ci.sort()
+    except ValueError:
+        print('Each of the dependent speeds must be in the speed list used\
+            in the declare_speeds.')
+
+    # Create a matrix with dummy symbols representing non-zero entries
+    B_dummy = zeros((m, n))
+    d = {}
+    for i in range(m):
+        for j in range(n):
+            if B[i, j] != 0:
+                dummy_sym = Symbol('B%d%d'%(i,j), dummy=True)
+                d[dummy_sym] = B[i, j]
+                B_dummy[i, j] = dummy_sym
+
+    # Generate the independent and dependent matrices
+    Bd = zeros((m, m))
+    Bi = zeros((m, n-m))
+    for j, jd in enumerate(dependent_ci):
+        Bd[:, j] = B_dummy[:, jd]
+    for j, ji in enumerate(independent_ci):
+        Bi[:, j] = B_dummy[:, ji]
+
+    # Invert the Bd matrix and determine the dependent speeds
+    # xd = -inv(Bd) * Bi * xi = T * xi
+    # inv(Bd) = adjugate(Bd) / det(Bd)
+    Bda = Bd.adjugate().expand()
+    for i in range(m):
+        for j in range(m):
+            if Bda[i, j] != 0:
+                Bda[i,j] = factor(Bda[i,j])
+    BdaBi = -(Bda * Bi).subs(d)
+    Bd_det = Bd.det().subs(d)
+    assert Bd_det != 0, "Equations are singular."
+    return BdaBi, Bd_det, dependent_ci, independent_ci
 
 if __name__ == "__main__":
         import doctest

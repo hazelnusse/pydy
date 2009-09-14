@@ -226,13 +226,21 @@ lp4 = np.array(lp_range4)
 
 
 import matplotlib.pyplot as plt
-plt.plot(lp1[:,0], steer_range_12)
-plt.plot(lp2[:,0], steer_range_12)
-plt.plot(lp3[:,0], steer_range_34)
-plt.plot(lp4[:,0], steer_range_34)
+grey = (0.5, 0.5, 0.5)
+fig = plt.figure()
+plt.plot(lp1[:,0], steer_range_12,color=grey)
+plt.fill_betweenx(steer_range_12, lp1[:,0], np.pi/2.,color=grey)
+plt.plot(lp2[:,0], steer_range_12,color=grey)
+plt.fill_betweenx(steer_range_12, -np.pi/2., lp2[:,0],color=grey)
+plt.plot(lp3[:,0], steer_range_34,color=grey)
+plt.fill_betweenx(steer_range_34, -np.pi/2., lp3[:,0],color=grey)
+plt.plot(lp4[:,0], steer_range_34,color=grey)
+plt.fill_betweenx(steer_range_34, lp4[:,0], np.pi/2.,color=grey)
 plt.axis([-np.pi/2, np.pi/2., -np.pi, np.pi])
 plt.xlabel('Lean')
 plt.ylabel('Steer')
+plt.title('Kinematically feasible region')
+plt.grid()
 plt.show()
 
 

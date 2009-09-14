@@ -1,29 +1,34 @@
 from sympy import collect
 from pydy import *
 
+# Declare a NewtonianReferenceFrame
 N = NewtonianReferenceFrame('N')
 
-rr, rf, lr, ls, lf, l1, l2, l3, l4, mc, md, me, mf, IC11, IC22, ID11, ID13, ID33, ID22, IE11, IE13, IE33, IE22, IF11, IF22, g = N.declare_parameters('rr rf lr ls lf l1 l2 l3 l4 mc md me mf IC11 IC22 ID11 ID13 ID33 ID22 IE11 IE13 IE33 IE22 IF11 IF22 g')
-(q1, q2, q3, q4, q5, q6, q7, q8), q_list, qdot_list = N.declare_coords('q', 8)
-(u1, u2, u3, u4, u5, u6, u7, u8, u9, u10, u11), u_list, udot_list = N.declare_speeds('u', 11)
+# Declare parameters
+rr, rf, lr, ls, lf, l1, l2, l3, l4, mcd, mef, IC22, ICD11, ID13, ICD33, ID22, IEF11, IE13, IEF33, IE22, IF22, g = N.declare_parameters('rr rf lr ls lf l1 l2 l3 l4 mcd mef IC22 ICD11 ID13 ICD33 ID22 IEF11 IE13 IEF33 IE22 IF22 g')
+# Declare coordinates and their time derivatives
+q, qd = N.declare_coords('q', 8)
+# Declare speeds and their time derivatives
+u, ud = N.declare_speeds('u', 16)
+# Unpack the lists
+q0, q1, q2, q3, q4, q5, q6, q7 = q
+q0d, q1d, q2d, q3d, q4d, q5d, q6d, q7d = qd
+u0, u1, u2, u3, u4, u5, u6, u7, u8, u9, u10, u11, u12, u13, u14, u15 = u
+u0d, u1d, u2d, u3d, u4d, u5d, u6d, u7d, u8d, u9d, u10d, u11d, u12d, u13d, u14d, u15d = u
 
 # Reference Frames
 # Yaw frame
-A = N.rotate('A', 3, q1)
-B = A.rotate('B', 1, q2)
+A = N.rotate('A', 3, q0)
 # Lean frame
-#B = A.rotate('B', 1, q2)
-# Bicycle frame pitch frame
-#D = B.rotate('D', 2, q4, I=(ID11, ID22, ID33, 0, 0, ID13))
-#print 'B[3].in D=',B[3].express(D)
-#stop
-D = N.rotate('D', 'BODY312', (q1, q2, q4), I=(ID11, ID22, ID33, 0, 0, ID13))
-# Rear wheel spin frame
-C = N.rotate('C', 'BODY312', (q1, q2, q3), I=(IC11, IC22, IC11, 0, 0, 0), I_frame=D)
-# Steer frame
-E = D.rotate('E', 3, q5, I=(IE11, IE22, IE33, 0, 0, IE13))
-# Front wheel spin frame
-F = E.rotate('F', 2, q6, I=(IF11, IF22, IF11, 0, 0, 0), I_frame=E)
+B = A.rotate('B', 1, q1)
+# Bicycle frame with rigidly attached rider
+D = N.rotate('D', 'BODY312', (q0, q1, q3), I=(ICD11, ID22, ICD33, 0, 0, ID13))
+# Rear wheel
+C = N.rotate('C', 'BODY312', (q0, q1, q2), I=(0, IC22, 0, 0, 0, 0), I_frame=D)
+# Fork / handle bar assembly
+E = D.rotate('E', 3, q4, I=(IEF11, IE22, IEF33, 0, 0, IE13))
+# Front wheel
+F = E.rotate('F', 2, q5, I=(0, IF22, 0, 0, 0, 0), I_frame=E)
 
 # Unit vector in the plane of the front wheel, pointed towards the ground
 fo_fn_uv = Vector(N[3] - dot(E[2], N[3])*E[2]).normalized
@@ -48,135 +53,128 @@ fo_fn = Vector({E[1]: e1c, E[3]: e3c})
 
 # Locate rear wheel center relative to point fixed in N, coincident with rear
 # wheel contact
-CO = N.O.locate('CO', - rr*B[3], C, mass=mc)
-#CO = N.O.locate('CO', rr*sin(q4)*D[1] - rr*cos(q4)*D[3], C, mass=mc)
+CO = N.O.locate('CO', -rr*B[3], C)
 # Locate mass center of ricycle with rigidly attached rider
-DO = CO.locate('DO', l1*D[1] + l2*D[3], D, mass=md)
+CDO = CO.locate('CDO', l1*D[1] + l2*D[3], D, mass=mcd)
 # Locate top of steer axis
 DE = CO.locate('DE', lr*D[1], D)
-# Locate mass center of fork/handlebar assembly
-EO = DE.locate('EO', l3*E[1] + l4*E[3], E, mass=me)
 # Locate front wheel center
-FO = DE.locate('FO', lf*E[1] + ls*E[3], E, mass=mf)
+FO = DE.locate('FO', lf*E[1] + ls*E[3], E)
+# Locate mass center of fork/handlebar assembly
+EFO = FO.locate('EFO', l3*E[1] + l4*E[3], E)
 # Locate front wheel contact point (fixed in the front wheel)
 FN = FO.locate('FN', fo_fn, F)
 # Locate another point fixed in N
-N1 = CO.locate('N1', rr*B[3] - q7*N[1] - q8*N[2])
+N1 = CO.locate('N1', rr*B[3] - q6*N[1] - q7*N[2])
 
-# Definitions of the generalized speeds
+# Form the kinematic constraints in terms of the qdots.
+constraint_eqns = [dot(FN.vel(), A[1]).expand().subs(N.csqrd_dict),\
+                   dot(FN.vel(), A[2]).expand().subs(N.csqrd_dict),\
+                   dot(FN.vel(), A[3]).expand().subs(N.csqrd_dict),\
+                   dot(N1.vel(), N[1]).expand().subs(N.csqrd_dict),\
+                   dot(N1.vel(), N[2]).expand().subs(N.csqrd_dict)]
+
+# Determine the constraint matrix for the qdots
+con_matrix_qdots = coefficient_matrix(constraint_eqns, qd)
+
+# Choose which qdots will be taken as independent.  For numerical integration,
+# we often like to specify the initial condition in terms of the initial
+# coordinate rates, rather than the initial speeds.
+# Choose yaw rate, rear wheel rate, pitch rate, and translational rates as the
+# independent qdots.  This implies the independent rates are the lean rate,
+# steer rate and the front wheel rate.
+qd_dep = [q0d, q2d, q3d, q6d, q7d]
+adj, det, dep_ci, indep_ci = transform_matrix(con_matrix_qdots, qd, qd_dep)
+
+stop
+# Definitions of the generalized speeds in terms of time derivatives of
+# coordinates
 u_defs = N.define_speeds(
-        [Eq(u_list[i-1], dot(D.ang_vel(), D[i])) for i in (1, 2, 3)] + \
-        [Eq(u_list[3], dot(C.ang_vel(N), D[2])),
-         Eq(u_list[4], dot(E.ang_vel(N), D[3])),
-         Eq(u_list[5], dot(F.ang_vel(N), E[2])),
-         Eq(u_list[6], dot(N1.vel(), N[1])),
-         Eq(u_list[7], dot(N1.vel(), N[2]))])
+        [Eq(u0, dot(D.ang_vel(), D[1])),
+         Eq(u1, dot(D.ang_vel(), D[2])),
+         Eq(u2, dot(D.ang_vel(), D[3])),
+         Eq(u5, dot(E.ang_vel(), E[3])),
+         Eq(u6, dot(C.ang_vel(), D[2])),
+         Eq(u7, dot(F.ang_vel(), E[2])),
+         Eq(u14, dot(N1.vel(), N[1])),
+         Eq(u15, dot(N1.vel(), N[2]))])
 
 for u_def in u_defs:
     print u_def.lhs, ':=', u_def.rhs
 
-
 # Solve u_defs for the qdots in terms of the u's
 T, Tinv, kindiffs = N.form_kindiffs(u_defs, qdot_list)
+
+stop
 
 print 'Resulting kinematic differential equations'
 for qd in qdot_list:
     print qd, '=', kindiffs[qd]
-
-D.abs_ang_vel = Vector(u1*D[1] + u2*D[2] + u3*D[3])
-C.abs_ang_vel = Vector(u1*D[1] + (u4-u2)*D[2] + u3*D[3])
-E.abs_ang_vel = Vector(u1*D[1] + u2*D[2] + (u5-u3)*D[3])
-F.abs_ang_vel = Vector(
-
-CO._vrel = Vector(u7*D[1] + u8*D[2] + u9*D[3])
-#CO._vrel = cross(C.ang_vel(), CO.rel(N.O))
-DO._vrel = cross(D.ang_vel(), DO.rel(CO))
-DE._vrel = cross(D.ang_vel(), DE.rel(CO)).express(E)
-EO._vrel = cross(E.ang_vel(), EO.rel(DE)).express(E)
-FO._vrel = cross(E.ang_vel(), FO.rel(DE)).express(E)
-FN._vrel = cross(F.ang_vel(), FN.rel(FO)).express(E)
-
-# Ensuring all velocities expressions are in the most 'convenient' frame so
-# that when accelerations are formed, things stay somewhat clean
-CO.abs_vel = CO._vrel  # In D frame
-DO.abs_vel = CO._vrel + DO._vrel  # In D frame
-DE.abs_vel = CO._vrel.express(E) + DE._vrel  # In E frame
-EO.abs_vel = DE.abs_vel + EO._vrel # In E frame
-FO.abs_vel = DE.abs_vel + FO._vrel # In E frame
-FN.abs_vel = FO.abs_vel + FN._vrel # In E frame
-
-# Setting the angular accelerations and accelerations
-C.abs_ang_acc = dt(C.ang_vel(), D) + cross(D.ang_vel(), C.ang_vel())
-D.abs_ang_acc = dt(D.ang_vel(), D)
-E.abs_ang_acc = dt(E.ang_vel(), E).subs(kindiffs).expandv()
-F.abs_ang_acc = (dt(F.ang_vel(), E).subs(kindiffs) + cross(E.ang_vel(),
-    F.ang_vel())).expandv().subs(N.csqrd_dict).expandv()
-
-CO.abs_acc = (dt(CO.vel(), D) + cross(D.ang_vel(),
-    CO.vel())).subs(kindiffs).expandv()#.subs(N.csqrd_dict).expandv()
-DO.abs_acc = (dt(DO.vel(), D) + cross(D.ang_vel(),
-    DO.vel())).subs(kindiffs).expandv()#.subs(N.csqrd_dict).expandv()
-DE.abs_acc = (dt(DE.vel(), E).subs(kindiffs) + cross(E.ang_vel(),
-    DE.vel())).subs(kindiffs).expandv()#.subs(N.csqrd_dict).expandv()
-EO.abs_acc = (dt(EO.vel(), E).subs(kindiffs) + cross(E.ang_vel(),
-    EO.vel())).subs(kindiffs).expandv().subs({cos(q5)**2: 1-sin(q5)**2}).expandv()
-FO.abs_acc = (dt(FO.vel(), E).subs(kindiffs) + cross(E.ang_vel(),
-    FO.vel())).subs(kindiffs).expandv().subs({cos(q5)**2: 1-sin(q5)**2}).expandv()
-FN.abs_acc = (dt(FN.vel(), E).subs(kindiffs) + cross(E.ang_vel(),
-    FN.vel())).subs(kindiffs).expandv().subs({cos(q5)**2: 1-sin(q5)**2}).expandv()
-"""
-print 'Absolute angular velocities'
-print C.ang_vel()
-print D.ang_vel()
-print E.ang_vel()
-print F.ang_vel()
-print 'Absolute velocities'
-print CO.vel()
-print DO.vel()
-print DE.vel()
-print EO.vel()
-print FO.vel()
-print FN.vel()
-print 'Absolute angular accelerations'
-print C.ang_acc()
-print D.ang_acc()
-print E.ang_acc()
-print F.ang_acc()
-print 'Absolute accelerations'
-print 'CO', CO.acc()
-print 'DO', DO.acc()
-print 'DE', DE.acc()
-print 'EO', EO.acc()
-print 'FO', FO.acc()
-print 'FN', FN.acc()
 stop
-"""
-wxr = cross(C.ang_vel(), Vector(rr*sin(q4)*D[1] - rr*cos(q4)*D[3]))
-#constraint_eqs = [Eq(dot(FN.vel(), A[i]).expand().subs({cos(q1)**2:
-#    1-sin(q1)**2, cos(q5)**2:1-sin(q5)**2, cos(q4)**2:1-sin(q4)**2}).expand(), 0) for i in (1,2,3)]
-constraint_eqs = [Eq(dot(FN.vel(), A[i]).expand().subs(
-                    {cos(q1)**2:1-sin(q1)**2, cos(q5)**2:1-sin(q5)**2,
-                     cos(q4)**2:1-sin(q4)**2}).expand(), 0) for i in (1,2,3)]+\
-                 [Eq(dot(CO.vel() - wxr, D[i]), 0) for i in (1,2,3)]
+
+
+# Rigid body angular velocities
+# Angular velocity of rear frame with rigidly attached rider
+D.abs_ang_vel = Vector(u0*D[1] + u1*D[2] + u2*D[3])
+# Angular velocity of fork handlebar assembly
+E.abs_ang_vel = Vector(u3*E[1] + u4*E[2] + u5*E[3])
+# Angular velocity of rear wheel
+C.abs_ang_vel = Vector(u0*D[1] + u6*D[2] + u2*D[3])
+# Angular velocity of front wheel
+F.abs_ang_vel = Vector(u3*E[1] + u7*E[2] + u5*E[3])
+
+# Mass center velocities
+CDO.abs_vel = Vector(u9*D[1] + u10*D[2] + u11*D[3])
+EFO.abs_vel = Vector(u12*D[1] + u13*D[2] + u14*D[3])
+
+# Motion constraints
+# We have introduced 14 generalized speeds to describe the angular velocity of
+# the rigid bodies and the velocity of the mass centers.  Along with these
+# generalized speeds, there are 11 motion constraints which reduces the number
+# of degrees of freedom of the system to 3, consistent with what we know about
+# the bicycle.
+# These constraints arise for two reasons:
+# 1)  Nonholonomic rolling constraints
+# 2)  Introduction of generalized speeds which make the dynamic equations
+#     simpler, yet are dependent generalized speeds.
+
+# Rear assembly mass center constraint (incorporates rolling constraints of
+# rear wheel)
+vcdon = cross(C.ang_vel(), CO.rel(N.O).express(D)) + cross(D.ang_vel(), CDO.rel(CO))
+constraint_eqs = [Eq( u9 - dot(vcdon, D[1]), 0),\
+                  Eq(u10 - dot(vcdon, D[2]), 0),\
+                  Eq(u11 - dot(vcdon, D[3]), 0)]
+
+# Front assembly mass center constraint (incorporates rolling constraints of
+# front wheel)
+vefon = cross(F.ang_vel(), FO.rel(FN)) + cross(E.ang_vel(), EFO.rel(FO))
+constraint_eqs += [Eq(u12 - dot(vefon, E[1]), 0),\
+                   Eq(u13 - dot(vefon, E[2]), 0),\
+                   Eq(u14 - dot(vefon, E[3]), 0)]
+
+# Motion constraints associated with point DE (top of steer axis)
+vden1 = cross(C.ang_vel(), CO.rel(N.O).express(D)) + cross(D.ang_vel(),\
+        DE.rel(CO))
+vden2 = cross(F.ang_vel(), FO.rel(FN)) + cross(E.ang_vel(), DE.rel(FO))
+constraint_eqs += [Eq(dot(vden1 - vden2, D[1]), 0),\
+                   Eq(dot(vden1 - vden2, D[2]), 0),\
+                   Eq(dot(vden1 - vden2, D[3]), 0)]
+
+# Motion constraints associated with angular velocities of D and E
+constraint_eqs += [Eq(u4 - dot(D.ang_vel(), E[1])),\
+                   Eq(u5 - dot(D.ang_vel(), E[2]))]
 
 # Form the constraint matrix for B*u = 0
 B_con = N.form_constraint_matrix(constraint_eqs, u_list)
-# Hand simplifications
 
-B_con[0,0] = B_con[0,0].subs({sin(q4)**2:1-cos(q4)**2}).expand()
-B_con[1,5] = B_con[1,5].subs({cos(q2)**2:1-sin(q2)**2}).expand()
-B_con[2,0] = B_con[2,0].subs({sin(q5)**2:1-cos(q5)**2}).expand()
-
+# Set the constraint matrix
 N.set_constraint_matrix(B_con)
 
 # Form speed transform matrix for ud = (adj/det)*ui = T*ui
-#adj, det = N.form_speed_transform_matrix(B_con, [u1, u3, u4])
-adj, det = N.form_speed_transform_matrix(B_con, [u1, u3, u4, u7, u8, u9])
+adj, det = N.form_speed_transform_matrix(B_con, u_list[3:])
 
-
-# Hand simplifications on the adjugate matrix
-#adj[1,0] = adj[1,0].subs({sin(q4)**2:1-cos(q4)**2}).expand()
-#adj[1,2] = adj[1,2].subs({sin(q4)**2:1-cos(q4)**2}).expand()
+adj = adj.expand().subs(N.csqrd_dict).expand()
+det = det.expand().subs(N.csqrd_dict).expand()
 
 # Set the speed transform matrix and determine the dependent speeds
 ud = N.set_speed_transform_matrix(adj, det)
@@ -184,11 +182,23 @@ ud = N.set_speed_transform_matrix(adj, det)
 # Set the kindiffs and dependent_speeds
 N.setkindiffs(kindiffs, ud, acc=False)
 
+# Setting the angular accelerations of the rigid bodies
+C.abs_ang_acc = dt(C.ang_vel(), D) + cross(D.ang_vel(), C.ang_vel())
+D.abs_ang_acc = dt(D.ang_vel(), D)
+E.abs_ang_acc = dt(E.ang_vel(), E)
+F.abs_ang_acc = dt(F.ang_vel(), E) + cross(E.ang_vel(), F.ang_vel())
+
+# Setting the accelerations of the mass centers
+CDO.abs_acc = dt(CDO.vel(), D) + cross(D.ang_vel(), CDO.vel())
+EFO.abs_acc = dt(EFO.vel(), E) + cross(E.ang_vel(), EFO.vel())
+
 # Apply gravity
 N.gravity(g*N[3])
 
 # Form Kane's equations and solve them for the udots
 kanes_eqns = N.form_kanes_equations()
+stop
+
 
 dyndiffs = N.solve_kanes_equations()
 N.setdyndiffs(dyndiffs)
