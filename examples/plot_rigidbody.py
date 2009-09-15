@@ -25,7 +25,7 @@ params = [m, 0, I11, I22, I33]
 # Specify the initial conditions of the coordinates and the generalized speeds
 q0 = [0.0, 0.0, 0.0, .05, 0., 0.]
 # Intermediate inertia axis is the body-2 axis, exhibits instability
-u0 = [0.0, 2.0, 0.05, 0., 0., 0.0]
+u0 = [0.0, 5.0, 0.05, 0., 0., 0.0]
 x0 = q0 + u0
 
 # Integration time

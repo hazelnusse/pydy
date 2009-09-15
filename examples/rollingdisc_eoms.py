@@ -25,6 +25,7 @@ def f(x, t, parameter_list):
     u3p = -2*u1*u2 + s2*u1*u3/c2
     return [q1p, q2p, q3p, q4p, q5p, u1p, u2p, u3p]
 
+
 def qdot2u(q, qd, parameter_list):
     # Unpacking the parameters
     m, g, r = parameter_list
@@ -69,3 +70,4 @@ def animate(q, parameter_list):
     C3_2 = s1*s3 - c1*c3*s2
     C3_3 = c2*c3
     return [p_N1_CO_1, p_N1_CO_2, p_N1_CO_3], [B2_1, B2_2, B2_3, q3], [C1_1, C1_2, C1_3, 0], [C3_1, C3_2, C3_3, 0]
+

@@ -3,6 +3,7 @@ from rollingdisc_eoms import *
 
 from scipy.integrate import odeint
 from numpy import array, arange, zeros, roots
+import numpy as np
 
 # Dimensions of a penny
 m = 3.1/1000.   # A penny has a mass of 3.1g
@@ -31,25 +32,27 @@ qi = [0., 0.1, 0.0, .001, 0.001]
 # polynomial.  Note that for zero lean angles, there are an infinite number of
 # spin rates that are steady turns of infinite radius, so the following
 # equations break down.
-u2i = .0
+u2i = 2.0
 u3i = u2i/tan(qi[1]) + ((u2i/tan(qi[1]))**2 + 4*g*cos(qi[1])/(5*r))**(0.5)
 ui = [0.0,u2i,u3i]
 
 # Alternatively, specify any other intial generalized speeds
-ui = [.05,9.0,0.0]
 #ui = [.05,9.0,0.0]
+ui = [.05,9.0,0.0]
 
 # Inital states
-xi = qi + ui
+xi = array(qi + ui, dtype=np.float64)
 
 # Integration time
 ti = 0.0
 ts = 0.01
-tf = 10.0
+tf = 100.0
 t = arange(ti, tf+ts, ts)
 n = len(t)
 # Integrate the differential equations
-x = odeint(f, xi, t, args = (params,))
+#x = odeint(f, xi, t, args = (params,))
+params = array(params, dtype=np.float64)
+x = odeint(f_cython, xi, t, args = (params,))
 
 # Animate using Visual-Python
 CO_pos = zeros((n,3))
@@ -79,7 +82,7 @@ NO = (0,0,0)
 #        uniform=1, background=black, forward=(1,0,0), exit=0)
 
 scene = display(title='Rigid body animation @ %0.2f realtime'%k, width=800,
-        height=800, up=(0,0,-1), uniform=1, background=(0,0,0), forward=(1,0,0), exit=0)
+        height=800, up=(0,0,-1), uniform=1, background=(0,0,0), forward=(1,0,0))
 # Inertial reference frame arrows
 N = [arrow(pos=NO,axis=(.001,0,0),color=red),
      arrow(pos=NO,axis=(0,.001,0),color=green),
