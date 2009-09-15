@@ -33,18 +33,12 @@ ctypedef np.float64_t DTYPE_t
 cimport cython
 @cython.boundscheck(False)
 def f_cython(np.ndarray[DTYPE_t, ndim=1] x, DTYPE_t t, np.ndarray[DTYPE_t, ndim=1] parameter_list):
-    cdef np.float64_t m, g, r, q1, q2, u1, u2, u3, s1, s2, c1, c2, t2, F2
     cdef np.ndarray[DTYPE_t, ndim=1] F = np.zeros([8], dtype=DTYPE)
+    cdef np.float64_t m, g, r, q1, q2, q3, q4, q5, u1, u2, u3, s1, s2, c1, c2, t2, F2
     # Unpacking the parameters
-    m = parameter_list[0]
-    g = parameter_list[1]
-    r = parameter_list[2]
+    m, g, r = parameter_list
     # Unpacking the states (q's and u's)
-    q1 = x[0]
-    q2 = x[1]
-    u1 = x[5]
-    u2 = x[6]
-    u3 = x[7]
+    q1, q2, q3, q4, q5, u1, u2, u3 = x
     s1 = np.sin(q1)
     s2 = np.sin(q2)
     c1 = np.cos(q1)
