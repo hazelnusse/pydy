@@ -1198,6 +1198,9 @@ class ReferenceFrame(object):
             return newframe
         else:
             if len(angle) == 3:
+                csqrd_dict = {cos(angle[0])**2:1-sin(angle[0])**2,\
+                              cos(angle[1])**2:1-sin(angle[1])**2,\
+                              cos(angle[2])**2:1-sin(angle[2])**2}
                 rot_type = str(axis)
                 if rot_type in set(('BODY123', 'BODY132', 'BODY231', 'BODY213',
                     'BODY312', 'BODY321', 'BODY121', 'BODY131', 'BODY232',
@@ -1220,14 +1223,15 @@ class ReferenceFrame(object):
                     # Eqns 1.10.(5-7), pg. 47
                     # Angular velocity components in new frame's basis vectors
 
-                    w1 = C[0,2]*(C[0,1].diff(t)) + C[1,2]*(C[1,1].diff(t)) + \
-                        C[2,2]*(C[2,1].diff(t))
+                    w1 = (C[0,2]*(C[0,1].diff(t)) + C[1,2]*(C[1,1].diff(t)) + \
+                        C[2,2]*(C[2,1].diff(t))).expand().subs(csqrd_dict).expand()
 
-                    w2 = C[1,0]*(C[1,2].diff(t)) + C[2,0]*(C[2,2].diff(t)) + \
-                        C[0,0]*(C[0,2].diff(t))
+                    w2 = (C[1,0]*(C[1,2].diff(t)) + C[2,0]*(C[2,2].diff(t)) + \
+                        C[0,0]*(C[0,2].diff(t))).expand().subs(csqrd_dict).expand()
 
-                    w3 = C[2,1]*(C[2,0].diff(t)) + C[0,1]*(C[0,0].diff(t)) + \
-                        C[1,1]*(C[1,0].diff(t))
+                    w3 = (C[2,1]*(C[2,0].diff(t)) + C[0,1]*(C[0,0].diff(t)) + \
+                        C[1,1]*(C[1,0].diff(t))).expand().subs(csqrd_dict).expand()
+
 
                     # First initialize with zero angular velocity
                     newFrame = ReferenceFrame(name, C, self, Vector({}))
@@ -3146,6 +3150,116 @@ def coefficient_matrix(eqns, linear_terms):
             if B_ij is not None:
                 B[i, j] = B_ij
     return B
+
+def linear_transform(B, params, name, det=None, nested_terms=None, x=None, y=None):
+    """Given a m x n matrix of Sympy expressions, return an exec-able string
+    which would define the Python function mapping x \in R^n to y \in R^m.
+
+    Required arguments:
+        B:  A Sympy matrix
+
+        params: A list of Symbol or Function objects upon which the entries of
+        B depend.  The order of the list will govern the order of the function
+        signature.
+
+        name:  The desired name of the automatically generated function.
+
+    Optional arguments:
+        det:  When matrix inverses are constructed by forming the adjugate
+        matrix and the determinant, perform the matrix multiplication first,
+        then divide each element by the determinant.
+
+        nested_terms:  When the entries of B have been defined in terms of
+        quantities which are not in the parameter list, but depend upon
+        quantities in the parameter list.
+
+    Returns:
+        A string with the function signature:
+            def name(x, params):
+                ...
+                return B*x
+
+    """
+
+    fs = ""
+    fs += "def " + name + "(_x, _params):\n"
+
+    m,n = B.shape
+    param_string = ""
+    for p in params:
+        if isinstance(p, Symbol):
+            param_string += str(p) + ", "
+        elif isinstance(p, Function):
+            param_string += str(p.func) + ", "
+        elif isinstance(p, Derivative) and len(p.args) == 2:
+            param_string += str(p.args[0]) + "p, "
+    param_string = param_string[:-2] + " = _params\n"
+
+    x_string = ""
+    if x:
+        for j in range(n):
+            if str(x[j])[-1] == "'":
+                x_string += str(x[j])[:-1] + "p, "
+            else:
+                x_string += str(x[j]) + ", "
+    else:
+        for j in range(n):
+            x_string += "_x%d"%j + ", "
+    x_string = x_string[:-2] + " = _x\n"
+
+    fs += "    " + x_string
+    fs += "    " + param_string
+
+    # Trig terms
+    trig_set = set([])
+    for i in range(m):
+        for j in range(n):
+            trig_set.update(B[i, j].atoms(sin, cos, tan))
+    if trig_set:
+        trig_string = ""
+        for tt in trig_set:
+            trig_string += "    " + str(tt) + " = " + str(type(tt)) + "(" + str(tt.args[0]) + ")\n"
+        fs += trig_string
+
+    # Nested terms
+    if nested_terms:
+        nested_string = ""
+        for nt, expr in nested_terms.items():
+            nested_string += "    " + str(nt) + " = " + str(expr) + "\n"
+        fs += nested_string
+
+
+    # Perform the matrix multiplication
+    ret_string = "    return ["
+    for i in range(m):
+        if y:
+            if str(y[i])[-1] == "'":
+                fs += "    " + str(y[i])[:-1] + "p = "
+                ret_string += str(y[i])[:-1] + "p, "
+            else:
+                fs += "    " + str(y[i]) + " = "
+                ret_string += str(y[i]) + ", "
+        else:
+            fs += "    _y%d = "%i
+            ret_string += "_y%d, "%i
+        if det:
+            fs += "("
+        for j in range(n):
+            if x:
+                if str(x[j])[-1] == "'":
+                    fs += "(" + str(B[i, j]) + ")*" + str(x[j])[:-1] + "p + "
+                else:
+                    fs += "(" + str(B[i, j]) + ")*" + str(x[j]) + " + "
+            else:
+                fs += str(B[i, j]) + "*_x%d + "%j
+        fs = fs[:-3]
+        if det:
+            fs += ") / (" + str(det) + ")"
+        fs += "\n"
+    ret_string = ret_string[:-2] + "]\n"
+    fs += ret_string
+
+    return fs
 
 def transform_matrix(B, x, x_dependent):
     """Given an m x n coefficent matrix B, n linear terms x, and m linear terms

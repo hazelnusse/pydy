@@ -5,12 +5,13 @@ from pydy import *
 N = NewtonianReferenceFrame('N')
 
 # Declare parameters
-rr, rf, lr, ls, lf, l1, l2, l3, l4, mcd, mef, IC22, ICD11, ID13, ICD33, ID22, IEF11, IE13, IEF33, IE22, IF22, g = N.declare_parameters('rr rf lr ls lf l1 l2 l3 l4 mcd mef IC22 ICD11 ID13 ICD33 ID22 IEF11 IE13 IEF33 IE22 IF22 g')
+params = N.declare_parameters('rr rf lr ls lf l1 l2 l3 l4 mcd mef IC22 ICD11 ID13 ICD33 ID22 IEF11 IE13 IEF33 IE22 IF22 g')
 # Declare coordinates and their time derivatives
 q, qd = N.declare_coords('q', 8)
 # Declare speeds and their time derivatives
 u, ud = N.declare_speeds('u', 16)
 # Unpack the lists
+rr, rf, lr, ls, lf, l1, l2, l3, l4, mcd, mef, IC22, ICD11, ID13, ICD33, ID22, IEF11, IE13, IEF33, IE22, IF22, g = params
 q0, q1, q2, q3, q4, q5, q6, q7 = q
 q0d, q1d, q2d, q3d, q4d, q5d, q6d, q7d = qd
 u0, u1, u2, u3, u4, u5, u6, u7, u8, u9, u10, u11, u12, u13, u14, u15 = u
@@ -68,50 +69,54 @@ FN = FO.locate('FN', fo_fn, F)
 N1 = CO.locate('N1', rr*B[3] - q6*N[1] - q7*N[2])
 
 # Form the kinematic constraints in terms of the qdots.
-constraint_eqns = [dot(FN.vel(), A[1]).expand().subs(N.csqrd_dict),\
-                   dot(FN.vel(), A[2]).expand().subs(N.csqrd_dict),\
-                   dot(FN.vel(), A[3]).expand().subs(N.csqrd_dict),\
-                   dot(N1.vel(), N[1]).expand().subs(N.csqrd_dict),\
-                   dot(N1.vel(), N[2]).expand().subs(N.csqrd_dict)]
+constraint_eqns = [dot(FN.vel(), A[1]).expand().subs(N.csqrd_dict).expand(),\
+                   dot(FN.vel(), A[2]).expand().subs(N.csqrd_dict).expand(),\
+                   dot(FN.vel(), A[3]).expand().subs(N.csqrd_dict).expand(),\
+                   dot(N1.vel(), N[1]).expand().subs(N.csqrd_dict).expand(),\
+                   dot(N1.vel(), N[2]).expand().subs(N.csqrd_dict).expand()]
 
 # Determine the constraint matrix for the qdots
 con_matrix_qdots = coefficient_matrix(constraint_eqns, qd)
 
 # Choose which qdots will be taken as independent.  For numerical integration,
 # we often like to specify the initial condition in terms of the initial
-# coordinate rates, rather than the initial speeds.
+# coordinate rates, rather than the initial generalized speeds.
 # Choose yaw rate, rear wheel rate, pitch rate, and translational rates as the
 # independent qdots.  This implies the independent rates are the lean rate,
 # steer rate and the front wheel rate.
 qd_dep = [q0d, q2d, q3d, q6d, q7d]
+qd_indep = [q1d, q4d, q5d]
 adj, det, dep_ci, indep_ci = transform_matrix(con_matrix_qdots, qd, qd_dep)
 
+e1c_s, e3c_s = symbols('e1c e3c')
+f_to_s = {e1c: e1c_s, e3c: e3c_s}
+fo_fn_symbol_subs_dict = {e1c_s: e1c_expr, e3c_s: e3c_expr}
+func_params = params[:5] + (q0, q1, q3, q4)
+output_string = linear_transform(adj.subs(f_to_s), func_params,\
+        "dependent_qdot", det.subs(f_to_s), x=qd_indep, y=qd_dep,\
+        nested_terms=fo_fn_symbol_subs_dict)
 stop
+
 # Definitions of the generalized speeds in terms of time derivatives of
 # coordinates
-u_defs = N.define_speeds(
-        [Eq(u0, dot(D.ang_vel(), D[1])),
-         Eq(u1, dot(D.ang_vel(), D[2])),
-         Eq(u2, dot(D.ang_vel(), D[3])),
-         Eq(u5, dot(E.ang_vel(), E[3])),
-         Eq(u6, dot(C.ang_vel(), D[2])),
-         Eq(u7, dot(F.ang_vel(), E[2])),
-         Eq(u14, dot(N1.vel(), N[1])),
-         Eq(u15, dot(N1.vel(), N[2]))])
+u_defs = [Eq(u0, dot(D.ang_vel(), D[1])),
+          Eq(u1, dot(D.ang_vel(), D[2])),
+          Eq(u2, dot(D.ang_vel(), D[3])),
+          Eq(u5, dot(E.ang_vel(), E[3])),
+          Eq(u6, dot(C.ang_vel(), C[2])),
+          Eq(u7, collect(dot(F.ang_vel(), E[2]).expand(), qd)),
+          Eq(u14, q6d),
+          Eq(u15, q7d)]
 
 for u_def in u_defs:
     print u_def.lhs, ':=', u_def.rhs
 
 # Solve u_defs for the qdots in terms of the u's
-T, Tinv, kindiffs = N.form_kindiffs(u_defs, qdot_list)
-
-stop
+T, Tinv, kindiffs = N.form_kindiffs(u_defs, qd)
 
 print 'Resulting kinematic differential equations'
-for qd in qdot_list:
-    print qd, '=', kindiffs[qd]
-stop
-
+for qdot in qd:
+    print qdot, '=', kindiffs[qdot]
 
 # Rigid body angular velocities
 # Angular velocity of rear frame with rigidly attached rider
@@ -124,8 +129,8 @@ C.abs_ang_vel = Vector(u0*D[1] + u6*D[2] + u2*D[3])
 F.abs_ang_vel = Vector(u3*E[1] + u7*E[2] + u5*E[3])
 
 # Mass center velocities
-CDO.abs_vel = Vector(u9*D[1] + u10*D[2] + u11*D[3])
-EFO.abs_vel = Vector(u12*D[1] + u13*D[2] + u14*D[3])
+CDO.abs_vel = Vector(u8*D[1] + u9*D[2] + u10*D[3])
+EFO.abs_vel = Vector(u11*D[1] + u12*D[2] + u13*D[3])
 
 # Motion constraints
 # We have introduced 14 generalized speeds to describe the angular velocity of
@@ -141,16 +146,16 @@ EFO.abs_vel = Vector(u12*D[1] + u13*D[2] + u14*D[3])
 # Rear assembly mass center constraint (incorporates rolling constraints of
 # rear wheel)
 vcdon = cross(C.ang_vel(), CO.rel(N.O).express(D)) + cross(D.ang_vel(), CDO.rel(CO))
-constraint_eqs = [Eq( u9 - dot(vcdon, D[1]), 0),\
-                  Eq(u10 - dot(vcdon, D[2]), 0),\
-                  Eq(u11 - dot(vcdon, D[3]), 0)]
+constraint_eqs = [Eq( u8 - dot(vcdon, D[1]), 0),\
+                  Eq( u9 - dot(vcdon, D[2]), 0),\
+                  Eq(u10 - dot(vcdon, D[3]), 0)]
 
 # Front assembly mass center constraint (incorporates rolling constraints of
 # front wheel)
 vefon = cross(F.ang_vel(), FO.rel(FN)) + cross(E.ang_vel(), EFO.rel(FO))
-constraint_eqs += [Eq(u12 - dot(vefon, E[1]), 0),\
-                   Eq(u13 - dot(vefon, E[2]), 0),\
-                   Eq(u14 - dot(vefon, E[3]), 0)]
+constraint_eqs += [Eq(u11 - dot(vefon, E[1]), 0),\
+                   Eq(u12 - dot(vefon, E[2]), 0),\
+                   Eq(u13 - dot(vefon, E[3]), 0)]
 
 # Motion constraints associated with point DE (top of steer axis)
 vden1 = cross(C.ang_vel(), CO.rel(N.O).express(D)) + cross(D.ang_vel(),\
@@ -161,11 +166,12 @@ constraint_eqs += [Eq(dot(vden1 - vden2, D[1]), 0),\
                    Eq(dot(vden1 - vden2, D[3]), 0)]
 
 # Motion constraints associated with angular velocities of D and E
-constraint_eqs += [Eq(u4 - dot(D.ang_vel(), E[1])),\
-                   Eq(u5 - dot(D.ang_vel(), E[2]))]
+constraint_eqs += [Eq(u3 - dot(D.ang_vel(), E[1]), 0),\
+                   Eq(u4 - dot(D.ang_vel(), E[2]), 0)]
 
 # Form the constraint matrix for B*u = 0
-B_con = N.form_constraint_matrix(constraint_eqs, u_list)
+B_con = coefficient_matrix(constraint_eqs, u)
+stop
 
 # Set the constraint matrix
 N.set_constraint_matrix(B_con)
