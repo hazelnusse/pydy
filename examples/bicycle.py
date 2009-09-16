@@ -95,7 +95,6 @@ func_params = params[:5] + (q0, q1, q3, q4)
 output_string = linear_transform(adj.subs(f_to_s), func_params,\
         "dependent_qdot", det.subs(f_to_s), x=qd_indep, y=qd_dep,\
         nested_terms=fo_fn_symbol_subs_dict)
-stop
 
 # Definitions of the generalized speeds in terms of time derivatives of
 # coordinates
@@ -146,28 +145,28 @@ EFO.abs_vel = Vector(u11*D[1] + u12*D[2] + u13*D[3])
 # Rear assembly mass center constraint (incorporates rolling constraints of
 # rear wheel)
 vcdon = cross(C.ang_vel(), CO.rel(N.O).express(D)) + cross(D.ang_vel(), CDO.rel(CO))
-constraint_eqs = [Eq( u8 - dot(vcdon, D[1]), 0),\
-                  Eq( u9 - dot(vcdon, D[2]), 0),\
-                  Eq(u10 - dot(vcdon, D[3]), 0)]
+constraint_eqs = [ u8 - dot(vcdon, D[1]),\
+                   u9 - dot(vcdon, D[2]),\
+                  u10 - dot(vcdon, D[3])]
 
 # Front assembly mass center constraint (incorporates rolling constraints of
 # front wheel)
 vefon = cross(F.ang_vel(), FO.rel(FN)) + cross(E.ang_vel(), EFO.rel(FO))
-constraint_eqs += [Eq(u11 - dot(vefon, E[1]), 0),\
-                   Eq(u12 - dot(vefon, E[2]), 0),\
-                   Eq(u13 - dot(vefon, E[3]), 0)]
+constraint_eqs += [u11 - dot(vefon, E[1]),\
+                   u12 - dot(vefon, E[2]),\
+                   u13 - dot(vefon, E[3])]
 
 # Motion constraints associated with point DE (top of steer axis)
 vden1 = cross(C.ang_vel(), CO.rel(N.O).express(D)) + cross(D.ang_vel(),\
         DE.rel(CO))
 vden2 = cross(F.ang_vel(), FO.rel(FN)) + cross(E.ang_vel(), DE.rel(FO))
-constraint_eqs += [Eq(dot(vden1 - vden2, D[1]), 0),\
-                   Eq(dot(vden1 - vden2, D[2]), 0),\
-                   Eq(dot(vden1 - vden2, D[3]), 0)]
+constraint_eqs += [dot(vden1 - vden2, D[1]),\
+                   dot(vden1 - vden2, D[2]),\
+                   dot(vden1 - vden2, D[3])]
 
 # Motion constraints associated with angular velocities of D and E
-constraint_eqs += [Eq(u3 - dot(D.ang_vel(), E[1]), 0),\
-                   Eq(u4 - dot(D.ang_vel(), E[2]), 0)]
+constraint_eqs += [u3 - dot(D.ang_vel(), E[1]),\
+                   u4 - dot(D.ang_vel(), E[2])]
 
 # Form the constraint matrix for B*u = 0
 B_con = coefficient_matrix(constraint_eqs, u)
