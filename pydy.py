@@ -3151,7 +3151,8 @@ def coefficient_matrix(eqns, linear_terms):
                 B[i, j] = B_ij
     return B
 
-def linear_transform(B, params, name, det=None, nested_terms=None, x=None, y=None):
+def linear_transform(B, params, name, det=None, nested_terms=None, x=None,\
+        y=None, docstring=None):
     """Given a m x n matrix of Sympy expressions, return an exec-able string
     which would define the Python function mapping x \in R^n to y \in R^m.
 
@@ -3183,7 +3184,8 @@ def linear_transform(B, params, name, det=None, nested_terms=None, x=None, y=Non
 
     fs = ""
     fs += "def " + name + "(_x, _params):\n"
-
+    if docstring:
+        fs += '    """' + docstring + '\n    """\n'
     m,n = B.shape
     param_string = ""
     for p in params:
@@ -3197,12 +3199,17 @@ def linear_transform(B, params, name, det=None, nested_terms=None, x=None, y=Non
 
     x_string = ""
     if x:
+        x_var = []
         for j in range(n):
             if str(x[j])[-1] == "'":
-                x_string += str(x[j])[:-1] + "p, "
+                x_var.append(Symbol(str(x[j])[:-1] + "p"))
+                x_string += str(x_var[-1]) + ", "
             else:
+                x_var.append(x[j])
                 x_string += str(x[j]) + ", "
+        x_var = Matrix(x_var)
     else:
+        x_var = Matrix([n, 1], lambda i,j: Symbol("_x%d"%j))
         for j in range(n):
             x_string += "_x%d"%j + ", "
     x_string = x_string[:-2] + " = _x\n"
@@ -3228,6 +3235,8 @@ def linear_transform(B, params, name, det=None, nested_terms=None, x=None, y=Non
             nested_string += "    " + str(nt) + " = " + str(expr) + "\n"
         fs += nested_string
 
+    if det:
+        fs += "    det = " + str(det) + "\n"
 
     # Perform the matrix multiplication
     ret_string = "    return ["
@@ -3244,24 +3253,16 @@ def linear_transform(B, params, name, det=None, nested_terms=None, x=None, y=Non
             ret_string += "_y%d, "%i
         if det:
             fs += "("
-        for j in range(n):
-            if x:
-                if str(x[j])[-1] == "'":
-                    fs += "(" + str(B[i, j]) + ")*" + str(x[j])[:-1] + "p + "
-                else:
-                    fs += "(" + str(B[i, j]) + ")*" + str(x[j]) + " + "
-            else:
-                fs += str(B[i, j]) + "*_x%d + "%j
-        fs = fs[:-3]
+        fs += str((B[i, :]*x_var)[0])
         if det:
-            fs += ") / (" + str(det) + ")"
+            fs += ")/det"
         fs += "\n"
-    ret_string = ret_string[:-2] + "]\n"
+    ret_string = ret_string[:-2] + "]\n\n"
     fs += ret_string
 
     return fs
 
-def transform_matrix(B, x, x_dependent):
+def transform_matrix(B, x, x_dependent, subs_dict=None):
     """Given an m x n coefficent matrix B, n linear terms x, and m linear terms
     xd taken to be dependent, return the transform matrix between the
     independent linear terms and the dependent ones.
@@ -3336,15 +3337,23 @@ def transform_matrix(B, x, x_dependent):
     # Invert the Bd matrix and determine the dependent speeds
     # xd = -inv(Bd) * Bi * xi = T * xi
     # inv(Bd) = adjugate(Bd) / det(Bd)
-    Bda = Bd.adjugate().expand()
-    for i in range(m):
-        for j in range(m):
-            if Bda[i, j] != 0:
-                Bda[i,j] = factor(Bda[i,j])
-    BdaBi = -(Bda * Bi).subs(d)
-    Bd_det = Bd.det().subs(d)
+    # Form the adjugate and matrix multiply by Bi
+    BdaBi = Bd.adjugate() * Bi
+    # Form the negative of the determinant
+    Bd_det = -factor(Bd.det().expand())#.subs(d)
     assert Bd_det != 0, "Equations are singular."
-    return BdaBi, Bd_det, dependent_ci, independent_ci
+    for i in range(m):
+        for j in range(n-m):
+            BdaBi_ij = BdaBi[i,j]
+            if BdaBi_ij != 0:
+                BdaBi[i, j] = factor(BdaBi_ij.expand())
+    if subs_dict==None:
+        Bd_det = Bd_det.subs(d)
+        BdaBi = BdaBi.subs(d)
+        return BdaBi, Bd_det, dependent_ci, independent_ci
+    else:
+        return BdaBi, Bd_det, dependent_ci, independent_ci, d
+
 
 if __name__ == "__main__":
         import doctest
