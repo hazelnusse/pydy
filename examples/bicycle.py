@@ -40,6 +40,7 @@ symbol_subs_dict = {sin(q0): s0,
                     sin(q5): s5,
                     e1c    : e1c_s,
                     e3c    : e3c_s}
+symbol_subs_dict_back = dict([(v,k) for k,v in symbol_subs_dict.items()])
 trig_subs_dict = {c0**2: 1-s0**2,
                   c1**2: 1-s1**2,
                   c2**2: 1-s2**2,
@@ -95,6 +96,11 @@ FN = FO.locate('FN', fo_fn, F)
 # Locate another point fixed in N
 N1 = CO.locate('N1', rr*B[3] - q6*N[1] - q7*N[2])
 
+
+
+###############################################################################
+##  Construction of function mapping in dependent qdots to dependent qdots  ###
+###############################################################################
 # Form the kinematic constraints in terms of the qdots.
 kinematic_constraint_eqns = [dot(FN.vel(), A[1]).expand().subs(N.csqrd_dict).expand(),\
                    dot(FN.vel(), A[2]).expand().subs(N.csqrd_dict).expand(),\
@@ -102,9 +108,77 @@ kinematic_constraint_eqns = [dot(FN.vel(), A[1]).expand().subs(N.csqrd_dict).exp
                    dot(N1.vel(), N[1]).expand().subs(N.csqrd_dict).expand(),\
                    dot(N1.vel(), N[2]).expand().subs(N.csqrd_dict).expand()]
 
-# Determine the constraint matrix for the qdots
-con_matrix_qdots = coefficient_matrix(kinematic_constraint_eqns, qd)
+# Determine the constraint matrix for the qdots in the form:
+# B*qd = 0
+# B_d*qd_d + B_i*qd_i = 0
+# qd_d = -inv(B_d)*B_i*qd_i
+B_qd = coefficient_matrix(kinematic_constraint_eqns, qd).subs(symbol_subs_dict)
+B_qd_d = B_qd[:,0].row_join(B_qd[:,2:4]).row_join(B_qd[:,6:])
+B_qd_i = B_qd[:,1].row_join(B_qd[:,4]).row_join(B_qd[:,5])
 
+dummyd= zeros((5,5))
+dummyi = zeros((5,3))
+dd = {}
+di = {}
+for i in range(5):
+    for j in range(5):
+        bd_ij = B_qd_d[i,j]
+        if bd_ij != 0:
+            if bd_ij == 1:
+                dummyd[i,j] = -1
+                continue
+            ds = Symbol('_d%d%d'%(i,j))
+            dummyd[i,j] = ds
+            dd[ds] = bd_ij
+    for j in range(3):
+        bi_ij = B_qd_i[i,j]
+        if bi_ij != 0:
+            ds = Symbol('_i%d%d'%(i,j))
+            dummyi[i,j] = ds
+            di[ds] = bi_ij
+_d00, _d01, _d02, _d10, _d12, _d22, _d31, _d41 = symbols('_d00 _d01 _d02 _d10 _d12 _d22 _d31 _d41')
+_i01, _i02, _i10, _i11, _i12, _i20, _i21, _i22 = symbols('_i01 _i02 _i10 _i11 _i12 _i20 _i21 _i22')
+dd_new = {}
+di_new = {}
+dd_new[_d00] = s1*(-rr + c3*(e3c_s + ls) - s3*(lr + c4*(e1c_s + lf))) - c1*s4*(e1c_s + lf)
+dd_new[_d01] = dd[_d01]
+dd_new[_d02] = c3*(e3c_s + ls) - s3*(lr + c4*(e1c_s + lf))
+dd_new[_d10] = s3*(e3c_s + ls) + c3*(lr + c4*(e1c_s + lf))
+dd_new[_d12] =  s1*(s3*(e3c_s + ls) + c3*(lr + c4*(e1c_s + lf)))
+dd_new[_d22] = -c1*(s3*(e3c_s + ls) + c3*(lr + c4*(e1c_s + lf)))
+dd_new[_d31] = dd[_d31]
+dd_new[_d41] = dd[_d41]
+
+for k,v in dd_new.items():
+    assert v.expand() == dd[k]
+
+
+di_new[_i01] = factor(di[_i01])
+di_new[_i02] = di[_i02]
+di_new[_i10] = c1*(rr - c3*(e3c_s + ls) + s3*(lr + c4*(e1c_s + lf))) - s1*s4*(e1c_s + lf)
+di_new[_i11] = (e1c_s + lf)*(c1*c4 - s1*s3*s4)
+di_new[_i12] =  s1*c3*e1c_s + e3c_s*(c1*s4 + c4*s1*s3)
+di_new[_i20] = s1*(rr - c3*(e3c_s + ls) + s3*(lr + c4*(e1c_s + lf))) + c1*s4*(e1c_s + lf)
+di_new[_i21] = (e1c_s + lf)*(c4*s1 + c1*s3*s4)
+di_new[_i22] = -c1*c3*e1c_s + e3c_s*(s1*s4 - c1*c4*s3)
+
+
+for k,v in di_new.items():
+    assert v.expand() == di[k]
+
+T_qd = -dummyd.inverse_ADJ()*dummyi
+for i in range(5):
+    for j in range(3):
+        T_qd[i,j] = simplify(T_qd[i,j])
+
+# Join both dictionaries together
+dd_new.update(di_new)
+# Back substitude Symbols like 's1' for actual Functions like 'sin(q1)'
+symbol_subs_dict_back.pop(e3c_s)
+symbol_subs_dict_back.pop(e1c_s)
+
+for k,v in dd_new.items():
+    dd_new[k] = v.subs(symbol_subs_dict_back)
 # Choose which qdots will be taken as independent.  For numerical integration,
 # we often like to specify the initial condition in terms of the initial
 # coordinate rates, rather than the initial generalized speeds.
@@ -119,18 +193,21 @@ Linear mapping from lean rate, steer rate, front wheel rate to yaw rate, rear
     directions.
 """
 
-qd_dep = [q0d, q2d, q3d, q6d, q7d]
-qd_indep = [q1d, q4d, q5d]
-T_qd_adj, T_qd_det, dep_ci, indep_ci = transform_matrix(con_matrix_qdots, qd, qd_dep)
+qd_dep = [q0d, q2d, q3d, q6d, q7d]  # Yaw, rear wheel, pitch, rear contact rates
+qd_indep = [q1d, q4d, q5d]          # Lean, Steer, Front wheel rate
 
-e1c_s, e3c_s = symbols('e1c e3c')
-f_to_s = {e1c: e1c_s, e3c: e3c_s}
-fo_fn_symbol_subs_dict = {e1c_s: e1c_expr, e3c_s: e3c_expr}
+fw_terms = {e1c_s: e1c_expr, e3c_s: e3c_expr}
+nt = [fw_terms, dd_new]
 func_params = params[:5] + (q0, q1, q3, q4)
-output_string = linear_transform(T_qd_adj.subs(f_to_s), func_params,\
-        "dependent_qdot", T_qd_det.subs(f_to_s), x=qd_indep, y=qd_dep,\
-        nested_terms=fo_fn_symbol_subs_dict, docstring=ds)
+output_string = linear_transform(T_qd, func_params, "dependent_qdot",\
+        x=qd_indep, y=qd_dep, nested_terms=nt, docstring=ds)
+###############################################################################
 
+
+
+###############################################################################
+#  Construction of kinematic differential equations ###########################
+###############################################################################
 # Form mapping from u's to qdots
 # Definitions of the generalized speeds in terms of time derivatives of
 # coordinates
@@ -140,7 +217,7 @@ u_rhs = [dot(D.ang_vel(), D[1]),
          dot(D.ang_vel(), D[3]),
          dot(E.ang_vel(), E[3]),
          dot(C.ang_vel(), C[2]),
-         collect(dot(F.ang_vel(), E[2]).expand(), qd)]#,
+         collect(dot(F.ang_vel(), E[2]).expand(), qd)]
 
 qd_to_u = coefficient_matrix(u_rhs, qd[:-2])
 qd_to_u_adj, qd_to_u_det = qd_to_u.adjugate(), qd_to_u.det()
@@ -186,6 +263,8 @@ Linear mapping from generalized speeds to time derivatives of coordinates.
 """
 output_string += linear_transform(u_to_qd, func_params,\
         "kindiffs", x=u_lhs, y=qd, docstring=ds)
+
+###############################################################################
 
 # Rigid body angular velocities
 # Angular velocity of rear frame with rigidly attached rider
@@ -243,23 +322,67 @@ B_con = coefficient_matrix(speed_constraint_eqs, u)
 B_con_s = B_con.subs(symbol_subs_dict)
 
 # Use angular velocity measure numbers of front wheel as the independent speeds
-u_indep = [u3, u5, u7]
-u_dep = [u0, u1, u2, u4, u6, u8, u9, u10, u11, u12, u13]
-
-# This part is extremely slow.  This is because the adjugate of 13x13 matrix is
-# being formed and needs to be expanded, and each expression being expanded is
-# very long and messy (before expansion).  Thing simplify greatly after
-# expansion, so it is worth the wait.
+#u_indep = [u3, u5, u7]
+#u_dep = [u0, u1, u2, u4, u6, u8, u9, u10, u11, u12, u13]
+#T_ud_adj, T_ud_det, dep_ci, indep_ci, T_ud_subs_dict = transform_matrix(B_con, u, u_dep,
+#        subs_dict=True)
+#
+#stop
 
 UD = B_con_s[:,0:3].row_join(B_con_s[:,4]).row_join(B_con_s[:,6]).row_join(B_con_s[:,8:])
 UI = B_con_s[:,3].row_join(B_con_s[:,5]).row_join(B_con_s[:,7])
-UD_adj = UD.adjugate().expand().subs(trig_subs_dict).expand()
-UD_det = UD.det().expand().subs(trig_subs_dict).expand()
+UD_dummy = zeros((11,11))
+UI_dummy = zeros((11,3))
+dud = {}
+dudr = {}
+for i in range(11):
+    for j in range(11):
+        UDij = UD[i,j]
+        if UDij != 0:
+            if UDij == 1 or UDij == -1:
+                UD_dummy[i,j] = UDij
+                continue
+            elif UDij in dud.values():
+                UD_dummy[i,j] = dudr[UDij]
+            elif -UDij in dud.values():
+                UD_dummy[i,j] = -dudr[-UDij]
+            else:
+                dv = Symbol('_ud%d%d'%(i,j))#, dummy=True)
+                UD_dummy[i,j] = dv
+                dud[dv] = UDij
+                dudr[UDij] = dv
+    for j in range(3):
+        UIij = UI[i,j]
+        if UIij != 0:
+            if UIij == 1 or UIij == -1:
+                UI_dummy[i,j] = UIij
+                continue
+            elif UIij in dud.values():
+                UI_dummy[i,j] = dudr[UIij]
+            elif -UIij in dud.values():
+                UI_dummy[i,j] = -dudr[-UIij]
+            else:
+                dv = Symbol('_ui%d%d'%(i,j))#, dummy=True)
+                UI_dummy[i,j] = dv
+                dud[dv] = UIij
+                dudr[UIij] = dv
+
+UD_adj = UD_dummy.adjugate().expand()
+UD_det = factor(UD_dummy.det().expand())
+
+_ud01, _ud04, _ud10, _ud12, _ud21, _ud24, _ud33, _ud53, _ud63, _ud72, _ud73 = symbols('_ud01 _ud04 _ud10 _ud12 _ud21 _ud24 _ud33 _ud53 _ud63 _ud72 _ud73')
+_ud81, _ud83, _ud90, _ud91, _ui32, _ui40, _ui41, _ui52, _ui60, _ui61, _ui62 = symbols('_ud81 _ud83 _ud90 _ud91 _ui32 _ui40 _ui41 _ui52 _ui60 _ui61 _ui62')
+_ui70, _ui71, _ui72 = symbols('_ui70 _ui71 _ui72')
+assert dud[_ud90] == -cos(q4)
+assert dud[_ud91] == -sin(q4)
+UD_det = factor(UD_det.subs({_ud90**2:1-_ud91**2}).expand())
+UD_adj = UD_adj.subs({_ud90**2:1-_ud91**2}).expand()
 stop
+UD_d_inv = zeros((11,11))
+for i in range(11):
+    for j in range(11):
+        UD_d_inv[i,j] = factor(UD_adj[i,j]) / UD_det
 
-
-T_ud_adj, T_ud_det, dep_ci, indep_ci, T_ud_dict = transform_matrix(B_con_s, u, u_dep,
-        subs_dict=True)
 stop
 
 #T_ud_adj_sym = T_ud_adj.subs(symbol_subs_dict).expand().subs(trig_subs_dict).expand()

@@ -3222,6 +3222,11 @@ def linear_transform(B, params, name, det=None, nested_terms=None, x=None,\
     for i in range(m):
         for j in range(n):
             trig_set.update(B[i, j].atoms(sin, cos, tan))
+    if nested_terms:
+        for nest in nested_terms:
+            for v in nest.values():
+                trig_set.update(v.atoms(sin, cos, tan))
+
     if trig_set:
         trig_string = ""
         for tt in trig_set:
@@ -3231,8 +3236,9 @@ def linear_transform(B, params, name, det=None, nested_terms=None, x=None,\
     # Nested terms
     if nested_terms:
         nested_string = ""
-        for nt, expr in nested_terms.items():
-            nested_string += "    " + str(nt) + " = " + str(expr) + "\n"
+        for nest in nested_terms:
+            for nt, expr in nest.items():
+                nested_string += "    " + str(nt) + " = " + str(expr) + "\n"
         fs += nested_string
 
     if det:
@@ -3319,12 +3325,23 @@ def transform_matrix(B, x, x_dependent, subs_dict=None):
     # Create a matrix with dummy symbols representing non-zero entries
     B_dummy = zeros((m, n))
     d = {}
+    dr = {}
     for i in range(m):
         for j in range(n):
-            if B[i, j] != 0:
-                dummy_sym = Symbol('B%d%d'%(i,j), dummy=True)
-                d[dummy_sym] = B[i, j]
-                B_dummy[i, j] = dummy_sym
+            bij = B[i, j]
+            if bij != 0:
+                if bij == 1 or bij == -1:
+                    B_dummy[i, j] = bij
+                    continue
+                if bij in d.values():
+                    B_dummy[i, j] = dr[bij]
+                elif -bij in d.values():
+                    B_dummy[i, j] = -dr[-bij]
+                else:
+                    dummy_sym = Symbol('b%d%d'%(i,j), dummy=True)
+                    d[dummy_sym] = B[i, j]
+                    dr[B[i,j]] = dummy_sym
+                    B_dummy[i, j] = dummy_sym
 
     # Generate the independent and dependent matrices
     Bd = zeros((m, m))
@@ -3338,15 +3355,15 @@ def transform_matrix(B, x, x_dependent, subs_dict=None):
     # xd = -inv(Bd) * Bi * xi = T * xi
     # inv(Bd) = adjugate(Bd) / det(Bd)
     # Form the adjugate and matrix multiply by Bi
-    BdaBi = Bd.adjugate() * Bi
-    # Form the negative of the determinant
-    Bd_det = -factor(Bd.det().expand())#.subs(d)
-    assert Bd_det != 0, "Equations are singular."
+    Bd_adj = Bd.adjugate().expand()
     for i in range(m):
-        for j in range(n-m):
-            BdaBi_ij = BdaBi[i,j]
-            if BdaBi_ij != 0:
-                BdaBi[i, j] = factor(BdaBi_ij.expand())
+        for j in range(m):
+            if Bd_adj[i,j] != 0:
+                Bd_adj[i,j] = factor(Bd_adj[i,j])
+    BdaBi = Bd_adj*Bi
+    # Form the negative of the determinant
+    Bd_det = -factor(Bd.det().expand())
+    assert Bd_det != 0, "Equations are singular."
     if subs_dict==None:
         Bd_det = Bd_det.subs(d)
         BdaBi = BdaBi.subs(d)
