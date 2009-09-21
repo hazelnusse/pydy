@@ -1778,7 +1778,7 @@ class NewtonianReferenceFrame(ReferenceFrame):
         assert Bd_det != 0, "Constraint equations are singular."
         return BdaBi, Bd_det
 
-    def set_speed_transform_matrix(self, adj, det):
+    def set_speed_transform_matrix(self, T_ud, coef_dict=None):
         """Set the speed transform matrix, form dependent speed expressions and
         their time derivatives.
 
@@ -2929,7 +2929,10 @@ class PyDyStrPrinter(StrPrinter):
             return StrPrinter().doprint(e)
 
     def _print_Derivative(self, expr):
-        return str(expr.args[0].func) + "'"*len(expr.args[1:])
+        if len(expr.args) == 2:
+            return str(expr.args[0].func) + "d"*len(expr.args[1:])
+        else:
+            return StrPrinter().doprint(expr)
 
     def _print_Matrix(self, expr):
         return expr._format_str(lambda elem: elem.__str__())
@@ -3151,6 +3154,56 @@ def coefficient_matrix(eqns, linear_terms):
                 B[i, j] = B_ij
     return B
 
+def generate_function(name, Eq_list, func_args, params, nested_terms, docstring=None):
+    fs = ""
+    fs += "def " + name + "(_x, _params):\n"
+    if docstring:
+        fs += '    """' + docstring + '\n    """\n'
+    param_string = ""
+    for p in params:
+        if isinstance(p, Symbol):
+            param_string += str(p) + ", "
+        elif isinstance(p, Function):
+            param_string += str(p.func) + ", "
+    param_string = param_string[:-2] + " = _params\n"
+
+    m = len(Eq_list)
+    # Trig terms
+    for eqn in Eq_list:
+        trig_set = set([])
+        for i in range(m):
+            trig_set.update(eqn.rhs.atoms(sin, cos, tan))
+        if nested_terms:
+            for nest in nested_terms:
+                for v in nest.values():
+                    trig_set.update(v.atoms(sin, cos, tan))
+    trig_set = list(trig_set)
+    trig_set.sort()
+    if trig_set:
+        trig_string = ""
+        for tt in trig_set:
+            trig_string += "    " + str(tt) + " = " + str(type(tt)) + "(" + str(tt.args[0]) + ")\n"
+        fs += trig_string
+
+    # Nested terms
+    if nested_terms:
+        nested_string = ""
+        for nest in nested_terms:
+            ntk = nest.keys()
+            ntk.sort()
+            for nt in ntk:
+                nested_string += "    " + str(nt) + " = " + str(nest[nt]) + "\n"
+        fs += nested_string
+    ret_string = "    return ["
+    for eqn in Eq_list:
+        fs += "    " + str(eqn.lhs) + " = " + str(eqn.rhs) + "\n"
+        ret_string += str(eqn.lhs) + ", "
+    fs += ret_string[:-2] + "\n\n"
+
+    return fs
+
+
+
 def linear_transform(B, params, name, det=None, nested_terms=None, x=None,\
         y=None, docstring=None):
     """Given a m x n matrix of Sympy expressions, return an exec-able string
@@ -3237,8 +3290,10 @@ def linear_transform(B, params, name, det=None, nested_terms=None, x=None,\
     if nested_terms:
         nested_string = ""
         for nest in nested_terms:
-            for nt, expr in nest.items():
-                nested_string += "    " + str(nt) + " = " + str(expr) + "\n"
+            ntk = nest.keys()
+            ntk.sort()
+            for nt in ntk:
+                nested_string += "    " + str(nt) + " = " + str(nest[nt]) + "\n"
         fs += nested_string
 
     if det:
@@ -3259,7 +3314,17 @@ def linear_transform(B, params, name, det=None, nested_terms=None, x=None,\
             ret_string += "_y%d, "%i
         if det:
             fs += "("
-        fs += str((B[i, :]*x_var)[0])
+        #row = B[i, :]
+        #for j in range(n):
+        #    Bij = simplify(row[j])
+        #    n, d = Bij.as_numer_denom()
+        from sympy import together
+        prod = together((B[i, :]*x_var)[0])
+        #num, den = prod.as_numer_denom()
+        #num = factor(num)
+        #den = factor(den)
+        #prod = num / den
+        fs += str(prod)
         if det:
             fs += ")/det"
         fs += "\n"
@@ -3295,14 +3360,9 @@ def transform_matrix(B, x, x_dependent, subs_dict=None):
     so:
 
     xd = -inv(Bd)*Bi*xi
-       = -1/det(Bd)*adj(Bd)*Bi*xi
        = T*xi
 
-    The transformation between the independent xi and the dependent xd is:
-
-    T := -adj(Bd)*Bi/det(Bd)
-
-    Returns: adj(Bd)*Bi, -det(Bd), dependent_index, independent_index
+    Returns: inv(Bd), Bi, dependent_index, independent_index
 
     """
     m, n = B.shape
@@ -3356,20 +3416,21 @@ def transform_matrix(B, x, x_dependent, subs_dict=None):
     # inv(Bd) = adjugate(Bd) / det(Bd)
     # Form the adjugate and matrix multiply by Bi
     Bd_adj = Bd.adjugate().expand()
-    for i in range(m):
-        for j in range(m):
-            if Bd_adj[i,j] != 0:
-                Bd_adj[i,j] = factor(Bd_adj[i,j])
-    BdaBi = Bd_adj*Bi
+    Bd_inv = zeros((m,m))
     # Form the negative of the determinant
     Bd_det = -factor(Bd.det().expand())
     assert Bd_det != 0, "Equations are singular."
+    # Form inv(Bd)
+    for i in range(m):
+        for j in range(m):
+            if Bd_adj[i,j] != 0:
+                Bd_inv[i,j] = factor(Bd_adj[i,j]) / Bd_det
     if subs_dict==None:
-        Bd_det = Bd_det.subs(d)
-        BdaBi = BdaBi.subs(d)
-        return BdaBi, Bd_det, dependent_ci, independent_ci
+        Bd_inv = Bd_inv.subs(d)
+        Bi = Bi.subs(d)
+        return Bd_inv, Bi, dependent_ci, independent_ci
     else:
-        return BdaBi, Bd_det, dependent_ci, independent_ci, d
+        return Bd_inv, Bi, dependent_ci, independent_ci, d
 
 
 if __name__ == "__main__":

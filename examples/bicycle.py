@@ -9,13 +9,13 @@ params = N.declare_parameters('rr rf lr ls lf l1 l2 l3 l4 mcd mef IC22 ICD11 ID1
 # Declare coordinates and their time derivatives
 q, qd = N.declare_coords('q', 8)
 # Declare speeds and their time derivatives
-u, ud = N.declare_speeds('u', 14)
+u, ud = N.declare_speeds('u', 12)
 # Unpack the lists
 rr, rf, lr, ls, lf, l1, l2, l3, l4, mcd, mef, IC22, ICD11, ID13, ICD33, ID22, IEF11, IE13, IEF33, IE22, IF22, g = params
 q0, q1, q2, q3, q4, q5, q6, q7 = q
 q0d, q1d, q2d, q3d, q4d, q5d, q6d, q7d = qd
-u0, u1, u2, u3, u4, u5, u6, u7, u8, u9, u10, u11, u12, u13 = u
-u0d, u1d, u2d, u3d, u4d, u5d, u6d, u7d, u8d, u9d, u10d, u11d, u12d, u13d = ud
+u0, u1, u2, u3, u4, u5, u6, u7, u8, u9, u10, u11 = u
+u0d, u1d, u2d, u3d, u4d, u5d, u6d, u7d, u8d, u9d, u10d, u11d = ud
 
 # Create variables for to act as place holders in the vector from FO to FN
 e1c = Function('e1c')(t)
@@ -23,13 +23,14 @@ e3c = Function('e3c')(t)
 e1c_s, e3c_s = symbols('e1c e3c')
 
 # Some simplifying symbols / trig expressions
-s0, s1, s2, s3, s4, s5, c0, c1, c2, c3, c4, c5, e1c_s, e3c_s = symbols('s0 s1 \
-        s2 s3 s4 s5 c0 c1 c2 c3 c4 c5 e1c_s e3c_s')
+s0, s1, s2, s3, s4, s5, c0, c1, c2, c3, c4, c5, e1c_s, e3c_s, t1 = symbols('s0 s1 \
+        s2 s3 s4 s5 c0 c1 c2 c3 c4 c5 e1c_s e3c_s t1')
 
 symbol_subs_dict = {sin(q0): s0,
                     cos(q0): c0,
                     sin(q1): s1,
                     cos(q1): c1,
+                    tan(q1): t1,
                     cos(q2): c2,
                     sin(q2): s2,
                     cos(q3): c3,
@@ -39,7 +40,20 @@ symbol_subs_dict = {sin(q0): s0,
                     cos(q5): c5,
                     sin(q5): s5,
                     e1c    : e1c_s,
-                    e3c    : e3c_s}
+                    e3c    : e3c_s,
+                    u0     : Symbol('u0'),
+                    u1     : Symbol('u1'),
+                    u2     : Symbol('u2'),
+                    u3     : Symbol('u3'),
+                    u4     : Symbol('u4'),
+                    u5     : Symbol('u5'),
+                    u6     : Symbol('u6'),
+                    u7     : Symbol('u7'),
+                    u8     : Symbol('u8'),
+                    u9     : Symbol('u9'),
+                    u10    : Symbol('u10'),
+                    u11    : Symbol('u11')}
+
 symbol_subs_dict_back = dict([(v,k) for k,v in symbol_subs_dict.items()])
 trig_subs_dict = {c0**2: 1-s0**2,
                   c1**2: 1-s1**2,
@@ -90,13 +104,11 @@ DE = CO.locate('DE', lr*D[1], D)
 # Locate front wheel center
 FO = DE.locate('FO', lf*E[1] + ls*E[3], E)
 # Locate mass center of fork/handlebar assembly
-EFO = FO.locate('EFO', l3*E[1] + l4*E[3], E)
+EFO = FO.locate('EFO', l3*E[1] + l4*E[3], E, mass=mef)
 # Locate front wheel contact point (fixed in the front wheel)
 FN = FO.locate('FN', fo_fn, F)
 # Locate another point fixed in N
 N1 = CO.locate('N1', rr*B[3] - q6*N[1] - q7*N[2])
-
-
 
 ###############################################################################
 ##  Construction of function mapping in dependent qdots to dependent qdots  ###
@@ -152,7 +164,6 @@ dd_new[_d41] = dd[_d41]
 for k,v in dd_new.items():
     assert v.expand() == dd[k]
 
-
 di_new[_i01] = factor(di[_i01])
 di_new[_i02] = di[_i02]
 di_new[_i10] = c1*(rr - c3*(e3c_s + ls) + s3*(lr + c4*(e1c_s + lf))) - s1*s4*(e1c_s + lf)
@@ -161,7 +172,6 @@ di_new[_i12] =  s1*c3*e1c_s + e3c_s*(c1*s4 + c4*s1*s3)
 di_new[_i20] = s1*(rr - c3*(e3c_s + ls) + s3*(lr + c4*(e1c_s + lf))) + c1*s4*(e1c_s + lf)
 di_new[_i21] = (e1c_s + lf)*(c4*s1 + c1*s3*s4)
 di_new[_i22] = -c1*c3*e1c_s + e3c_s*(s1*s4 - c1*c4*s3)
-
 
 for k,v in di_new.items():
     assert v.expand() == di[k]
@@ -211,21 +221,18 @@ output_string = linear_transform(T_qd, func_params, "dependent_qdot",\
 # Form mapping from u's to qdots
 # Definitions of the generalized speeds in terms of time derivatives of
 # coordinates
-u_lhs = [u0, u1, u2, u5, u6, u7]
+u_lhs = [u0, u1, u2, u3, u4, u5]
 u_rhs = [dot(D.ang_vel(), D[1]),
          dot(D.ang_vel(), D[2]),
          dot(D.ang_vel(), D[3]),
          dot(E.ang_vel(), E[3]),
          dot(C.ang_vel(), C[2]),
-         collect(dot(F.ang_vel(), E[2]).expand(), qd)]
+         dot(F.ang_vel(), E[2])]
 
 qd_to_u = coefficient_matrix(u_rhs, qd[:-2])
-qd_to_u_adj, qd_to_u_det = qd_to_u.adjugate(), qd_to_u.det()
 
-qd_to_u_adj = qd_to_u_adj.expand().subs(N.csqrd_dict).expand()
-qd_to_u_det = qd_to_u_det.expand().subs(N.csqrd_dict).expand()
-
-u_to_qd = qd_to_u_adj / qd_to_u_det
+u_to_qd = qd_to_u.inverse_ADJ().expand().subs(N.csqrd_dict).expand().subs({sin(q1)/cos(q1):
+    tan(q1)})
 
 # Form velocity of rear wheel center in two distinct but equivalent ways.  This
 # allows for the rates of the rear wheel coordinates to be determined.
@@ -252,8 +259,10 @@ qd67_eqs =[xy_rates[qd[6]].subs({qd[2]:kindiffs_dict[qd[2]]}).expand(),\
 
 kindiffs_dict[qd[6]] = qd67_eqs[0]
 kindiffs_dict[qd[7]] = qd67_eqs[1]
+kindiffs.append(Eq(qd[6], qd67_eqs[0]))
+kindiffs.append(Eq(qd[7], qd67_eqs[1]))
 
-q6q7rows =  coefficient_matrix(qd67_eqs, u_lhs)
+q6q7rows = coefficient_matrix(qd67_eqs, u_lhs)
 u_to_qd = u_to_qd.col_join(q6q7rows)
 
 # Depends upon yaw, lean, pitch, steer
@@ -270,15 +279,15 @@ output_string += linear_transform(u_to_qd, func_params,\
 # Angular velocity of rear frame with rigidly attached rider
 D.abs_ang_vel = Vector(u0*D[1] + u1*D[2] + u2*D[3])
 # Angular velocity of fork handlebar assembly
-E.abs_ang_vel = Vector(u3*E[1] + u4*E[2] + u5*E[3])
+E.abs_ang_vel = Vector(u0*D[1] + u1*D[2] + u3*E[3]).express(E)
 # Angular velocity of rear wheel
-C.abs_ang_vel = Vector(u0*D[1] + u6*D[2] + u2*D[3])
+C.abs_ang_vel = Vector(u0*D[1] + u4*D[2] + u2*D[3])
 # Angular velocity of front wheel
-F.abs_ang_vel = Vector(u3*E[1] + u7*E[2] + u5*E[3])
+F.abs_ang_vel = E.abs_ang_vel - E.abs_ang_vel.dot(E[2])*E[2] + Vector(u5*E[2])
 
 # Mass center velocities
-CDO.abs_vel = Vector(u8*D[1] + u9*D[2] + u10*D[3])
-EFO.abs_vel = Vector(u11*D[1] + u12*D[2] + u13*D[3])
+CDO.abs_vel = Vector(u6*D[1] + u7*D[2] + u8*D[3])
+EFO.abs_vel = Vector(u9*E[1] + u10*E[2] + u11*E[3])
 
 # Motion constraints
 # We have introduced 14 generalized speeds to describe the angular velocity of
@@ -294,16 +303,16 @@ EFO.abs_vel = Vector(u11*D[1] + u12*D[2] + u13*D[3])
 # Rear assembly mass center constraint (incorporates rolling constraints of
 # rear wheel)
 vcdon = cross(C.ang_vel(), CO.rel(N.O).express(D)) + cross(D.ang_vel(), CDO.rel(CO))
-speed_constraint_eqs = [ u8 - dot(vcdon, D[1]),\
-                   u9 - dot(vcdon, D[2]),\
-                  u10 - dot(vcdon, D[3])]
+speed_constraint_eqs = [ u6 - dot(vcdon, D[1]),\
+                   u7 - dot(vcdon, D[2]),\
+                  u8 - dot(vcdon, D[3])]
 
 # Front assembly mass center constraint (incorporates rolling constraints of
 # front wheel)
 vefon = cross(F.ang_vel(), FO.rel(FN)) + cross(E.ang_vel(), EFO.rel(FO))
-speed_constraint_eqs += [u11 - dot(vefon, E[1]),\
-                   u12 - dot(vefon, E[2]),\
-                   u13 - dot(vefon, E[3])]
+speed_constraint_eqs += [u9 - dot(vefon, E[1]),\
+                   u10 - dot(vefon, E[2]),\
+                   u11 - dot(vefon, E[3])]
 
 # Motion constraints associated with point DE (top of steer axis)
 vden1 = cross(C.ang_vel(), CO.rel(N.O).express(D)) + cross(D.ang_vel(),\
@@ -313,100 +322,72 @@ speed_constraint_eqs += [dot(vden1 - vden2, D[1]),\
                    dot(vden1 - vden2, D[2]),\
                    dot(vden1 - vden2, D[3])]
 
-# Motion constraints associated with angular velocities of D and E
-speed_constraint_eqs += [u3 - dot(D.ang_vel(), E[1]),\
-                   u4 - dot(D.ang_vel(), E[2])]
+for i, sc in enumerate(speed_constraint_eqs):
+    speed_constraint_eqs[i] = sc.expand().subs({cos(q4)**2:1-sin(q4)**2}).expand()
 
 # Form the constraint matrix for B*u = 0
 B_con = coefficient_matrix(speed_constraint_eqs, u)
-B_con_s = B_con.subs(symbol_subs_dict)
+# Factor things to make them as simple as possible
+for i in range(9):
+    for j in range(12):
+        # Factor currently has trouble with non Symbol types, so we need to use
+        # subs to substitute and then back substitute.
+        B_con_ij = factor(B_con[i,j].subs(symbol_subs_dict)).subs(symbol_subs_dict_back)
 
-# Use angular velocity measure numbers of front wheel as the independent speeds
-#u_indep = [u3, u5, u7]
-#u_dep = [u0, u1, u2, u4, u6, u8, u9, u10, u11, u12, u13]
-#T_ud_adj, T_ud_det, dep_ci, indep_ci, T_ud_subs_dict = transform_matrix(B_con, u, u_dep,
-#        subs_dict=True)
-#
-#stop
+# One tiny little hand simplification
+B_con[7,0] = B_con[7,0].subs({sin(q4)**2:1-cos(q4)**2}).expand()
 
-UD = B_con_s[:,0:3].row_join(B_con_s[:,4]).row_join(B_con_s[:,6]).row_join(B_con_s[:,8:])
-UI = B_con_s[:,3].row_join(B_con_s[:,5]).row_join(B_con_s[:,7])
-UD_dummy = zeros((11,11))
-UI_dummy = zeros((11,3))
-dud = {}
-dudr = {}
-for i in range(11):
-    for j in range(11):
-        UDij = UD[i,j]
-        if UDij != 0:
-            if UDij == 1 or UDij == -1:
-                UD_dummy[i,j] = UDij
-                continue
-            elif UDij in dud.values():
-                UD_dummy[i,j] = dudr[UDij]
-            elif -UDij in dud.values():
-                UD_dummy[i,j] = -dudr[-UDij]
-            else:
-                dv = Symbol('_ud%d%d'%(i,j))#, dummy=True)
-                UD_dummy[i,j] = dv
-                dud[dv] = UDij
-                dudr[UDij] = dv
-    for j in range(3):
-        UIij = UI[i,j]
-        if UIij != 0:
-            if UIij == 1 or UIij == -1:
-                UI_dummy[i,j] = UIij
-                continue
-            elif UIij in dud.values():
-                UI_dummy[i,j] = dudr[UIij]
-            elif -UIij in dud.values():
-                UI_dummy[i,j] = -dudr[-UIij]
-            else:
-                dv = Symbol('_ui%d%d'%(i,j))#, dummy=True)
-                UI_dummy[i,j] = dv
-                dud[dv] = UIij
-                dudr[UIij] = dv
+# Use: u1 = dot(W_D_N>, D[1])
+#      u3 = dot(W_E_N>, E[3])
+#      u5 = dot(W_F_N>, 2[2])
+# As the independent speeds
+u_indep = [u1, u3, u5]
+u_dep = [u0, u2, u4, u6, u7, u8, u9, u10, u11]
+# Form inv(Bd), Bi, and a substitution dictionary
+Bd_inv, Bi, dep_ci, indep_ci, B_subs_dict = \
+        transform_matrix(B_con, u, u_dep, subs_dict=True)
 
-UD_adj = UD_dummy.adjugate().expand()
-UD_det = factor(UD_dummy.det().expand())
+# Matrix mapping inpependent speeds to dependent speeds
+T_ud = -Bd_inv*Bi
 
-_ud01, _ud04, _ud10, _ud12, _ud21, _ud24, _ud33, _ud53, _ud63, _ud72, _ud73 = symbols('_ud01 _ud04 _ud10 _ud12 _ud21 _ud24 _ud33 _ud53 _ud63 _ud72 _ud73')
-_ud81, _ud83, _ud90, _ud91, _ui32, _ui40, _ui41, _ui52, _ui60, _ui61, _ui62 = symbols('_ud81 _ud83 _ud90 _ud91 _ui32 _ui40 _ui41 _ui52 _ui60 _ui61 _ui62')
-_ui70, _ui71, _ui72 = symbols('_ui70 _ui71 _ui72')
-assert dud[_ud90] == -cos(q4)
-assert dud[_ud91] == -sin(q4)
-UD_det = factor(UD_det.subs({_ud90**2:1-_ud91**2}).expand())
-UD_adj = UD_adj.subs({_ud90**2:1-_ud91**2}).expand()
-stop
-UD_d_inv = zeros((11,11))
-for i in range(11):
-    for j in range(11):
-        UD_d_inv[i,j] = factor(UD_adj[i,j]) / UD_det
+# Parameters that the entries of matrix T_ud depend upon
+func_params = params[:9] + (q1, q3, q4)
 
+# Dealing with front wheel terms
+fw_terms = {e1c_s: e1c_expr, e3c_s: e3c_expr}
+for k,v in B_subs_dict.items():
+    B_subs_dict[k] = v.subs({e1c: e1c_s, e3c: e3c_s})
+
+# Nested terms
+nt = [fw_terms, B_subs_dict]
+
+# Docstring
+ds = """\
+Linear mapping from independent generalized speeds to dependent generalized
+speeds.
+"""
+
+# Append the speed transform to the output string.
+output_string += linear_transform(T_ud, func_params, "speed_transform",\
+        x=u_indep, y=u_dep, nested_terms=nt, docstring=ds)
+
+udep_eqns = []
+udep_rhs = (T_ud*Matrix(u_indep)).subs(symbol_subs_dict)
+for i in range(9):
+    n, d = simplify(udep_rhs[i]).as_numer_denom()
+    n = collect(n, [Symbol('u1'), Symbol('u3'), Symbol('u5')])
+    udep_eqns.append(Eq(u_dep[i], n / d))
+
+output_string += generate_function("speed_transform", udep_eqns, u_indep,
+        func_params, nt, ds)
 stop
 
-#T_ud_adj_sym = T_ud_adj.subs(symbol_subs_dict).expand().subs(trig_subs_dict).expand()
-#T_ud_det_sym = factor(T_ud_det.subs(symbol_subs_dict).expand().subs(trig_subs_dict).expand())
-#m, n = T_ud_adj.shape
-#for i in range(m):
-#    for j in range(n):
-#        T_ud_adj_sym[i,j] = factor(T_ud_adj_sym[i,j])
-stop
-
-# Set the constraint matrix
-N.set_constraint_matrix(B_con)
-
-# Form speed transform matrix for ud = (adj/det)*ui = T*ui
-adj, det = N.form_speed_transform_matrix(B_con, u_list[3:])
-
-adj = adj.expand().subs(N.csqrd_dict).expand()
-det = det.expand().subs(N.csqrd_dict).expand()
 
 # Set the speed transform matrix and determine the dependent speeds
-ud = N.set_speed_transform_matrix(adj, det)
+#ud = N.set_speed_transform_matrix(adj, det)
 
 # Set the kindiffs and dependent_speeds
-N.setkindiffs(kindiffs, ud, acc=False)
+#N.setkindiffs(kindiffs, ud, acc=False)
 
 # Setting the angular accelerations of the rigid bodies
 C.abs_ang_acc = dt(C.ang_vel(), D) + cross(D.ang_vel(), C.ang_vel())
@@ -420,6 +401,7 @@ EFO.abs_acc = dt(EFO.vel(), E) + cross(E.ang_vel(), EFO.vel())
 
 # Apply gravity
 N.gravity(g*N[3])
+stop
 
 # Form Kane's equations and solve them for the udots
 kanes_eqns = N.form_kanes_equations()
