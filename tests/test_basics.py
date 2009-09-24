@@ -4,17 +4,13 @@ from sympy import symbols, S, Symbol, Function, sin, cos, tan, Matrix, eye, \
     Rational, pprint, trigsimp, expand
 
 N = NewtonianReferenceFrame('N')
-(q1,q2,q3,q4,q5,q6), q_list, qdot_list = N.declare_coords('q', 6)
+q, qd = N.declare_coords('q', 6)
+q1, q2, q3, q4, q5, q6 = q
+q1p, q2p, q3p, q4p, q5p, q6p = qd
+
 A = N.rotate('A', 3, q1)
 B = A.rotate('B', 1, q2)
 C = B.rotate('C', 2, q3)
-q1p = qdot_list[0]
-q2p = qdot_list[1]
-q3p = qdot_list[2]
-q4p = qdot_list[3]
-q5p = qdot_list[4]
-q6p = qdot_list[5]
-
 
 zero = Vector({})
 
@@ -88,7 +84,8 @@ def test_cross_different_frames1():
 
 def test_cross_method():
     N = NewtonianReferenceFrame('N')
-    (q1, q2, q3), q_list, qdot_list = N.declare_coords('q', 3)
+    q, qd = N.declare_coords('q', 3)
+    q1, q2, q3 = q
     A = N.rotate('A', 1, q1)
     B = N.rotate('B', 2, q2)
     C = N.rotate('C', 3, q3)

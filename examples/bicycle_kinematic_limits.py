@@ -242,5 +242,3 @@ plt.ylabel('Steer')
 plt.title('Kinematically feasible region')
 plt.grid()
 plt.show()
-
-

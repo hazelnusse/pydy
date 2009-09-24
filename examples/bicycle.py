@@ -9,13 +9,13 @@ params = N.declare_parameters('rr rf lr ls lf l1 l2 l3 l4 mcd mef IC22 ICD11 ID1
 # Declare coordinates and their time derivatives
 q, qd = N.declare_coords('q', 8)
 # Declare speeds and their time derivatives
-u, ud = N.declare_speeds('u', 12)
+u, ud = N.declare_speeds('u', 6)
 # Unpack the lists
 rr, rf, lr, ls, lf, l1, l2, l3, l4, mcd, mef, IC22, ICD11, ID13, ICD33, ID22, IEF11, IE13, IEF33, IE22, IF22, g = params
 q0, q1, q2, q3, q4, q5, q6, q7 = q
 q0d, q1d, q2d, q3d, q4d, q5d, q6d, q7d = qd
-u0, u1, u2, u3, u4, u5, u6, u7, u8, u9, u10, u11 = u
-u0d, u1d, u2d, u3d, u4d, u5d, u6d, u7d, u8d, u9d, u10d, u11d = ud
+u0, u1, u2, u3, u4, u5 = u
+u0d, u1d, u2d, u3d, u4d, u5d = ud
 
 # Create variables for to act as place holders in the vector from FO to FN
 e1c = Function('e1c')(t)
@@ -46,13 +46,7 @@ symbol_subs_dict = {sin(q0): s0,
                     u2     : Symbol('u2'),
                     u3     : Symbol('u3'),
                     u4     : Symbol('u4'),
-                    u5     : Symbol('u5'),
-                    u6     : Symbol('u6'),
-                    u7     : Symbol('u7'),
-                    u8     : Symbol('u8'),
-                    u9     : Symbol('u9'),
-                    u10    : Symbol('u10'),
-                    u11    : Symbol('u11')}
+                    u5     : Symbol('u5')}
 
 symbol_subs_dict_back = dict([(v,k) for k,v in symbol_subs_dict.items()])
 trig_subs_dict = {c0**2: 1-s0**2,
@@ -189,6 +183,10 @@ symbol_subs_dict_back.pop(e1c_s)
 
 for k,v in dd_new.items():
     dd_new[k] = v.subs(symbol_subs_dict_back)
+
+symbol_subs_dict_back[e3c_s] = e3c
+symbol_subs_dict_back[e1c_s] = e1c
+
 # Choose which qdots will be taken as independent.  For numerical integration,
 # we often like to specify the initial condition in terms of the initial
 # coordinate rates, rather than the initial generalized speeds.
@@ -221,13 +219,12 @@ output_string = linear_transform(T_qd, func_params, "dependent_qdot",\
 # Form mapping from u's to qdots
 # Definitions of the generalized speeds in terms of time derivatives of
 # coordinates
-u_lhs = [u0, u1, u2, u3, u4, u5]
-u_rhs = [dot(D.ang_vel(), D[1]),
-         dot(D.ang_vel(), D[2]),
-         dot(D.ang_vel(), D[3]),
-         dot(E.ang_vel(), E[3]),
-         dot(C.ang_vel(), C[2]),
-         dot(F.ang_vel(), E[2])]
+u_rhs = [dot(D.ang_vel(N), D[1]),   # := u0
+         dot(D.ang_vel(N), D[2]),   # := u1
+         dot(D.ang_vel(N), D[3]),   # := u2
+         dot(E.ang_vel(N), E[3]),   # := u3
+         dot(C.ang_vel(N), C[2]),   # := u4
+         dot(F.ang_vel(N), E[2])]   # := u5
 
 qd_to_u = coefficient_matrix(u_rhs, qd[:-2])
 
@@ -236,8 +233,8 @@ u_to_qd = qd_to_u.inverse_ADJ().expand().subs(N.csqrd_dict).expand().subs({sin(q
 
 # Form velocity of rear wheel center in two distinct but equivalent ways.  This
 # allows for the rates of the rear wheel coordinates to be determined.
-vco1 = dt(q6*N[1] + q7*N[2] - rr*B[3], N)
-vco2 = C.ang_vel(N).cross(CO.rel(N.O))
+vco1 = dt(CO.rel(N1), N)
+vco2 = cross(C.ang_vel(N),CO.rel(N.O))
 eq1 = dot(vco1 - vco2, N[1]).expand().subs(N.csqrd_dict).expand()
 eq2 = dot(vco1 - vco2, N[2]).expand().subs(N.csqrd_dict).expand()
 
@@ -249,7 +246,7 @@ xy_rates = solve([eq1, eq2], qd[6:])
 # the right hand sides of the kinematic differential equations.
 kindiffs = []
 kindiffs_dict = {}
-kindiffs_rhs = u_to_qd*Matrix(u_lhs)
+kindiffs_rhs = u_to_qd*Matrix(u)
 for i, rhs in enumerate(kindiffs_rhs):
     kindiffs.append(Eq(qd[i], rhs))
     kindiffs_dict[qd[i]] = rhs
@@ -262,7 +259,7 @@ kindiffs_dict[qd[7]] = qd67_eqs[1]
 kindiffs.append(Eq(qd[6], qd67_eqs[0]))
 kindiffs.append(Eq(qd[7], qd67_eqs[1]))
 
-q6q7rows = coefficient_matrix(qd67_eqs, u_lhs)
+q6q7rows = coefficient_matrix(qd67_eqs, u)
 u_to_qd = u_to_qd.col_join(q6q7rows)
 
 # Depends upon yaw, lean, pitch, steer
@@ -271,7 +268,7 @@ ds = """\
 Linear mapping from generalized speeds to time derivatives of coordinates.
 """
 output_string += linear_transform(u_to_qd, func_params,\
-        "kindiffs", x=u_lhs, y=qd, docstring=ds)
+        "kindiffs", x=u, y=qd, docstring=ds)
 
 ###############################################################################
 
@@ -286,69 +283,63 @@ C.abs_ang_vel = Vector(u0*D[1] + u4*D[2] + u2*D[3])
 F.abs_ang_vel = E.abs_ang_vel - E.abs_ang_vel.dot(E[2])*E[2] + Vector(u5*E[2])
 
 # Mass center velocities
-CDO.abs_vel = Vector(u6*D[1] + u7*D[2] + u8*D[3])
-EFO.abs_vel = Vector(u9*E[1] + u10*E[2] + u11*E[3])
+CDO.abs_vel = express(cross(C.ang_vel(), CO.rel(N.O)) + cross(D.ang_vel(),\
+                CDO.rel(CO)), D)
+EFO.abs_vel = express(cross(F.ang_vel(), FO.rel(FN)) + cross(E.ang_vel(),\
+                EFO.rel(FO)), E)
 
 # Motion constraints
-# We have introduced 14 generalized speeds to describe the angular velocity of
+# We have introduced 6 generalized speeds to describe the angular velocity of
 # the rigid bodies and the velocity of the mass centers.  Along with these
-# generalized speeds, there are 11 motion constraints which reduces the number
+# generalized speeds, there are 3 motion constraints which reduces the number
 # of degrees of freedom of the system to 3, consistent with what we know about
 # the bicycle.
-# These constraints arise for two reasons:
-# 1)  Nonholonomic rolling constraints
-# 2)  Introduction of generalized speeds which make the dynamic equations
-#     simpler, yet are dependent generalized speeds.
-
-# Rear assembly mass center constraint (incorporates rolling constraints of
-# rear wheel)
-vcdon = cross(C.ang_vel(), CO.rel(N.O).express(D)) + cross(D.ang_vel(), CDO.rel(CO))
-speed_constraint_eqs = [ u6 - dot(vcdon, D[1]),\
-                   u7 - dot(vcdon, D[2]),\
-                  u8 - dot(vcdon, D[3])]
-
-# Front assembly mass center constraint (incorporates rolling constraints of
-# front wheel)
-vefon = cross(F.ang_vel(), FO.rel(FN)) + cross(E.ang_vel(), EFO.rel(FO))
-speed_constraint_eqs += [u9 - dot(vefon, E[1]),\
-                   u10 - dot(vefon, E[2]),\
-                   u11 - dot(vefon, E[3])]
 
 # Motion constraints associated with point DE (top of steer axis)
+# Velocity of point DE must be identical when formulated in the following two
+# ways:
+# Method 1:
 vden1 = cross(C.ang_vel(), CO.rel(N.O).express(D)) + cross(D.ang_vel(),\
         DE.rel(CO))
+# Method 2:
 vden2 = cross(F.ang_vel(), FO.rel(FN)) + cross(E.ang_vel(), DE.rel(FO))
-speed_constraint_eqs += [dot(vden1 - vden2, D[1]),\
-                   dot(vden1 - vden2, D[2]),\
-                   dot(vden1 - vden2, D[3])]
-
-for i, sc in enumerate(speed_constraint_eqs):
-    speed_constraint_eqs[i] = sc.expand().subs({cos(q4)**2:1-sin(q4)**2}).expand()
+# Form the constraint equations:
+speed_constraint_eqs = [dot(vden1 - vden2, D[1]),\
+                       dot(vden1 - vden2, D[2]),\
+                       dot(vden1 - vden2, D[3])]
 
 # Form the constraint matrix for B*u = 0
 B_con = coefficient_matrix(speed_constraint_eqs, u)
-# Factor things to make them as simple as possible
-for i in range(9):
-    for j in range(12):
-        # Factor currently has trouble with non Symbol types, so we need to use
-        # subs to substitute and then back substitute.
-        B_con_ij = factor(B_con[i,j].subs(symbol_subs_dict)).subs(symbol_subs_dict_back)
-
-# One tiny little hand simplification
-B_con[7,0] = B_con[7,0].subs({sin(q4)**2:1-cos(q4)**2}).expand()
+# Some simplifications
+B_con = B_con.subs({cos(q4)**2: 1-sin(q4)**2}).expand()
+B_con[1,0] = B_con[1,0].subs({sin(q4)**2: 1-cos(q4)**2}).expand()
+B_con[0,3] =\
+    factor(B_con[0,3].subs(symbol_subs_dict)).subs(symbol_subs_dict_back)
+B_con[1,3] =\
+    factor(B_con[1,3].subs(symbol_subs_dict)).subs(symbol_subs_dict_back)
 
 # Use: u1 = dot(W_D_N>, D[1])
 #      u3 = dot(W_E_N>, E[3])
 #      u5 = dot(W_F_N>, 2[2])
 # As the independent speeds
 u_indep = [u1, u3, u5]
-u_dep = [u0, u2, u4, u6, u7, u8, u9, u10, u11]
+u_dep = [u0, u2, u4]
 # Form inv(Bd), Bi, and a substitution dictionary
 Bd_inv, Bi, dep_ci, indep_ci, B_subs_dict = \
         transform_matrix(B_con, u, u_dep, subs_dict=True)
 
 # Matrix mapping inpependent speeds to dependent speeds
 T_ud = -Bd_inv*Bi
+
+for i in range(3):
+    for j in range(3):
+        Tudij = simplify(T_ud[i,j])
+        n, d = Tudij.as_numer_denom()
+        n = factor(n)
+        d = factor(d)
+        T_ud[i,j] = n / d
+
+stop
 
 # Parameters that the entries of matrix T_ud depend upon
 func_params = params[:9] + (q1, q3, q4)
@@ -380,8 +371,6 @@ for i in range(9):
 
 output_string += generate_function("speed_transform", udep_eqns, u_indep,
         func_params, nt, ds)
-stop
-
 
 # Set the speed transform matrix and determine the dependent speeds
 #ud = N.set_speed_transform_matrix(adj, det)

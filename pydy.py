@@ -1,7 +1,7 @@
 from sympy import (Symbol, symbols, Basic, Function, Mul, Pow, Matrix, sin,
         cos, tan, cot, S, eye, Add, trigsimp, expand, pretty, Eq, collect, sqrt,
         sympify, factor, zeros, simplify, solve_linear_system, ratsimp,
-        powsimp, block_diag)
+        powsimp, block_diag, Derivative)
 from sympy.printing.pretty.pretty import PrettyPrinter
 from sympy.printing.str import StrPrinter
 import time
@@ -683,10 +683,11 @@ class Vector(Basic):
             otherexpr = S(0)
             for term in trigadd: trigexpr += term
             for term in otheradd: otherexpr += term
-            trigexprs = trigexpr.subs(subsdict)
-            trigexprsf = factor(trigexprs)
-            trigexprf = trigexprsf.subs(rsubsdict)
-            m = trigexprf + otherexpr
+            #trigexprs = trigexpr.subs(subsdict)
+            #trigexprsf = factor(trigexprs)
+            #trigexprf = trigexprsf.subs(rsubsdict)
+            #m = trigexprf + otherexpr
+            m = trigexpr + otherexpr
         return m
 
     @property
@@ -983,46 +984,6 @@ class Point(object):
                     raise NotImplementedError('Somehow these two points are \
                         both fixed in 2 or more of the same frames')
         return v
-
-    def acc(self, point=None, frame=None):
-        """Calculate the acceleration of a point.
-
-        Used without arguments, vel() returns the velocity of self
-        relative to the Newtonian Frame, taking into account whether points
-        have been declared as fixed in a frame or not.
-
-        Used with arguments, .vel(point, frame) returns the velocity of self
-        relative to point, as view by an observer fixed in frame.
-        """
-
-        a = Vector(0)
-        if point == frame == None:
-            if hasattr(self, 'abs_acc'):
-                return self.abs_acc
-            else:
-                for p in self.point_list:
-                    a += p._arel
-        elif isinstance(point, Point) and isinstance(frame, ReferenceFrame):
-            if isinstance(frame, NewtonianReferenceFrame) and hasattr(self,
-                    'abs_acc'):
-                return self.abs_acc
-            else:
-                # Get the point list from point to self
-                point_list = point.get_point_list(self)
-                for i, pa in enumerate(point_list[:-1]):
-                    pb = point_list[i+1]
-                    set_intersect = pa._fixedin & pb._fixedin
-                    # Case when the two points are not fixed in the same frame
-                    if len(set_intersect) == 0:
-                        a += dt(pb.vel(pa), frame)
-                    # Case when the two points are fixed in the same frame
-                    elif len(set_intersect) == 1:
-                        a += cross(set_intersect.pop().ang_vel(frame),
-                                pb._vrel)
-                    else:
-                        raise NotImplementedError('Somehow these two points are \
-                            both fixed in 2 or more of the same frames')
-            return a
 
     def get_point_list(self, other=None):
         """
@@ -1483,51 +1444,13 @@ class NewtonianReferenceFrame(ReferenceFrame):
         self.csqrd_dict = {}
         self.crossterms = set([])
 
-    def setkindiffs(self, expr_dict, dependent_speeds=None, acc=True):
-        """Recursivly apply kinematic differential equations to velocity and
-        angular velocity expressions of every Point and ReferenceFrame,
-        respectively.
+    def setkindiffs(self, eqn_list):#, dependent_speeds=None, acc=True):
+        """Set the kinematic differential equations of the system.
 
-        Also forms the acceleration and angular acceleration of each point.
+        Must be given as a list of Relational objects.
 
         """
-        self.kindiffs = expr_dict
-        for eqn in self.kindiffs.values():
-            sins = eqn.atoms(sin)
-            coss = eqn.atoms(cos)
-            if sins is not None:
-                self.trig_func_set.update(sins)
-                self.sin_func_set.update(sins)
-            if coss is not None:
-                self.trig_func_set.update(coss)
-                self.cos_func_set.update(coss)
-
-        if dependent_speeds is not None:
-            for eqn in dependent_speeds.values():
-                sins = eqn.atoms(sin)
-                coss = eqn.atoms(cos)
-                if sins is not None:
-                    self.trig_func_set.update(sins)
-                    self.sin_func_set.update(sins)
-                if coss is not None:
-                    self.trig_func_set.update(coss)
-                    self.cos_func_set.update(coss)
-        else:
-            self.u_independent = self.u_list
-
-        for c in self.cos_func_set:
-            if c**2 not in self.csqrd_dict:
-                self.csqrd_dict[c**2] = 1 - sin(c.args[0])**2
-
-        # Form partial velocity expressions
-        self.recursive_partials(self)
-        self.recursive_partials(self.O)
-
-        # Form angular accelerations of ReferenceFrames and accelerations of
-        # Points
-        if acc == True:
-            self.recursive_acc(self)
-            self.recursive_acc(self.O)
+        self.kindiffs = eqn_list
 
 
     def setdyndiffs(self, eqns):
@@ -1535,50 +1458,6 @@ class NewtonianReferenceFrame(ReferenceFrame):
         Sets the dynamic equations of motion.
         """
         self.dyndiffs = eqns
-
-        for ud, rhs in eqns.items():
-            sins = rhs.atoms(sin)
-            coss = rhs.atoms(cos)
-            if sins is not None:
-                self.trig_func_set.update(sins)
-                self.sin_func_set.update(sins)
-            if coss is not None:
-                self.trig_func_set.update(coss)
-                self.cos_func_set.update(coss)
-
-        for c in self.cos_func_set:
-            if c**2 not in self.csqrd_dict:
-                self.csqrd_dict[c**2] = 1 - sin(c.args[0])**2
-
-    def recursive_acc(self, PorF):
-        """Recursively form acceleration of Points and angular acceleration of
-        ReferenceFrames.
-        """
-        if isinstance(PorF, Point):
-            if PorF._fixedin == set([]):
-                PorF._arel = PorF._vrel.dt(self)#.subs(self.kindiffs)
-            elif len(PorF._fixedin) == 1:
-                frame = list(PorF._fixedin)[0]
-                PorF._arel = frame.ang_vel(self).cross(PorF._vrel) + \
-                    frame.ang_acc(self).cross(PorF.rel(PorF.parentpoint))#.subs(self.kindiffs)
-            else:
-                frame_counter = {}
-                for frame in PorF._fixedin:
-                    frame_counter[frame] = len(frame.get_frames_list(self))
-                closest = min([(frame_counter[x], x) for x in frame_counter])[1]
-                PorF._arel = (closest.ang_vel(self).cross(PorF._vrel) +
-                        closest.ang_acc(self).cross(PorF.rel(
-                        PorF.parentpoint)))
-        elif isinstance(PorF, ReferenceFrame):
-            #PorF._alpharel = PorF._wrel.dt(PorF.NewtonianReferenceFrame).subs(self.kindiffs)
-            PorF._alpharel = PorF._wrel.dt(PorF.NewtonianReferenceFrame)
-
-        #  Initiate recursion
-        if PorF.children == []:
-            return
-        else:
-            for child in PorF.children:
-                self.recursive_acc(child)
 
     def recursive_subs(self, PorF, expr_dict):
         # Substitute into appropriate velocity/angular velocity
@@ -1597,12 +1476,14 @@ class NewtonianReferenceFrame(ReferenceFrame):
                 self.recursive_subs(child, expr_dict)
 
     def recursive_partials(self, PorF):
-        """Recursively form the relative partial velocities of each point.
+        """Recursively form the relative partial velocities of each point and
+        partial angular velocity of each reference frame.
         """
         # Substitute into appropriate velocity/angular velocity
-        if isinstance(PorF, Point):
-            pv = PorF.vel().partials(self.u_list)
-            if hasattr(self, 'u_dependent'):
+        if isinstance(PorF, (Point, ReferenceFrame)):
+            if isinstance(PorF, Point): pv = PorF.vel().partials(self.u_list)
+            if isinstance(PorF, ReferenceFrame): pv = PorF.ang_vel().partials(self.u_list)
+            if hasattr(self, 'u_dependent') and len(self.u_dependent) != 0:
                 pv_i = [pv[i] for i in self.independent_ci]
                 pv_d = Matrix([pv[i] for i in self.dependent_ci]).T
                 #  Maybe should use a dummy matrix instead of
@@ -1613,17 +1494,8 @@ class NewtonianReferenceFrame(ReferenceFrame):
             else:
                 # Case when the system has no constraints
                 PorF.partialv = pv
-        elif isinstance(PorF, ReferenceFrame):
-            pw = PorF.ang_vel().partials(self.u_list)
-            if hasattr(self, 'u_dependent'):
-                pw_i = [pw[i] for i in self.independent_ci]
-                pw_d = Matrix([pw[i] for i in self.dependent_ci]).T
-                con = matrixv_multiply(pw_d, self.u_dependent_transform_dummy).tolist()[0]
-                PorF.partialw = [pw_i[i] + con[i] for i in range(len(con))]
-            else:
-                PorF.partialw = pw
         else:
-            raise NotImplementedError()
+            raise NotImplementedError
 
         #  Initiate recursion
         if PorF.children == []:
@@ -1647,7 +1519,7 @@ class NewtonianReferenceFrame(ReferenceFrame):
             self.tan_dict[sin(q)/cos(q)] = tan(q)
             self.cot_dict[cos(q)/sin(q)] = cot(q)
         self.q_list_s = [Symbol(str(q.func)) for q in q_list]
-        self.qdot_list_s = [Symbol(str(q.func)+'p') for q in q_list]
+        self.qdot_list_s = [Symbol(str(q.func)+'d') for q in q_list]
         self.q_list_dict = dict(zip(q_list, self.q_list_s))
         self.q_list_dict_back = dict(zip(self.q_list_s, q_list))
         self.qdot_list_dict = dict(zip(qdot_list, self.qdot_list_s))
@@ -1669,6 +1541,9 @@ class NewtonianReferenceFrame(ReferenceFrame):
         self.u_dependent = []
         self.udot_independent = udot_list
         self.udot_dedependent = []
+        self.independent_ci = list(range(len(u_list)))
+        self.dependent_ci = []
+
         # Generate lists of Symbol objects instead of Function objects
         self.u_list_s = [Symbol(str(u.func)) for u in u_list]
         self.udot_list_s = [Symbol(str(u.func)+'p') for u in u_list]
@@ -1700,83 +1575,24 @@ class NewtonianReferenceFrame(ReferenceFrame):
         self.parameter_list = symbols(string)
         return self.parameter_list
 
-    def set_constraint_matrix(self, B):
+    def set_constraint_matrix(self, B, u_dep, u_indep):
         """Sets the linear speed constraint matrix.
         """
         self.constraint_matrix = B
-
-    def form_speed_transform_matrix(self, B, dependent):
-        """Form the matrix transform between independent and dependent speeds.
-
-        Linear velocity constraints can be written as:
-        B*u = 0
-        Bd*ud + Bi*ui = 0
-
-        so:
-
-        ud = -inv(Bd)*Bi*ui
-           = -1/det(Bd)*adj(Bd)*Bi*ui
-           = T*ui
-
-        Returns -adj(Bd), det(Bd)
-        """
-        m, n = B.shape
-        md = len(dependent)
-        if m != md:
-            raise ValueError('Number of equations must equal number of\
-                dependent speeds.')
+        self.u_dependent = u_dep
+        self.u_independent = u_indep
+        n = len(u_dep + u_indep)
         independent_ci = []
         dependent_ci = []
-        try:
-            for ud in dependent:
-                dependent_ci.append(self.u_list.index(ud))
-            dependent_ci.sort()
-            independent_ci = list(set(range(n)) - set(dependent_ci))
-            independent_ci.sort()
-        except ValueError:
-            print('Each of the dependent speeds must be in the speed list used\
-                in the declare_speeds.')
-        # Assign the dependent and independent speeds
-        self.u_dependent = [self.u_list[jd] for jd in dependent_ci]
-        self.u_independent = [self.u_list[ji] for ji in independent_ci]
-        # Independent and dependent column indices of self.ulist and
-        # self.udot_list
+        for ud in u_dep:
+            dependent_ci.append(self.u_list.index(ud))
+        dependent_ci.sort()
+        independent_ci = list(set(range(n)) - set(dependent_ci))
+        independent_ci.sort()
+
         self.independent_ci = independent_ci
         self.dependent_ci = dependent_ci
-        self.udot_dependent = [self.udot_list[i] for i in dependent_ci]
-        self.udot_independent = [self.udot_list[i] for i in independent_ci]
 
-        # Put the equations in Matrix form and create a matrix with dummy
-        # symbols representing non-zero entries
-        B_dummy = zeros((m, n))
-        d = {}
-        for i in range(m):
-            for j in range(n):
-                if B[i, j] != 0:
-                    dummy_sym = Symbol('B%d%d'%(i,j), dummy=True)
-                    d[dummy_sym] = B[i, j]
-                    B_dummy[i, j] = dummy_sym
-
-        # Generate the independent and dependent matrices
-        # i.e. Bd * ud + Bi * ui = 0
-        # Where Bd is m x m and Bi is m x (n-m)
-        Bd = zeros((m, m))
-        Bi = zeros((m, n-m))
-        for j, jd in enumerate(dependent_ci):
-            Bd[:, j] = B_dummy[:, jd]
-        for j, ji in enumerate(independent_ci):
-            Bi[:, j] = B_dummy[:, ji]
-        # Invert the Bd matrix and determine the dependent speeds
-        # ud = -inv(Bd) * Bi * ui = T * ui
-        # inv(Bd) = adjugate(Bd) / det(Bd)
-        Bda = Bd.adjugate().expand()
-        for i in range(m):
-            for j in range(m):
-                Bda[i,j] = factor(Bda[i,j])
-        BdaBi = -(Bda * Bi).subs(d)
-        Bd_det = Bd.det().subs(d)
-        assert Bd_det != 0, "Constraint equations are singular."
-        return BdaBi, Bd_det
 
     def set_speed_transform_matrix(self, T_ud, coef_dict=None):
         """Set the speed transform matrix, form dependent speed expressions and
@@ -1973,8 +1789,9 @@ class NewtonianReferenceFrame(ReferenceFrame):
     def frstar(self):
         """Computes the generalized inertia forces of the system.
         """
+        d = 0 if not hasattr(self, "u_dependent") else len(self.u_dependent)
         self.mass_matrix = zeros((len(self.u_independent),
-            len(self.u_independent)+len(self.u_dependent)))
+            len(self.u_independent)+d))
         self.recursive_frstar(self.O)
         self.recursive_frstar(self)
 
@@ -2010,7 +1827,7 @@ class NewtonianReferenceFrame(ReferenceFrame):
                 #PorF.gen_inertia_force = zeros((1, (n**2+n)/2))
             else:
                 # Compute the generalized inertia forces
-                acc = PorF.acc()
+                acc = PorF.abs_acc
                 acc_udot_coefs = []
                 acc_gyro_coefs = []
                 gif_ud_gyro = []
@@ -2041,7 +1858,7 @@ class NewtonianReferenceFrame(ReferenceFrame):
             if PorF.inertia == Inertia(self, (0,0,0,0,0,0)):
                 PorF.gen_inertia_force = [(0, 0)] * len(self.u_independent)
             else:
-                alph = PorF.ang_acc()
+                alph = PorF.abs_ang_acc
                 I = PorF.inertia
                 if hasattr(self, 'steady'):
                     w = PorF.ang_vel().subs(self.steady)
@@ -2056,7 +1873,7 @@ class NewtonianReferenceFrame(ReferenceFrame):
                 for uu in self.crossterms:
                     it_gyro_coefs.append(inertia_torque.coeffv(uu))
 
-                for i, pv in enumerate(PorF.partialw):
+                for i, pv in enumerate(PorF.partialv):
                     # Increment the mass matrix
                     s_ud_i = 0
                     s_ud_d = 0
@@ -2144,9 +1961,11 @@ class NewtonianReferenceFrame(ReferenceFrame):
         Rather than returning:
         Fr + Fr* = 0
 
-        It returns a set of equations which have the udot's on the left hand
+        It returns a list of equations which have the udot's on the left hand
         side and everything else on the opposite side.
         """
+        self.recursive_partials(self)
+        self.recursive_partials(self.O)
         self.fr()
         self.frstar()
         p = len(self.u_independent)
@@ -2157,9 +1976,6 @@ class NewtonianReferenceFrame(ReferenceFrame):
         self.recursive_eoms(self)
         kes = []
         for i in range(p):
-        #    for j, ui in enumerate(self.udot_independent):
-        #        c = self.kanes_equations[i][0].coeff(ui)
-        #        if c is not None: self.mass_matrix[i, j] = c
             kes.append(Eq(self.kanes_equations[i][0], self.kanes_equations[i][1]))
         self.kanes_equations = kes
         return kes
@@ -2204,11 +2020,11 @@ class NewtonianReferenceFrame(ReferenceFrame):
                             bi[i, j] = simplify(num/den)
                 inv_blocks.append(bi)
             mass_matrix_inv = block_diag(inv_blocks)
-            soln = mass_matrix_inv * Matrix([ke.rhs for ke in\
-                self.kanes_equations])
-            dyndiffs = {}
+            soln = (mass_matrix_inv * Matrix([ke.rhs for ke in
+                self.kanes_equations])).expand()
+            dyndiffs = []
             for i, u in enumerate(self.udot_independent):
-                dyndiffs[u] = soln[i]
+                dyndiffs.append(Eq(u, soln[i]))
             return dyndiffs
         else:
             Mi = zeros((m,m))
@@ -2264,10 +2080,10 @@ class NewtonianReferenceFrame(ReferenceFrame):
     def recursive_eoms(self, PorF):
         for r in range(len(self.u_independent)):
             # Term on the left hand side of Fr* = -Fr
-            self.kanes_equations[r][0] += PorF.gen_inertia_force[r][0] +\
-                PorF.gen_inertia_force[r][1]
+            self.kanes_equations[r][0] += PorF.gen_inertia_force[r][0] #+\
+                #PorF.gen_inertia_force[r][1]
             # Term on the right hand side of Fr* = -Fr
-            self.kanes_equations[r][1] +=  -PorF.gen_active_force[r]
+            self.kanes_equations[r][1] +=  -PorF.gen_active_force[r] - PorF.gen_inertia_force[r][1]
         if PorF.children == []:
             return
         else:
@@ -2748,43 +2564,6 @@ def dt(v, frame):
         raise TypeError('Second argument must be a ReferenceFrame, \
                 instead a %s object was given' % str(type(v)))
 
-def InertiaForce(p):
-    """Computes Inertia force of a point, defined as:
-
-    R^* = -m*a
-
-    Equation 4.11.3 or 4.11.6 from Dynamics: Theory and Application
-    """
-    if isinstance(p, Point):
-        if p.mass == 0:
-            return Vector(0)
-        else:
-            IF_dict = dict([(uv, -p.mass*coef) for uv, coef in \
-                    p.acc().dict.items()])
-            return Vector(IF_dict)
-    else:
-        raise TypeError('InertiForce requires a Point as its argument')
-
-def InertiaTorque(frame):
-    """Computes Inertia torque of a ReferenceFrame/Rigid Body, defined as:
-
-    T^* = - cross(alpha, I) - cross(omega, dot(I, omega))
-
-    Where I is the central inertia dyadic of the rigid body, omega is the
-    angular velocity of the body, and alpha is the angular acceleration of the
-    body.
-
-    Equation 4.11.8 from Dynamics: Theory and Application
-    """
-    if isinstance(frame, ReferenceFrame):
-            return dot(-frame.ang_acc(), frame.inertia)\
-                    - cross(frame.ang_vel(),\
-                    dot(frame.inertia, \
-                        frame.ang_vel()))
-    else:
-        raise NotImplementedError("frame must be a Reference Frame")
-
-
 def GeneralizedCoordinate(s, constant=False):
     gc = Symbol(s)(Symbol('t'))
     gc.is_gc = True
@@ -2934,8 +2713,8 @@ class PyDyStrPrinter(StrPrinter):
         else:
             return StrPrinter().doprint(expr)
 
-    def _print_Matrix(self, expr):
-        return expr._format_str(lambda elem: elem.__str__())
+    #def _print_Matrix(self, expr):
+    #    return expr._format_str(lambda elem: elem.__str__())
 
 class PyDyPrettyPrinter(PrettyPrinter):
     def _print_UnitVector(self, e):
@@ -3154,23 +2933,44 @@ def coefficient_matrix(eqns, linear_terms):
                 B[i, j] = B_ij
     return B
 
-def generate_function(name, Eq_list, func_args, params, nested_terms, docstring=None):
+def generate_function(name, Eq_list, func_args, params=None, nested_terms=None,
+        docstring=None, triples=None, time=None):
     fs = ""
-    fs += "def " + name + "(_x, _params):\n"
+    if time:
+        time_string = ", t"
+    else:
+        time_string = ""
+    if params:
+        fs += "def " + name + "(_x" + time_string + ", _params):\n"
+    else:
+        fs += "def " + name + "(_x" + time_string + "):\n"
+
     if docstring:
         fs += '    """' + docstring + '\n    """\n'
-    param_string = ""
-    for p in params:
-        if isinstance(p, Symbol):
-            param_string += str(p) + ", "
-        elif isinstance(p, Function):
-            param_string += str(p.func) + ", "
-    param_string = param_string[:-2] + " = _params\n"
+    arg_string = "    "
+    for a in func_args:
+        if isinstance(a, (Symbol, Derivative)):
+            arg_string += str(a) + ", "
+        elif isinstance(a, Function):
+            arg_string += str(a.func) + ", "
+    arg_string = arg_string[:-2] + " = _x\n"
+    fs += "    # Unpack function arguments\n"
+    fs += arg_string
+    if params:
+        param_string = "    "
+        for p in params:
+            if isinstance(p, Symbol):
+                param_string += str(p) + ", "
+            elif isinstance(p, Function):
+                param_string += str(p.func) + ", "
+        param_string = param_string[:-2] + " = _params\n"
+        fs += "\n    # Unpack function parameters\n"
+        fs += param_string
 
     m = len(Eq_list)
     # Trig terms
+    trig_set = set([])
     for eqn in Eq_list:
-        trig_set = set([])
         for i in range(m):
             trig_set.update(eqn.rhs.atoms(sin, cos, tan))
         if nested_terms:
@@ -3180,14 +2980,14 @@ def generate_function(name, Eq_list, func_args, params, nested_terms, docstring=
     trig_set = list(trig_set)
     trig_set.sort()
     if trig_set:
-        trig_string = ""
+        trig_string = "\n    # Trigonometric functions\n"
         for tt in trig_set:
             trig_string += "    " + str(tt) + " = " + str(type(tt)) + "(" + str(tt.args[0]) + ")\n"
         fs += trig_string
 
     # Nested terms
     if nested_terms:
-        nested_string = ""
+        nested_string = "\n    # Nested terms\n"
         for nest in nested_terms:
             ntk = nest.keys()
             ntk.sort()
@@ -3195,10 +2995,25 @@ def generate_function(name, Eq_list, func_args, params, nested_terms, docstring=
                 nested_string += "    " + str(nt) + " = " + str(nest[nt]) + "\n"
         fs += nested_string
     ret_string = "    return ["
-    for eqn in Eq_list:
-        fs += "    " + str(eqn.lhs) + " = " + str(eqn.rhs) + "\n"
-        ret_string += str(eqn.lhs) + ", "
-    fs += ret_string[:-2] + "\n\n"
+    fs += "\n    # Calculate return values\n"
+    if triples:
+        ret_string_d = ""
+        i = 1
+        for eqn in Eq_list:
+            fs += "    " + str(eqn.lhs) + " = " + str(eqn.rhs) + "\n"
+            ret_string_d += str(eqn.lhs) + ", "
+            if i % 3 == 0:
+                ret_string += "[" + ret_string_d[:-2] + "], "
+                ret_string_d = ""
+                i = 1
+                continue
+            i += 1
+    else:
+        for eqn in Eq_list:
+            fs += "    " + str(eqn.lhs) + " = " + str(eqn.rhs) + "\n"
+            ret_string += str(eqn.lhs) + ", "
+    fs += "\n    # Return calculated values\n"
+    fs += ret_string[:-2] + "]\n\n"
 
     return fs
 
@@ -3432,6 +3247,64 @@ def transform_matrix(B, x, x_dependent, subs_dict=None):
     else:
         return Bd_inv, Bi, dependent_ci, independent_ci, d
 
+def eqn_list_to_dict(eqn_list, reverse=None):
+    """Convert a list of Sympy Relational objects to a dictionary.
+
+    Most commonly, this will be for converting things like:
+
+    [y == a*x + b, z == c*x + d]
+
+    to a Python dictionary object with keys corresponding to the left hand side
+    of the relational objects and values corresponding to the right hand side
+    of the relational objects:
+
+    {y: a*x+b, z: c*x + d}
+
+    Optional argument 'reverse' swaps the keys for the values, i.e:
+
+    {a*x + b: y, c*x +d: z}
+
+    Remember that dictionaries are *NOT* ordered, so if the list you pass
+    requires a special ordering, it will *NOT* be presever by converting it to
+    a dictionary.
+
+    """
+    eqn_dict = {}
+    for eqn in eqn_list:
+        if reverse:
+            eqn_dict[eqn.rhs] = eqn.lhs
+        else:
+            eqn_dict[eqn.lhs] = eqn.rhs
+
+    return eqn_dict
+
+def dict_to_eqn_list(eqn_dict, reverse=None):
+    """Convert a Python dictionary to a list of Sympy Relational objects.
+    """
+    eqn_list = []
+    keys = eqn_dict.keys()
+    keys.sort()
+    for k in keys:
+        if reverse:
+            eqn_list.append(Eq(eqn_dict[k], k))
+        else:
+            eqn_list.append(Eq(k, eqn_dict[k]))
+
+    return eqn_list
+
+def animate(Frame, *args):
+    """Generate a list of equations useful for creating animations.
+
+    """
+    n1 = Frame[1]
+    n2 = Frame[2]
+    n3 = Frame[3]
+    eqn_list = []
+    for a in args:
+        for i, ni in enumerate((n1, n2, n3)):
+            eqn_list.append(Eq(Symbol(a[0]+"_%d"%(i+1)), dot(a[1], ni)))
+
+    return eqn_list
 
 if __name__ == "__main__":
         import doctest
