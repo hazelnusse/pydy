@@ -1789,9 +1789,22 @@ class NewtonianReferenceFrame(ReferenceFrame):
     def frstar(self):
         """Computes the generalized inertia forces of the system.
         """
-        d = 0 if not hasattr(self, "u_dependent") else len(self.u_dependent)
-        self.mass_matrix = zeros((len(self.u_independent),
-            len(self.u_independent)+d))
+        n = len(self.u_list)
+        # p == n in systems where no dependent speeds have been introduced
+        p = len(self.u_independent)
+        # m == 0 in systems where no dependent speeds have been introduced
+        m = len(self.u_dependent)
+        self.mass_matrix = zeros((p, p))
+        # When dependent speeds are used, the mass matrix must be formed
+        # carefully, taking into account the transformation matrix between the
+        # independent and the independent speeds:
+        # M_i * d(u_i)/dt + M_d * d(u_d)/dt + ... + Fr = 0
+        # M_i * d(u_i)/dt + M_d * (d(T_ud)/dt * u_i + T_ud * d(u_i)/dt) + ... + Fr = 0
+        # (M_i + M_d * T_ud) * d(u_i)/dt + M_d * d(T_ud)/dt * u_i + ... + Fr = 0
+        if m != 0:
+            self.mass_matrix_i = zeros((p, p))
+            self.mass_matrix_d = zeros((p, m))
+
         self.recursive_frstar(self.O)
         self.recursive_frstar(self)
 
@@ -1824,31 +1837,51 @@ class NewtonianReferenceFrame(ReferenceFrame):
         if isinstance(PorF, Point):
             if PorF.mass == 0:
                 PorF.gen_inertia_force = [(0, 0)] * len(self.u_independent)
-                #PorF.gen_inertia_force = zeros((1, (n**2+n)/2))
             else:
                 # Compute the generalized inertia forces
                 acc = PorF.abs_acc
-                acc_udot_coefs = []
-                acc_gyro_coefs = []
+                acc_udot_coefs = [] # List to store coefficients of d(u_i)/dt
+                acc_gyro_coefs = [] # List to store coefficients of u_i * u_j
+                
+                # List to store generalized inertia forces.  Each entry in the
+                # list is a 2-tuple.  The first entry of the two tuple contains
+                # terms that are linear in the time derivatives of the
+                # independent generalized speeds d(u_i)/dt.  The second entry
+                # is terms that are linear in gyroscopic terms u_i * u_j as
+                # well as terms that are linear in the time derivatives of the
+                # dependent generalized speeds.  Expressions for the time
+                # derivatives of these dependent generalized speeds need to be
+                # computed prior to the evaluation of the right hand sides of
+                # the EOMS
                 gif_ud_gyro = []
+
+                # Get the coefficients of d(u_i)/dt and u_i * u_j and store
+                # them in the appropriate lists
                 for ud in self.udot_list:
                     acc_udot_coefs.append(acc.coeffv(ud))
                 for uu in self.crossterms:
                     acc_gyro_coefs.append(acc.coeffv(uu))
 
+                # Step through the partial velocity vectors for this point
                 for i, pv in enumerate(PorF.partialv):
-                    # Increment the mass matrix
-                    s_ud_i = 0
-                    s_ud_d = 0
-                    s_gyro = 0
+                    s_ud_i = 0   # Sum of coefficients of independent d(u_i)/dt
+                    s_ud_d = 0   # Sum of coefficients of dependent d(u_i)/dt
+                    s_gyro = 0   # Sum of coefficients of gyro terms u_i * u_j
+                    # Step through all the du / dt terms
                     for j, acc_udot_coef in enumerate(acc_udot_coefs):
                         if acc_udot_coef != Vector(0):
+                            #  Compute the coefficient of the du/dt in the
+                            #  generalized inertia force
                             ud_coef = -PorF.mass*pv.dot(acc_udot_coef)
+                            # Building the mass matrix
                             self.mass_matrix[i, j] += ud_coef
                             if j in self.independent_ci:
+                                # Increment the sum of d(u_i)/dt
                                 s_ud_i += ud_coef*self.udot_list[j]
                             elif j in self.dependent_ci:
+                                # Increment the sum of d(u_d)/dt
                                 s_ud_d += ud_coef*self.udot_list[j]
+                    # Step through all the u_i * u_j terms
                     for j, acc_gyro_coef in enumerate(acc_gyro_coefs):
                         if acc_gyro_coef != Vector(0):
                             s_gyro += -PorF.mass*pv.dot(acc_gyro_coef)*self.crossterms[j]

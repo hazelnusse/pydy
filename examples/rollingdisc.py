@@ -125,7 +125,6 @@ critical_speed = [Eq(Symbol('cs'), solve(eval_eqs[0].rhs**2, [u1s])[0])]
 
 
 # Energy calculations
-
 ke = ((m*CO.abs_vel.mag_sqr + dot(C.abs_ang_vel, dot(C.inertia, C.abs_ang_vel)))).expand()/2.
 pe = -m*g*CO.rel(N.O).dot(N[3]) - m*g*r  # Take 0 to be when the disc is upright
 energy_eqs= [Eq(Symbol('ke'), ke),
