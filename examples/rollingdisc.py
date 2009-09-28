@@ -174,8 +174,8 @@ Calculate position and orientation of disc for purposes of animation.
     Output is four 3-tuples in the following order:
           CO:  Postion of the center of the disc in inertial coordinates
         B[2]:  Vector normal to the plane of the disc (axis of rotation)
-        C[1]:  1st body fixed coordinate in the plane of the disc
-        C[3]:  3rd body fixed coordinate in the plane of the disc
+        C[1]:  1st body fixed unit vector in the plane of the disc
+        C[3]:  3rd body fixed unit vector in the plane of the disc
 """
 output_string += generate_function("anim", anim_eqs, q, [r],\
         triples=True, docstring=ds)

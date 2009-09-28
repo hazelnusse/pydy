@@ -1,4 +1,4 @@
-from sympy import collect
+from sympy import collect, Function
 from pydy import *
 
 # Declare a NewtonianReferenceFrame
@@ -244,34 +244,25 @@ xy_rates = solve([eq1, eq2], qd[6:])
 # Create the kinematic differential equations as both a list of Sympy Eq
 # objects, and as a dictionary whose keys are the qdots and whose values are
 # the right hand sides of the kinematic differential equations.
-kindiffs = []
-kindiffs_dict = {}
-kindiffs_rhs = u_to_qd*Matrix(u)
-for i, rhs in enumerate(kindiffs_rhs):
-    kindiffs.append(Eq(qd[i], rhs))
-    kindiffs_dict[qd[i]] = rhs
+kindiff_rhs = u_to_qd*Matrix(u)
 
-qd67_eqs =[xy_rates[qd[6]].subs({qd[2]:kindiffs_dict[qd[2]]}).expand(),\
-           xy_rates[qd[7]].subs({qd[2]:kindiffs_dict[qd[2]]}).expand()]
-
-kindiffs_dict[qd[6]] = qd67_eqs[0]
-kindiffs_dict[qd[7]] = qd67_eqs[1]
-kindiffs.append(Eq(qd[6], qd67_eqs[0]))
-kindiffs.append(Eq(qd[7], qd67_eqs[1]))
-
-q6q7rows = coefficient_matrix(qd67_eqs, u)
-u_to_qd = u_to_qd.col_join(q6q7rows)
+kindiff_eqns = [Eq(qdot, qdot_rhs) for qdot, qdot_rhs in zip(qd[:6], kindiff_rhs)] +\
+               [Eq(qd[6], xy_rates[qd[6]]),
+                Eq(qd[7], xy_rates[qd[7]])]
 
 # Depends upon yaw, lean, pitch, steer
 func_params = (q0, q1, q3, q4)
 ds = """\
 Linear mapping from generalized speeds to time derivatives of coordinates.
 """
-output_string += linear_transform(u_to_qd, func_params,\
-        "kindiffs", x=u, y=qd, docstring=ds)
-
+output_string += generate_function("kindiffs", kindiff_eqns, func_params,
+        docstring=ds)
 ###############################################################################
 
+###############################################################################
+# Set velocity and angular velocities using only generalized speeds, no
+# time derivatives of coordinates
+###############################################################################
 # Rigid body angular velocities
 # Angular velocity of rear frame with rigidly attached rider
 D.abs_ang_vel = Vector(u0*D[1] + u1*D[2] + u2*D[3])
@@ -287,13 +278,16 @@ CDO.abs_vel = express(cross(C.ang_vel(), CO.rel(N.O)) + cross(D.ang_vel(),\
                 CDO.rel(CO)), D)
 EFO.abs_vel = express(cross(F.ang_vel(), FO.rel(FN)) + cross(E.ang_vel(),\
                 EFO.rel(FO)), E)
+###############################################################################
 
+###############################################################################
 # Motion constraints
 # We have introduced 6 generalized speeds to describe the angular velocity of
 # the rigid bodies and the velocity of the mass centers.  Along with these
 # generalized speeds, there are 3 motion constraints which reduces the number
 # of degrees of freedom of the system to 3, consistent with what we know about
 # the bicycle.
+###############################################################################
 
 # Motion constraints associated with point DE (top of steer axis)
 # Velocity of point DE must be identical when formulated in the following two
@@ -305,8 +299,8 @@ vden1 = cross(C.ang_vel(), CO.rel(N.O).express(D)) + cross(D.ang_vel(),\
 vden2 = cross(F.ang_vel(), FO.rel(FN)) + cross(E.ang_vel(), DE.rel(FO))
 # Form the constraint equations:
 speed_constraint_eqs = [dot(vden1 - vden2, D[1]),\
-                       dot(vden1 - vden2, D[2]),\
-                       dot(vden1 - vden2, D[3])]
+                        dot(vden1 - vden2, D[2]),\
+                        dot(vden1 - vden2, D[3])]
 
 # Form the constraint matrix for B*u = 0
 B_con = coefficient_matrix(speed_constraint_eqs, u)
@@ -318,28 +312,50 @@ B_con[0,3] =\
 B_con[1,3] =\
     factor(B_con[1,3].subs(symbol_subs_dict)).subs(symbol_subs_dict_back)
 
-# Use: u1 = dot(W_D_N>, D[1])
+# Use: u0 = dot(W_D_N>, D[1])
 #      u3 = dot(W_E_N>, E[3])
 #      u5 = dot(W_F_N>, 2[2])
 # As the independent speeds
-u_indep = [u1, u3, u5]
-u_dep = [u0, u2, u4]
+u_indep = [u0, u3, u5]
+u_dep = [u1, u2, u4]
 # Form inv(Bd), Bi, and a substitution dictionary
 Bd_inv, Bi, dep_ci, indep_ci, B_subs_dict = \
         transform_matrix(B_con, u, u_dep, subs_dict=True)
+B_subs_dict_time = {}
+B_subs_dict_time_rev = {}
+B_subs_dict_derivs = {}
+B_subs_dict_dt_rhs = {}
+for k, v in B_subs_dict.items():
+    tv = Function("_"+str(k.name))(t)
+    B_subs_dict_time[k] = tv
+    B_subs_dict_time_rev[tv] = k
+    tvd = Symbol("_"+str(k.name)+"d")
+    B_subs_dict_derivs[tv.diff(t)] = tvd
+    B_subs_dict_dt_rhs[tvd] = B_subs_dict[k].diff(t).subs({e1c.diff(t):
+        Symbol('e1cd'), e3c.diff(t):Symbol('e3cd')})
 
 # Matrix mapping inpependent speeds to dependent speeds
 T_ud = -Bd_inv*Bi
+T_ud_dt = zeros((3,3))
+# Right hand sides of the dependent speeds
+u_dep_rhs = T_ud*Matrix(u_indep)
+for i, rhs in enumerate(u_dep_rhs):
+    rhs = simplify(rhs.subs(N.symbol_dict)).subs(N.symbol_dict_back)
+    n, d = rhs.as_numer_denom()
+    n = collect(n, u)
+    n_u0 = n.coeff(u0).subs(B_subs_dict_time)
+    n_u3 = n.coeff(u3).subs(B_subs_dict_time)
+    n_u5 = n.coeff(u5).subs(B_subs_dict_time)
+    d_t = d.subs(B_subs_dict_time)
+    # Quotient rule
+    T_ud_dt[i, 0] = ((n_u0.diff(t)*d_t - n_u0*d_t.diff(t))/d_t**2)
+    T_ud_dt[i, 1] = ((n_u3.diff(t)*d_t - n_u3*d_t.diff(t))/d_t**2)
+    T_ud_dt[i, 2] = ((n_u5.diff(t)*d_t - n_u5*d_t.diff(t))/d_t**2)
+    u_dep_rhs[i] = n / d
 
-for i in range(3):
-    for j in range(3):
-        Tudij = simplify(T_ud[i,j])
-        n, d = Tudij.as_numer_denom()
-        n = factor(n)
-        d = factor(d)
-        T_ud[i,j] = n / d
+T_ud_dt = T_ud_dt.subs(B_subs_dict_derivs).subs(B_subs_dict_time_rev)
 
-stop
+dep_speed_eqns = [Eq(u_d, u_d_r) for u_d, u_d_r in zip(u_dep, u_dep_rhs)]
 
 # Parameters that the entries of matrix T_ud depend upon
 func_params = params[:9] + (q1, q3, q4)
@@ -357,26 +373,15 @@ ds = """\
 Linear mapping from independent generalized speeds to dependent generalized
 speeds.
 """
+output_string += generate_function("speed_transform", dep_speed_eqns, u_indep,
+        func_params, nested_terms=nt, docstring=ds)
 
-# Append the speed transform to the output string.
-output_string += linear_transform(T_ud, func_params, "speed_transform",\
-        x=u_indep, y=u_dep, nested_terms=nt, docstring=ds)
-
-udep_eqns = []
-udep_rhs = (T_ud*Matrix(u_indep)).subs(symbol_subs_dict)
-for i in range(9):
-    n, d = simplify(udep_rhs[i]).as_numer_denom()
-    n = collect(n, [Symbol('u1'), Symbol('u3'), Symbol('u5')])
-    udep_eqns.append(Eq(u_dep[i], n / d))
-
-output_string += generate_function("speed_transform", udep_eqns, u_indep,
-        func_params, nt, ds)
+for k,v in B_subs_dict.items():
+    B_subs_dict[k] = v.subs({e1c_s: e1c, e3c_s: e3c})
 
 # Set the speed transform matrix and determine the dependent speeds
-#ud = N.set_speed_transform_matrix(adj, det)
-
-# Set the kindiffs and dependent_speeds
-#N.setkindiffs(kindiffs, ud, acc=False)
+T_con_dict, T_con_dt_dict = N.set_motion_constraint_matrix(T_ud, T_ud_dt,
+        u_dep, u_indep, dep_ci, indep_ci)
 
 # Setting the angular accelerations of the rigid bodies
 C.abs_ang_acc = dt(C.ang_vel(), D) + cross(D.ang_vel(), C.ang_vel())
@@ -390,15 +395,31 @@ EFO.abs_acc = dt(EFO.vel(), E) + cross(E.ang_vel(), EFO.vel())
 
 # Apply gravity
 N.gravity(g*N[3])
-stop
-
+fo_fn_subs = {e3c: e3c_s, e1c: e1c_s}
 # Form Kane's equations and solve them for the udots
 kanes_eqns = N.form_kanes_equations()
-stop
+kanes_eqns_new = []
+for i, ke in enumerate(kanes_eqns):
+    lhs = ke.lhs.subs(fo_fn_subs)
+    rhs = ke.rhs.subs(fo_fn_subs)
+    kanes_eqns_new.append(Eq(lhs, rhs))
 
+N.set_kanes_equations(kanes_eqns_new)
 
-dyndiffs = N.solve_kanes_equations()
-N.setdyndiffs(dyndiffs)
-stop
-N.output_eoms('bicycle_eoms.py', CO, DO, DE, EO, FO, FN, C[1], C[2], C[3],
-        D[1], D[2], D[3], E[1], E[2], E[3], F[1], F[2], F[3])
+fw_terms[Symbol('e1cd')] = e1c_expr_dt
+fw_terms[Symbol('e3cd')] = e3c_expr_dt
+dyndiffs, mass_matrix_dict = N.solve_kanes_equations(dummy=True)
+
+for k, v in B_subs_dict.items():
+    B_subs_dict[k] = v.subs(fo_fn_subs)
+for k, v in B_subs_dict_dt_rhs.items():
+    B_subs_dict_dt_rhs[k] = v.subs(fo_fn_subs)
+
+u_dep_dict = eqn_list_to_dict(dep_speed_eqns)
+nt = [fw_terms, B_subs_dict, u_dep_dict, B_subs_dict_dt_rhs, T_con_dict, T_con_dt_dict,
+        mass_matrix_dict]
+ds = """\
+Equations of motion for a benchmark bicycle.
+"""
+output_string += generate_function("eoms", kindiff_eqns+dyndiffs, q+u_indep, params,
+        nested_terms=nt, docstring=ds, time=True)
