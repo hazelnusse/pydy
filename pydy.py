@@ -2023,7 +2023,7 @@ class NewtonianReferenceFrame(ReferenceFrame):
     def set_kanes_equations(self, eqns):
         self.kanes_equations = eqns
 
-    def solve_kanes_equations(self, dummy=None):
+    def solve_kanes_equations(self, dummy_mass_matrix=None):
         """Solves Kane's equations by inverting the mass matrix.
 
         Returns a dictionary with the udots as the keys and the right hand side
@@ -2031,7 +2031,7 @@ class NewtonianReferenceFrame(ReferenceFrame):
         """
         m, n = self.mass_matrix.shape
         assert m == n
-        if dummy:
+        if dummy_mass_matrix:
             mass_matrix_dict = {}
             mm_dummy = zeros((m, n))
             for i in range(m):
@@ -2086,7 +2086,7 @@ class NewtonianReferenceFrame(ReferenceFrame):
         dyndiffs = []
         for i, u in enumerate(self.udot_independent):
             dyndiffs.append(Eq(u, soln[i]))
-        if dummy:
+        if dummy_mass_matrix:
             return dyndiffs, mass_matrix_dict
         else:
             return dyndiffs
