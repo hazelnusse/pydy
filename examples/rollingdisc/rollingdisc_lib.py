@@ -39,9 +39,9 @@ def eoms(_x, t, _params):
     q2d = -t1*u2 + u1
     q3d = -r*q2d*c0
     q4d = -r*q2d*s0
-    u0d = -u2**2*t1/5 + 6*u1*u2/5 + 4*g*s1/(5*r)
+    u0d = -4*(-g*m*r*s1 - 3*m*r**2*u1*u2/2 + m*r**2*u2**2*t1/4)/(5*m*r**2)
     u1d = -2*u0*u2/3
-    u2d = -2*u0*u1 + t1*u0*u2
+    u2d = -4*(m*r**2*u0*u1/2 - m*r**2*t1*u0*u2/4)/(m*r**2)
 
     # Return calculated values
     return [q0d, q1d, q2d, q3d, q4d, u0d, u1d, u2d]

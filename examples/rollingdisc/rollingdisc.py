@@ -96,7 +96,6 @@ kanes_eqns = N.form_kanes_equations()
 dyndiffs = N.solve_kanes_equations()
 # End derivation of equations of motion
 
-
 # Upright stability analysis -- spin rate as a parameter
 ##############################################################################
 min_eqs = [kd[1]] + dyndiffs
@@ -181,7 +180,6 @@ Calculate position and orientation of disc for purposes of animation.
 """
 output_string += generate_function("anim", anim_eqs, q, [r],\
         triples=True, docstring=ds)
-stop
 # Mapping between qdot and u, in case it is desired to specify initial
 # coordinate rates rather than initial body fixed angular velocity measure
 # numbers
