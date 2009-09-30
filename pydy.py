@@ -1874,7 +1874,6 @@ class NewtonianReferenceFrame(ReferenceFrame):
                 coef_list = inertia_force.partials(udgyro_list)
                 test = matrixv_multiply(Matrix(coef_list).T,
                         Matrix(udgyro_list))[0]
-
                 for i, pv in enumerate(PorF.partialv):
                     sum_ud = 0
                     sum_gyro = 0
@@ -1936,7 +1935,7 @@ class NewtonianReferenceFrame(ReferenceFrame):
                     if n == p:  # Case for no motion constraints
                         for j, udot in enumerate(udgyro_list[:p]):
                             self.mass_matrix[i, j] += coef_list_d_pv[j]
-                            sum_ud += coef_list_d_pv[j+p] * udot
+                            sum_ud += coef_list_d_pv[j] * udot
                         for j, gyro in enumerate(udgyro_list[p:]):
                             sum_gyro += coef_list_d_pv[j+p] * gyro
                         PorF.gen_inertia_force.append((sum_ud, sum_gyro))
@@ -2118,7 +2117,7 @@ class NewtonianReferenceFrame(ReferenceFrame):
                 inv_blocks.append(bi)
             mass_matrix_inv = block_diag(inv_blocks)
             soln = (mass_matrix_inv * Matrix([ke.rhs for ke in
-                self.kanes_equations])).expand()
+                self.kanes_equations]))#.expand()
         dyndiffs = []
         for i, u in enumerate(self.udot_independent):
             dyndiffs.append(Eq(u, soln[i]))
