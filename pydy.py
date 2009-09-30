@@ -254,7 +254,9 @@ class Dyad(Basic):
         scalar.
         """
         self.dict = {}
-        if v.is_Add:
+        if isinstance(v, dict):
+            self.dict = v
+        elif v.is_Add:
             for term in v.args:
                 if term.args[-1].is_Pow:
                     self.dict.update({term.args[-1]: term.coeff(term.args[-1])})
@@ -351,10 +353,7 @@ class Dyad(Basic):
                     for k1, v1 in t1.dict.items():
                         for k2, v2 in t2.dict.items():
                             dyad_dict[k1*k2] = dyad_dict.get(k1*k2, 0) + coeff*v1*v2
-        sympy_expr = S(0)
-        for k, v in dyad_dict.items():
-            sympy_expr += k*trigsimp(v)
-        return Dyad(sympy_expr)
+        return Dyad(dyad_dict)
 
 class Inertia(Dyad):
     """Inertia dyadic.
