@@ -262,13 +262,18 @@ class Dyad(Basic):
                     self.dict.update({term.coeff(term.args[0]): term.args[0]})
         elif v.is_Mul:  # case of Ixx*F[i]*F[j]
             # Fragile -- depends on proper ordering of args... XXX
-            if len(v.args) == 2:  # case of Ixx*F[i]*F[i]
-                self.dict.update({v.args[1]: v.args[0]})
+            if len(v.args) == 2:  # case of Ixx*F[i]*F[i] or F[i]*F[j]
+                a0 = v.args[0]
+                a1 = v.args[1]
+                if isinstance(a0, UnitVector) and isinstance(a1, UnitVector):
+                    self.dict.update({a0*a1: S(1)})
+                else:
+                    self.dict.update({v.args[1]: v.args[0]})
             elif len(v.args) == 3: # case of Ixx*F[i]*F[j]
                 self.dict.update({v.args[1]*v.args[2]: v.args[0]})
-        elif v.is_Pow:
-            self.dict.update({term.args[-1]: term.coeff(term.args[-1])})
-        elif v == 0:
+        elif v.is_Pow:  # case of A[i]*A[i]
+            self.dict.update({v : S(1)})
+        elif v == 0 or v == {}:
             pass
         else:
             raise NotImplementedError()
@@ -317,7 +322,39 @@ class Dyad(Basic):
 
     def __str__(self):
         return PyDyStrPrinter().doprint(self)
-        #return pydy_str(self)
+
+    def express(self, frame):
+        """Express a Dyad with Unit Vectors fixed in a specified frame."""
+        dyad_dict = {}
+        for d_term, coeff in self.dict.items():
+            if d_term.is_Mul:   # Case of A[1]*A[2]
+                t1 = d_term.args[0].express(frame)
+                t2 = d_term.args[1].express(frame)
+                if isinstance(t1, UnitVector) and isinstance(t2, UnitVector):
+                    dyad_dict[t1*t2] = dyad_dict.get(t1*t2, 0) + coeff
+                elif isinstance(t1, UnitVector) and isinstance(t2, Vector):
+                    for k, v in t2.dict.items():
+                        dyad_dict[t1*k] = dyad_dict.get(t1*k, 0) + coeff*v
+                elif isinstance(t1, Vector) and isinstance(t2, UnitVector):
+                    for k, v in t1.dict.items():
+                        dyad_dict[k*t2] = dyad_dict.get(k*t2, 0) + coeff*v
+                elif isinstance(t1, Vector) and isinstance(t2, Vector):
+                    for k1, v1 in t1.dict.items():
+                        for k2, v2 in t2.dict.items():
+                            dyad_dict[k1*k2] = dyad_dict.get(k1*k2, 0) + coeff*v1*v2
+            if d_term.is_Pow:
+                t1 = d_term.args[0].express(frame)
+                if isinstance(t1, UnitVector):
+                    dyad_dict[t1**2] = dyad_dict.get(t1**2, 0) + coeff
+                elif isinstance(t1, Vector):
+                    t2 = Vector(t1.dict)  # make a copy
+                    for k1, v1 in t1.dict.items():
+                        for k2, v2 in t2.dict.items():
+                            dyad_dict[k1*k2] = dyad_dict.get(k1*k2, 0) + coeff*v1*v2
+        sympy_expr = S(0)
+        for k, v in dyad_dict.items():
+            sympy_expr += k*trigsimp(v)
+        return Dyad(sympy_expr)
 
 class Inertia(Dyad):
     """Inertia dyadic.
