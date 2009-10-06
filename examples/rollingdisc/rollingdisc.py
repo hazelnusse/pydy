@@ -120,7 +120,6 @@ evals = J_s.eigenvals()
 eval_eqs = []
 for i, ev in enumerate(evals.keys()):
     eval_eqs.append(Eq(Symbol("ev%d"%(i+1)), ev))
-print eval_eqs[0].rhs
 critical_speed = [Eq(Symbol('cs'), solve(eval_eqs[0].rhs**2, [u2s])[0])]
 
 ##############################################################################
@@ -232,7 +231,6 @@ Kinetic and Potential Energy of rolling disc.
 """
 output_string += generate_function("energy", energy_eqs, q+u, params, docstring=ds)
 
-print output_string
 file = open('rollingdisc_lib.py', 'w')
 file.write(output_string)
 file.close()
