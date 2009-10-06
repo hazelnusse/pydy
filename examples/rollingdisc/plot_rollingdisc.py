@@ -32,7 +32,7 @@ def plot_energy(t, x):
 
 def plot_eval():
     #### Eigenvalue plot #####
-    u1 = arange(-30, 30.01, 0.01, dtype=complex)
+    u2 = arange(-30, 30.01, 0.01, dtype=complex)
     n = len(u1)
     eval = zeros((n,3), dtype=complex)
     for i, u in enumerate(u1):
@@ -42,15 +42,15 @@ def plot_eval():
     cs = rd.critical_speed((g,r))
     cs = array([cs, cs])
     plt.figure()
-    plt.plot(u1, eval[:,0].real, 'r', label='Re($\lambda_0$)')
-    plt.plot(u1, eval[:,1].real, 'b', label='Re($\lambda_1$)')
-    plt.plot(u1, eval[:,0].imag, 'r:', label='Im($\lambda_0$)')
-    plt.plot(u1, eval[:,1].imag, 'b:', label='Im($\lambda_1$)')
+    plt.plot(u2, eval[:,0].real, 'r', label='Re($\lambda_0$)')
+    plt.plot(u2, eval[:,1].real, 'b', label='Re($\lambda_1$)')
+    plt.plot(u2, eval[:,0].imag, 'r:', label='Im($\lambda_0$)')
+    plt.plot(u2, eval[:,1].imag, 'b:', label='Im($\lambda_1$)')
     plt.plot(cs, mnmx, 'g:', linewidth=2)
     plt.plot(-cs, mnmx, 'g:', linewidth=2)
     plt.title('Eigenvalues of linearized EOMS about upright steady configuration,\n'+
             'm=%.4f kg, r=%.4f m'%(m,r))
-    plt.xlabel('$u_1$ [rad / s] Spin rate')
+    plt.xlabel('$u_2$ [rad / s] Spin rate')
     plt.axis('tight')
     plt.grid()
     plt.legend(loc=0)
@@ -64,9 +64,6 @@ def animate_motion(x, k):
     C1 = zeros((n, 3))
     C3 = zeros((n, 3))
     CN = zeros((n, 3))
-
-    # Animation playback speed multiplier (1 == realtime)
-    k = 1
 
     for i, state in enumerate(x[:,:5]):
         CO[i], B2[i], C1[i], C3[i] = rd.anim(state, r)
@@ -120,32 +117,32 @@ def set_ics(qi, ui, animate_steady):
     # Inital states
     if animate_steady:
         # Steady turning conditions require:
-        # u0 = 0
-        # u2**2 - 6*u1/tan(q1)*u2 - 4*g*cos(q1)/r = 0
-        # Given lean angle q1 and gen. speed u1 (spin rate about normal to plane of disc),
-        # u2 must be a root of the above polynomial.  Note that for zero lean angles,
+        # u2 = 0
+        # u3**2 - 6*u2/tan(q2)*u3 - 4*g*cos(q2)/r = 0
+        # Given lean angle q2 and gen. speed u2 (spin rate about normal to plane of disc),
+        # u3 must be a root of the above polynomial.  Note that for zero lean angles,
         # the above polynomial is not valid.  Instead, there are three possible
         # situations which can be considered steady turns:
         # 1)  Rolling in a straight line  (steady turn of infinite radius)
         # 2)  Spinning about contact point  (steady turn of zero radius)
         # 3)  Static equilibrium   (disc remains upright)
 
-        u0i = 0.0  #  Must be 0.0 in a steady turn -- disc can't be falling over
+        u1i = 0.0  #  Must be 0.0 in a steady turn -- disc can't be falling over
 
         if qi[1] == 0.0:    # If disc is upright, a steady turn is either:
             #  Case for spinning about contact point:
-            u1i = 0.0
-            u2i = 1.0
+            u2i = 0.0
+            u3i = 1.0
             #  Case for rolling in a straight line:
-            u1i = 1.0
-            u2i = 0.0
+            u2i = 1.0
+            u3i = 0.0
             #  Case for static equilibrium:
-            u1i = 0.0
             u2i = 0.0
+            u3i = 0.0
         else:
-            u1i = ui[1]  #  Free to specify
-            u2i = roots([1.0, -6.0*u1i/tan(qi[1]), -4*g*cos(qi[1])/r])[0]
-        ui_s = [u0i, u1i, u2i]
+            u2i = ui[1]  #  Free to specify
+            u3i = roots([1.0, -6.0*u2i/tan(qi[1]), -4*g*cos(qi[1])/r])[0]
+        ui_s = [u1i, u2i, u3i]
         xi = qi + ui_s
         return xi
     else:
@@ -155,13 +152,13 @@ def set_ics(qi, ui, animate_steady):
 # Eigenvalue plot
 #plot_eval()
 
-# states = [q0, q1, q2, q3, q4, u0, u1, u2]
-# q0, q1, q2 are Body Fixed (Euler) 3-1-2 angles
-# q0:  Yaw / heading angle
-# q1:  Lean angle
-# q2:  Spin angle
-# q3, q4 are N[1], N[2] Inertial positions of contact point
-# u0, u1, u2 are the body fixed components of angular velocity
+# states = [q1, q2, q3, q4, q5, u1, u2, u3]
+# q1, q2, q3 are Body Fixed (Euler) 3-1-2 angles
+# q1:  Yaw / heading angle
+# q2:  Lean angle
+# q3:  Spin angle
+# q4, q5 are N[1], N[2] Inertial positions of contact point
+# u1, u2, u3 are the body fixed components of angular velocity
 # Gravity is in the positive N[3] direction (into the ground)
 
 # Specify the initial conditions of the coordinates
@@ -172,19 +169,19 @@ cs = rd.critical_speed((g,r))
 ui = [.1, cs[0]*2.1, 0.0]
 ui = [.1, cs[0], 0.0]
 # Initial condition below critical speed:
-#ui = [.1, cs[0]*.7, 0.0]
-animate_steady = False
+ui = [.1, cs[0]*.6, 0.0]
+animate_steady = True
 xi = set_ics(qi, ui, animate_steady)
 print xi
 # Integration time
 ti = 0.0
-ts = 0.005
-tf = 30.0
+ts = 0.001
+tf = 1.0
 t = arange(ti, tf+ts, ts)
 n = len(t)
 # Integrate the differential equations
 x = odeint(rd.eoms, xi, t, args=(params,))
 # Plot the kinetic and potential energies
-plot_energy(t, x)
+#plot_energy(t, x)
 # Animate the simulation
-#animate_motion(x, 1)
+animate_motion(x, .2)

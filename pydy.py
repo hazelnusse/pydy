@@ -243,7 +243,7 @@ class UnitVector(Basic):
             raise TypeError("Must provide a ReferenceFrame to take the \
                 derivative in")
 
-class Dyad(Basic):
+class Dyad(object):
     """General dyad expression.
     """
     def __init__(self, v):
@@ -256,29 +256,57 @@ class Dyad(Basic):
         self.dict = {}
         if isinstance(v, dict):
             self.dict = v
-        elif v.is_Add:
-            for term in v.args:
-                if term.args[-1].is_Pow:
-                    self.dict.update({term.args[-1]: term.coeff(term.args[-1])})
-                else:
-                    self.dict.update({term.coeff(term.args[0]): term.args[0]})
-        elif v.is_Mul:  # case of Ixx*F[i]*F[j]
-            # Fragile -- depends on proper ordering of args... XXX
-            if len(v.args) == 2:  # case of Ixx*F[i]*F[i] or F[i]*F[j]
-                a0 = v.args[0]
-                a1 = v.args[1]
-                if isinstance(a0, UnitVector) and isinstance(a1, UnitVector):
-                    self.dict.update({a0*a1: S(1)})
-                else:
-                    self.dict.update({v.args[1]: v.args[0]})
-            elif len(v.args) == 3: # case of Ixx*F[i]*F[j]
-                self.dict.update({v.args[1]*v.args[2]: v.args[0]})
-        elif v.is_Pow:  # case of A[i]*A[i]
-            self.dict.update({v : S(1)})
         elif v == 0 or v == {}:
             pass
         else:
             raise NotImplementedError()
+
+    def __add__(self, other):
+        if isinstance(other, Dyad):
+            nd = {}
+            for k, v in self.dict.items():
+                nd[k] = v
+            for k, v in other.dict.items():
+                nd[k] = nd.get(k, 0) + v
+            for k, v in nd.items():
+                if v == 0:
+                    nd.pop(k)
+        return Dyad(nd)
+
+    def __neg__(self):
+        nd = {}
+        for k, v in self.dict.items():
+            nd[k] = -v
+        return Dyad(nd)
+
+    def __sub__(self, other):
+        if isinstance(other, Dyad):
+            return self.__add__(other.__neg__())
+
+    def subs(self, subs_dict):
+        """Substitute into the scalar coeffiecients of each dyadic term.
+        """
+        nd = {}
+        for k, v in self.dict.items():
+            nd[k] = v.subs(subs_dict)
+        return Dyad(nd)
+
+    def expand(self):
+        """Expand scalar coefficients of each dyadic term.
+        """
+        nd = {}
+        for k, v in self.dict.items():
+            nd[k] = v.expand()
+        return Dyad(nd)
+
+    def n(self):
+        """Numerically evaluate each scalar coefficient.
+        """
+        nd = {}
+        for k, v in self.dict.items():
+            nd[k] = v.n()
+        return Dyad(nd)
+
 
     def ldot(self, other):
         """Multplitcation by a UnitVector/Vector on the left.
@@ -310,10 +338,12 @@ class Dyad(Basic):
         if isinstance(other, (UnitVector, Vector)):
             for d_term, coeff in self.dict.items():
                 if d_term.is_Mul:
+                    #print d_term
                     scalar_part = coeff*other.dot(d_term.args[1])
-                    vec_dict[d_term.args[1]] = (vec_dict.get(d_term.args[1], 0)
+                    vec_dict[d_term.args[0]] = (vec_dict.get(d_term.args[0], 0)
                             + scalar_part)
                 elif d_term.is_Pow:
+                    #print d_term.args
                     scalar_part = coeff*other.dot(d_term.args[0])
                     vec_dict[d_term.args[0]] = (vec_dict.get(d_term.args[0], 0)
                             + scalar_part)
@@ -358,16 +388,27 @@ class Dyad(Basic):
 class Inertia(Dyad):
     """Inertia dyadic.
     """
-    def __new__(cls, frame, scalars):
+    def __init__(self, F, scalars):
         """Specify frame, scalars as:
         frame - ReferenceFrame
         scalars - List or tuple of I11, I22, I33, I12, I23, I13 inertia scalars
         """
         I11, I22, I33, I12, I23, I13 = scalars
-        return Dyad(I11*frame[1]**2 + I22*frame[2]**2 + I33*frame[3]**2 +
-                I12*frame[1]*frame[2] + I12*frame[2]*frame[1] +
-                I23*frame[2]*frame[3] + I23*frame[3]*frame[2] +
-                I13*frame[1]*frame[3] + I13*frame[3]*frame[1])
+        self.dict = {}
+        for i, s in enumerate(scalars):
+            if s == 0:
+                continue
+            if i <= 2:
+                self.dict[F[i+1]*F[i+1]] = s
+            elif i == 3:
+                self.dict[F[1]*F[2]] = s
+                self.dict[F[2]*F[1]] = s
+            elif i == 4:
+                self.dict[F[2]*F[3]] = s
+                self.dict[F[3]*F[2]] = s
+            elif i == 5:
+                self.dict[F[1]*F[3]] = s
+                self.dict[F[3]*F[1]] = s
 
 class Vector(Basic):
     """Symbolic vector expression.
@@ -1406,6 +1447,10 @@ class ReferenceFrame(object):
                     return self.abs_ang_vel
                 else:
                     frame = self.NewtonianReferenceFrame
+            elif frame == self.NewtonianReferenceFrame and hasattr(self,
+                'abs_ang_vel'):
+                return self.abs_ang_vel
+
             om = Vector(0)
             fl = frame.get_frames_list(self)
             n = len(fl)
@@ -1559,9 +1604,20 @@ class NewtonianReferenceFrame(ReferenceFrame):
             self.tan_dict[sin(q)/cos(q)] = tan(q)
             self.cot_dict[cos(q)/sin(q)] = cot(q)
         self.q_list_s = [Symbol(str(q.func)) for q in q_list]
+        sin_q_list = [sin(qs) for qs in self.q_list]
+        cos_q_list = [cos(qs) for qs in self.q_list]
+        tan_q_list = [tan(qs) for qs in self.q_list]
+        trig_q_list = sin_q_list + cos_q_list + tan_q_list
+        sin_q_list_s = [Symbol('s'+str(qs)) for qs in self.q_list_s]
+        cos_q_list_s = [Symbol('c'+str(qs)) for qs in self.q_list_s]
+        tan_q_list_s = [Symbol('t'+str(qs)) for qs in self.q_list_s]
+        trig_q_list_s = sin_q_list_s + cos_q_list_s + tan_q_list_s
         self.qdot_list_s = [Symbol(str(q.func)+'d') for q in q_list]
         self.q_list_dict = dict(zip(q_list, self.q_list_s))
         self.q_list_dict_back = dict(zip(self.q_list_s, q_list))
+        trig_q_dict = dict(zip(trig_q_list, trig_q_list_s))
+        trig_q_dict_back = dict(zip(trig_q_list_s, trig_q_list))
+
         self.qdot_list_dict = dict(zip(qdot_list, self.qdot_list_s))
         self.qdot_list_dict_back = dict(zip(self.qdot_list_s, qdot_list))
         # Update the comprehensive symbol dictionaries
@@ -1569,6 +1625,8 @@ class NewtonianReferenceFrame(ReferenceFrame):
             self.symbol_dict.update(d)
         for d in (self.q_list_dict_back, self.qdot_list_dict_back):
             self.symbol_dict_back.update(d)
+        self.trig_subs_dict = trig_q_dict
+        self.trig_subs_dict_back = trig_q_dict_back
         return q_list, qdot_list
 
     def declare_speeds(self, string, number, lst=True):
@@ -1858,112 +1916,66 @@ class NewtonianReferenceFrame(ReferenceFrame):
         n = len(self.udot_list)
         m = len(self.u_dependent)
         p = len(self.u_independent)
-        if isinstance(PorF, Point):
-            if PorF.mass == 0:
-                PorF.gen_inertia_force = [(0, 0)] * p
-            else:
-                PorF.gen_inertia_force = []
-                # Compute the generalized inertia forces
+        assert isinstance(PorF, (ReferenceFrame, Point))
+        if isinstance(PorF, Point) and PorF.mass == 0:
+            PorF.gen_inertia_force = [(0, 0)] * p
+        elif isinstance(PorF, ReferenceFrame) and PorF.inertia.dict == {}:
+            PorF.gen_inertia_force = [(0, 0)] * p
+        else:
+            PorF.gen_inertia_force = []
+            # Compute the generalized inertia forces
+            if isinstance(PorF, Point):
                 acc = PorF.abs_acc
                 inertia_force = {}
                 for k, v in acc.dict.items():
                     inertia_force[k] = -PorF.mass * v
                 inertia_force = Vector(inertia_force).expandv()
-
-                # List of coefficients of all linear terms
-                coef_list = inertia_force.partials(udgyro_list)
-                test = matrixv_multiply(Matrix(coef_list).T,
-                        Matrix(udgyro_list))[0]
-                for i, pv in enumerate(PorF.partialv):
-                    sum_ud = 0
-                    sum_gyro = 0
-                    coef_list_d_pv = []
-                    for c in coef_list:
-                        coef_list_d_pv.append(c.dot(pv))
-                    if n == p:  # Case for no motion constraints
-                        for j, udot in enumerate(udgyro_list[:p]):
-                            self.mass_matrix[i, j] += coef_list_d_pv[j]
-                            sum_ud += coef_list_d_pv[j] * udot
-                        for j, gyro in enumerate(udgyro_list[p:]):
-                            sum_gyro += coef_list_d_pv[j+p] * gyro
-                        PorF.gen_inertia_force.append((sum_ud, sum_gyro))
-                    else:       # Case for systems with motion constraints
-                        mm_row = zeros((1, p+m))
-                        mm_i_row = zeros((1, p))
-                        mm_d_row = zeros((1, m))
-                        for j in range(p):
-                            mm_row[j] += coef_list_d_pv[j]
-                        for j, jt in enumerate(self.dependent_ci):
-                            mm_d_row[j] = mm_row[jt]
-                        for j, jt in enumerate(self.independent_ci):
-                            mm_i_row[j] = mm_row[jt]
-
-                        # Normal gyroscopic terms that appear in GIF's
-                        for j, gyro in enumerate(udgyro_list[p:]):
-                            sum_gyro += coef_list_d_pv[j+p] * gyro
-                        # Extra gyroscopic terms that appear in GIF's due to
-                        # constraints
-                        sum_gyro += (mm_d_row * self.T_con_dt * Matrix(self.u_independent))[0]
-
-                        # Mass matrix, constrained
-                        mm_con = mm_i_row +  mm_d_row*self.T_con
-                        sum_ud = (mm_con * Matrix(self.udot_independent))[0]
-                        self.mass_matrix[i, :] += mm_con
-                        PorF.gen_inertia_force.append((sum_ud, sum_gyro))
-
-        elif isinstance(PorF, ReferenceFrame):
-            if PorF.inertia == Inertia(self, (0,0,0,0,0,0)):
-                PorF.gen_inertia_force = [(0, 0)] * len(self.u_independent)
             else:
-                PorF.gen_inertia_force = []
-                alph = PorF.abs_ang_acc
+                alph = PorF.ang_acc()
                 I = PorF.inertia
                 w = PorF.ang_vel()
-                inertia_force = (-alph.dot(I)-w.cross(I.rdot(w))).expandv()
-                # List of coefficients of all linear terms
-                coef_list = inertia_force.partials(udgyro_list)
-                test = matrixv_multiply(Matrix(coef_list).T,
-                        Matrix(udgyro_list))[0]
+                #inertia_force = (-alph.dot(I)-w.cross(I.rdot(w))).expandv()
+                inertia_force = (-dot(I, alph) - cross(w, dot(I, w))).expandv()
 
-                for i, pv in enumerate(PorF.partialv):
-                    sum_ud = 0
-                    sum_gyro = 0
-                    coef_list_d_pv = []
-                    for c in coef_list:
-                        coef_list_d_pv.append(c.dot(pv))
+            # List of coefficients of all linear terms
+            coef_list = inertia_force.partials(udgyro_list)
+            # Loop through all partial velocities / partial angular velocites
+            for i, pv in enumerate(PorF.partialv):
+                sum_ud = 0
+                sum_gyro = 0
+                coef_list_d_pv = []
+                for c in coef_list:
+                    coef_list_d_pv.append(c.dot(pv))
+                if n == p:  # Case for no motion constraints
+                    for j, udot in enumerate(udgyro_list[:p]):
+                        self.mass_matrix[i, j] += coef_list_d_pv[j]
+                        sum_ud += coef_list_d_pv[j] * udot
+                    for j, gyro in enumerate(udgyro_list[p:]):
+                        sum_gyro += coef_list_d_pv[j+p] * gyro
+                    PorF.gen_inertia_force.append((sum_ud, sum_gyro))
+                else:       # Case for systems with motion constraints
+                    mm_row = zeros((1, p+m))
+                    mm_i_row = zeros((1, p))
+                    mm_d_row = zeros((1, m))
+                    for j in range(p):
+                        mm_row[j] += coef_list_d_pv[j]
+                    for j, jt in enumerate(self.dependent_ci):
+                        mm_d_row[j] = mm_row[jt]
+                    for j, jt in enumerate(self.independent_ci):
+                        mm_i_row[j] = mm_row[jt]
 
-                    if n == p:  # Case for no motion constraints
-                        for j, udot in enumerate(udgyro_list[:p]):
-                            self.mass_matrix[i, j] += coef_list_d_pv[j]
-                            sum_ud += coef_list_d_pv[j] * udot
-                        for j, gyro in enumerate(udgyro_list[p:]):
-                            sum_gyro += coef_list_d_pv[j+p] * gyro
-                        PorF.gen_inertia_force.append((sum_ud, sum_gyro))
-                    else:       # Case for systems with motion constraints
-                        mm_row = zeros((1, p+m))
-                        mm_i_row = zeros((1, p))
-                        mm_d_row = zeros((1, m))
-                        for j in range(p):
-                            mm_row[j] += coef_list_d_pv[j]
-                        for j, jt in enumerate(self.dependent_ci):
-                            mm_d_row[j] = mm_row[jt]
-                        for j, jt in enumerate(self.independent_ci):
-                            mm_i_row[j] = mm_row[jt]
+                    # Normal gyroscopic terms that appear in GIF's
+                    for j, gyro in enumerate(udgyro_list[p:]):
+                        sum_gyro += coef_list_d_pv[j+p] * gyro
+                    # Extra gyroscopic terms that appear in GIF's due to
+                    # constraints
+                    sum_gyro += (mm_d_row * self.T_con_dt * Matrix(self.u_independent))[0]
 
-                        # Normal gyroscopic terms that appear in GIF's
-                        for j, gyro in enumerate(udgyro_list[p:]):
-                            sum_gyro += coef_list_d_pv[j+p] * gyro
-                        # Extra gyroscopic terms that appear in GIF's due to
-                        # constraints
-                        sum_gyro += (mm_d_row * self.T_con_dt * Matrix(self.u_independent))[0]
-
-                        # Mass matrix, constrained
-                        mm_con = mm_i_row +  mm_d_row*self.T_con
-                        sum_ud = (mm_con * Matrix(self.udot_independent))[0]
-                        self.mass_matrix[i, :] += mm_con
-                        PorF.gen_inertia_force.append((sum_ud, sum_gyro))
-        else:
-            raise NotImplementedError()
+                    # Mass matrix, constrained
+                    mm_con = mm_i_row +  mm_d_row*self.T_con
+                    sum_ud = (mm_con * Matrix(self.udot_independent))[0]
+                    self.mass_matrix[i, :] += mm_con
+                    PorF.gen_inertia_force.append((sum_ud, sum_gyro))
 
         #  Initiate recursion
         if PorF.children == []:
@@ -1993,7 +2005,7 @@ class NewtonianReferenceFrame(ReferenceFrame):
                 PorF.gen_active_force = [0] * len(self.u_independent)
             else:
                 PorF.gen_active_force = [PorF.torque.dot(pw) for pw in
-                    PorF.partialw]
+                    PorF.partialv]
         else:
             raise NotImplementedError()
 
@@ -2045,94 +2057,127 @@ class NewtonianReferenceFrame(ReferenceFrame):
         self.frstar()
         p = len(self.u_independent)
         self.kanes_equations = []
+        self.ke_lhs = [0] * p
+        self.ke_rhs_if = [0] * p
+        self.ke_rhs_af = [0] * p
+        ke = []
         for i in range(p):
             self.kanes_equations.append([0,0])
         self.recursive_eoms(self.O)
         self.recursive_eoms(self)
-        kes = []
         for i in range(p):
-            kes.append(Eq(self.kanes_equations[i][0], self.kanes_equations[i][1]))
-        self.kanes_equations = kes
-        return kes
+            s = S(0)
+            for j, ud in enumerate(self.udot_independent):
+                c_ud = self.mass_matrix[i, j]
+                if c_ud is not None:
+                    if c_ud.could_extract_minus_sign():
+                        s -= -c_ud * ud
+                    else:
+                        s += c_ud * ud
+            self.ke_lhs[i] = s
+            s = S(0)
+            for uu in self.crossterms:
+                c_uu = self.ke_rhs_if[i].coeff(uu)
+                if c_uu is not None:
+                    if c_uu.could_extract_minus_sign():
+                        s -= -c_uu * uu
+                    else:
+                        s += c_uu * uu
+            self.ke_rhs_if[i] = s
+            af = factor(self.ke_rhs_af[i].subs(self.trig_subs_dict).\
+                    subs(self.symbol_dict)).subs(self.symbol_dict_back).\
+                    subs(self.trig_subs_dict_back)
+            ke.append(Eq(self.ke_lhs[i], self.ke_rhs_if[i] + af))
+        #kes = []
+        #for i in range(p):
+        #    lhs = collect(self.kanes_equations[i][0], self.udot_independent)
+        #    kes.append(Eq(lhs, self.kanes_equations[i][1]))
+        self.kanes_equations = ke
+        return ke
 
     def set_kanes_equations(self, eqns):
         self.kanes_equations = eqns
 
-    def solve_kanes_equations(self, dummy_mass_matrix=None):
-        """Solves Kane's equations by inverting the mass matrix.
+    def solve_kanes_equations(self, dummy_vars=None):
+        """Solves Kane's equations for the time derivatives of the generalized
+        speeds.
 
-        Returns a dictionary with the udots as the keys and the right hand side
-        as the values.
+        Forms the adjugate matrix, factors out common terms along the rows,
+        performs the matrix multiplication, and then multiplies by the common
+        terms and divides by the determinant.
+
+        If optional dummy_mass_matrix argument is eqaul to True, returns the
+        result with dummy symbols, and a dictionary with the dummy symbols as
+        keys and the expression they represent as the corresponding values.
         """
         m, n = self.mass_matrix.shape
         assert m == n
-        if dummy_mass_matrix:
-            mass_matrix_dict = {}
-            mm_dummy = zeros((m, n))
-            for i in range(m):
-                for j in range(n):
-                    mmij = self.mass_matrix[i, j]
-                    if mmij != 0:
-                        ds = Symbol('M%d%d'%(i,j), dummy=True)
-                        mm_dummy[i, j] = ds
-                        mass_matrix_dict[ds] = mmij
-            mass_matrix_inv = mm_dummy.inverse_ADJ().expand()
-            for i in range(m):
-                for j in range(n):
-                    mass_matrix_inv[i,j] = simplify(mass_matrix_inv[i,j])
-            soln = mass_matrix_inv * Matrix([ke.rhs for ke in
-                self.kanes_equations])
+        mm, mm_dict = dummy_matrix(self.mass_matrix, 'M')
+        ke_rhs, ke_dict = dummy_matrix(Matrix([ke.rhs for ke in
+            self.kanes_equations]), 'rhs')
+        mm_dict.update(ke_dict)
+        assert ke_rhs.shape == (n, 1)
 
-        else:
-            blocks = self.mass_matrix.get_diag_blocks()
-            dummy_blocks = []
-            d = {}
-            # Create a bunch of dummy blocks
-            for block in blocks:
-                dummy = zeros(block.shape)
-                for i in range(block.rows):
-                    for j in range(block.cols):
-                        if block[i, j] != 0:
-                            s = Symbol('a%d%d'%(i,j), dummy=True)
-                            d[s] = block[i,j]
-                            dummy[i,j] = s
-                dummy_blocks.append(dummy)
+        # Form the adjugate and the determinant
+        mm_adj = mm.adjugate().expand()
+        for i in range(m):
+            for j in range(n):
+                if mm_adj[i, j] != 0:
+                    mm_adj[i, j] = factor(mm_adj[i, j])
+        mm_det = factor(mm.det(method="berkowitz").expand())
+        assert mm_det != 0, "Mass matrix is singular!!!"
 
-            # Invert each of the dummy blocks
-            inv_blocks = []
-            for block in dummy_blocks:
-                if block.shape == (1, 1):
-                    bi = Matrix([1 / block[0]])
+        soln = []
+        # Try to factor each row
+        for i in range(m):
+            row = mm_adj[i,:]
+            row_bool = [False] * n
+            for j, entry in enumerate(row):
+                if isinstance(entry, Mul) or entry == 0:
+                    row_bool[j] = True
+            if all(row_bool):       # All factored or are zero
+                flag = 0
+                for entry in row:
+                    if entry == 0:
+                        continue
+                    elif flag == 0:
+                        flag = 1
+                        row_factor = set(entry.args)
+                    else:
+                        row_factor &= set(entry.args)
+                if row_factor:
+                    f = Mul(*list(row_factor))
+                    row /= f
                 else:
-                    bdet = block.det()
-                    assert bdet != 0
-                    bi = block.adjugate() / bdet
-                for i in range(bi.rows):
-                    for j in range(bi.cols):
-                        if bi[i, j] != 0:
-                            num, den = bi[i, j].as_numer_denom()
-                            num = num.subs(d).expand()
-                            den = den.subs(d).expand()
-                            bi[i, j] = simplify(num/den)
-                inv_blocks.append(bi)
-            mass_matrix_inv = block_diag(inv_blocks)
-            soln = (mass_matrix_inv * Matrix([ke.rhs for ke in
-                self.kanes_equations]))#.expand()
+                    f = 1
+                soln.append( (f / mm_det) * ((row * ke_rhs)[0]))
+            else:
+                soln.append( (1 / mm_det) * ((row * ke_rhs)[0]))
+
         dyndiffs = []
-        for i, u in enumerate(self.udot_independent):
-            dyndiffs.append(Eq(u, soln[i]))
-        if dummy_mass_matrix:
-            return dyndiffs, mass_matrix_dict
+        for i, udot in enumerate(self.udot_independent):
+            rhs = soln[i]
+            if dummy_vars == None:
+                rhs = rhs.subs(mm_dict).expand()
+            dyndiffs.append(Eq(udot, rhs))
+
+        if dummy_vars:
+            return dyndiffs, mm_dict
         else:
             return dyndiffs
 
     def recursive_eoms(self, PorF):
+        """Traverse Point and ReferenceFrame tree and sum the generalized
+        inertia forces and generalized active forces.
+        """
         for r in range(len(self.u_independent)):
             # Term on the left hand side of Fr* = -Fr
-            self.kanes_equations[r][0] += PorF.gen_inertia_force[r][0] #+\
-                #PorF.gen_inertia_force[r][1]
+            self.kanes_equations[r][0] += PorF.gen_inertia_force[r][0]
             # Term on the right hand side of Fr* = -Fr
-            self.kanes_equations[r][1] +=  -PorF.gen_active_force[r] - PorF.gen_inertia_force[r][1]
+            self.kanes_equations[r][1] -=  PorF.gen_active_force[r] + PorF.gen_inertia_force[r][1]
+            self.ke_lhs[r] += PorF.gen_inertia_force[r][0]
+            self.ke_rhs_if[r] -= PorF.gen_inertia_force[r][1]
+            self.ke_rhs_af[r] -= PorF.gen_active_force[r]
         if PorF.children == []:
             return
         else:
@@ -2526,7 +2571,7 @@ def GeneralizedCoordinate(s, constant=False):
     return gc
 
 def gcs(s, number=1, list=False):
-    gc_list = [GeneralizedCoordinate(s[0]+str(i)) for i in range(0, number)]
+    gc_list = [GeneralizedCoordinate(s[0]+str(i)) for i in range(1, number+1)]
     if list == False:
         if number == 1:
             return gc_list[0]
@@ -2664,6 +2709,21 @@ class PyDyStrPrinter(StrPrinter):
             return str(expr.args[0].func) + "d"*len(expr.args[1:])
         else:
             return StrPrinter().doprint(expr)
+
+    def _print_Dyad(self, expr):
+        s = ""
+        if expr.dict == {}:
+            return "0>>"
+        for k, v in expr.dict.items():
+            if isinstance(v, Add):
+                v_str = "(" + str(v) + ")"
+            else:
+                v_str = str(v)
+            if k.is_Mul:
+                s += v_str + "*" + str(k.args[0]) + "*" + str(k.args[1]) + " + "
+            elif k.is_Pow:
+                s += v_str + "*" + str(k.args[0]) + "*" + str(k.args[0]) + " + "
+        return s[:-3]
 
     #def _print_Matrix(self, expr):
     #    return expr._format_str(lambda elem: elem.__str__())
@@ -3282,6 +3342,83 @@ def animate(Frame, *args):
             eqn_list.append(Eq(Symbol(a[0]+"_%d"%(i+1)), dot(a[1], ni)))
 
     return eqn_list
+
+def mass_center(O, points):
+    """Calculate the mass center of a list of points relative to the point O.
+
+    The position of each point in the list, relative to the point O, must be
+    defined.
+
+    The points list can either be of the form:
+    [P1, P2, ..., Pn]
+    or
+    [(P1, m1), (P2, m2), ..., (Pn, mn)]
+
+    The second form is useful when you want to form the center of mass of the
+    system and not assign mass to individual points.
+    """
+    assert isinstance(O, Point), "First argument must be a Point object"
+    mt = S(0)
+    cm = {}
+    for p in points:
+        if isinstance(p, Point):
+            pi = p.rel(O)       # Position vector from O to P_i
+            mi = p.mass         # Mass of point P_i
+        elif isinstance(p, tuple):
+            pi = p[0].rel(O)
+            mi = p[1]
+        # Compute the total mass of all the points/particles in the given list.
+        mt += mi
+        for k, v in pi.dict.items():
+            cm[k] = cm.get(k, S(0)) + mi*v
+        # Divide UnitVector coefficient by the total mass
+    for k in cm:
+        cm[k] /= mt
+    return Vector(cm)
+
+def inertia_of_point_mass(m, p, F):
+    """Determine the Inertia Dyadic of a particle of mass m, located relative
+    to a point by a position vector p, expressed using UnitVectors fixed in
+    frame F.
+    """
+    I11 = m*dot(cross(p, F[1]), cross(p, F[1]))
+    I22 = m*dot(cross(p, F[2]), cross(p, F[2]))
+    I33 = m*dot(cross(p, F[3]), cross(p, F[3]))
+    I12 = m*dot(cross(p, F[1]), cross(p, F[2]))
+    I23 = m*dot(cross(p, F[2]), cross(p, F[3]))
+    I13 = m*dot(cross(p, F[1]), cross(p, F[3]))
+    return Inertia(F, [I11, I22, I33, I12, I23, I13])
+
+def dummy_matrix(mat, char):
+    """Returns a matrix of dummy symbols for non-zero and non-unity entries.
+
+    char specifies the string to use in the beginning of the names of the dummy
+    symbols.
+
+    Also returns a substitution dictionary with the dummy symbols as the
+    keys and the symbolic expression they represent as the values.
+    """
+    m, n = mat.shape
+    new_mat = zeros((m, n))
+    d = {}
+    dr = {}
+    for i in range(m):
+        for j in range(n):
+            mij = mat[i, j]
+            if mij != 0:
+                if mij == 1 or mij == -1:
+                    new_mat[i, j] = mij
+                    continue
+                if mij in dr:
+                    new_mat[i, j] = dr[mij]
+                elif -mij in dr:
+                    new_mat[i, j] = -dr[-mij]
+                else:
+                    ds = Symbol(char + '%d%d'%(i,j), dummy=True)
+                    d[ds] = mij
+                    dr[mij] = ds
+                    new_mat[i, j] = ds
+    return new_mat, d
 
 if __name__ == "__main__":
         import doctest

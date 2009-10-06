@@ -1,3 +1,6 @@
+from sympy import var
+from math import sin, cos, tan, pi
+
 def dependent_qdot(_x, _params):
     """Linear mapping from lean rate, steer rate, front wheel rate to yaw rate, rear
     wheel rate, pitch rate, rear wheel contact point velocity in N[1] and N[2]
@@ -212,12 +215,13 @@ def eoms(_x, t, _params):
     # Return calculated values
     return [q0d, q1d, q2d, q3d, q4d, q5d, q6d, q7d, u0d, u3d, u5d]
 
-mj_params = {"w": 1.02, "c": 0.08, "lambda": pi/10., "g":9.81, "rr": 0.3, "mr":
-2.0, "IRxx": 0.0603, "IRyy": 0.12, "xb": 0.3, "zb":-0.9, "mb": 85.0, "IBxx":
-9.2, "IBxz": 2.4, "IByy": 11.0, "IBzz": 2.8, "xh":0.9, "zh": -0.7, "mh": 4.0,
-"IHxx": 0.05892, "IHxz": -0.00756, "IHyy": 0.06,"IHzz": 0.00708, "rf": 0.35,
-"mf": 3.0, "IFxx": 0.1405, "IFyy": 0.28}
+var('rrt rft w c lmbda g rr mr IRxx IRyy xb zb mb IBxx IBxz IByy IBzz xh zh mh IHxx IHxz IHyy IHzz rf mf IFxx IFyy')
 
+mj_params = {rrt: 0.0, rft: 0.0, w: 1.02, c: 0.08, lmbda: pi/10., g: 9.81,\
+             rr: 0.3, mr: 2.0, IRxx: 0.0603, IRyy: 0.12, xb: 0.3, zb: -0.9,\
+             mb: 85.0, IBxx: 9.2, IBxz: 2.4, IByy: 11.0, IBzz: 2.8, xh: 0.9,\
+             zh: -0.7, mh: 4.0, IHxx: 0.05892, IHxz: -0.00756, IHyy: 0.06,\
+             IHzz: 0.00708, rf: 0.35, mf: 3.0, IFxx: 0.1405, IFyy: 0.28}
 
 def convert_geometric(x):
     w = x[0]

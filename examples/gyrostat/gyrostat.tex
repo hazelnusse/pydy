@@ -1,0 +1,127 @@
+\documentclass[letterpaper,11pt]{article}
+\usepackage[round]{natbib}
+\usepackage[margin=1in,centering]{geometry}
+\usepackage{fancyhdr}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage[pdftex]{hyperref}
+\hypersetup{
+    pdftitle={Analysis of a Gyrostat model},
+    pdfauthor={Dale Lukas Peterson},
+    pdfsubject={Subject},
+    pdfkeywords={Keywords}}
+
+\newcommand{\bs}[1]{ \boldsymbol{ #1 } }
+\newcommand{\ud}{\mathrm{d}}
+\pagestyle{fancy}
+\fancyhead[L]{Gyrostat equations of motion, Dale L. Peterson}
+\fancyhead[R]{\today}  % page number on the right
+\fancyfoot[L,R]{}  %  No footer on left, center or right, on even or odd pages
+\fancyfoot[C]{\thepage}
+\begin{document}
+\begin{abstract}
+  Equations of motion for a gyrostat comprised of two rigid bodies (a carrier and
+  a rotor) are derived in two different ways.  In the first approach, each
+  rigid body is treated separately as each having their own mass and
+  inertia.  In the second approach, the symmetry of the rotor is used to
+  combine the inertias in such a way that simplifies the derivation of the
+  equations of motion.  It is shown that the two approaches are equivalent.
+  For generality, the axis of rotation of the rotor is not aligned with a
+  principal axis of the carrier.
+\end{abstract}
+
+\section*{Model Description}
+
+Consider a rigid body $A$, of mass $m_a$, along with a dextral set of unit
+vectors $\bs{a}_1$, $\bs{a}_2$, $\bs{a}_3$, fixed to $A$, with $\bs{a}_3
+\triangleq \bs{a}_1 \times \bs{a}_2$.  Let $A^*$ denote the center of mass of
+$A$.  Let the inertia matrix of $A$ relative to its mass center $A^*$ for
+$\bs{a}_1, \bs{a}_2, \bs{a}_3$ be:
+
+\begin{align*}
+  I^{A/A^*} & =
+    \left[ \begin{array}{c c c}
+      I_{11} & I_{12} & I_{13} \\
+      I_{12} & I_{22} & I_{23} \\
+      I_{13} & I_{23} & I_{33}
+    \end{array} \right]
+\end{align*}
+
+Consider a second rigid body, $B$, of mass $m_b$, along with a dextral set of unit
+vectors $\bs{b}_1$, $\bs{b}_2$, $\bs{b}_3$, fixed to $B$, with $\bs{b}_3
+\triangleq \bs{b}_1 \times \bs{b}_2$.  Let $B^*$ denote the center of mass of
+$B$.  Let the inertia matrix of $B$ relative to its mass center  $B^*$ for
+$\bs{b}_1, \bs{b}_2, \bs{b}_3$ be:
+
+\begin{align*}
+  I^{B/B^*} & =
+    \left[ \begin{array}{c c c}
+      I & 0 & 0 \\
+      0 & J & 0 \\
+      0 & 0 & K
+    \end{array} \right]
+\end{align*}
+
+The mass center $B^*$ is located relative to $A^*$ by:
+\begin{align*}
+  r^{B^* / A^*} & = l_1 \bs{a}_1 + l_2 \bs{a}_2 + l_3 \bs{a}_3
+\end{align*}
+
+Where $l_1, l_2, l_3$ are real constants.  Denote the center of mass of the
+system as $AB^*$. The position of $AB^*$ relative to the mass centers of $A$
+and $B$, is:
+\begin{align*}
+  r^{AB^* / A^*} & = (l_1 m_b\bs{a}_1 + l_2 m_b\bs{a}_2 + l_3
+  m_b\bs{a}_3)/(m_a+m_b)\\
+  r^{AB^* / B^*} & =  -(l_1 m_a\bs{a}_1 + l_2 m_a\bs{a}_2 + l_3
+  m_a\bs{a}_3)/(m_a+m_b)
+\end{align*}
+
+$B$ is oriented relative to $A$ by means of a revolute joint whose axis is
+aligned with the $\bs{a}_2$ and passes through $B^*$.  This implies that
+$\bs{a}_2 = \bs{b}_2$.
+
+A couple of torque $T$ is applied to by $A$ on $B$ about the axis of rotation
+$\bs{a}_2$.
+
+\section*{Equations of motion}
+The system is completely described by seven generalized coordinates: three which
+locate the system mass center $AB^*$, three which orient $A$ (alternatively
+$B$) in inertial space, and one which orients $B$ relative to $A$.  Let $\omega^A$ and
+$\omega^B$ denote the angular velocity of $A$ and $B$ relative to the inertial
+frame, respectively.  Let $v^{AB^*}$ denote the velocity of the center of mass
+of the system relative to the inertial frame.  Define the following generalized
+speeds:
+\begin{align}
+  u_i & \triangleq \omega^A \cdot \bs{a}_i  \qquad  (i = 1,2,3) \label{u_defs1} \\
+  u_4 & \triangleq \omega^B \cdot \bs{a}_2 \label{u_defs2} \\
+  u_i & \triangleq v^{AB^*} \cdot \bs{a}_{i-4} \qquad  (i = 5,6,7) \label{u_defs3}
+\end{align}
+
+Consider orienting $A$ relative to the inertial frame $N$ using $(q_1, q_2,
+q_3)$ Euler 3-1-2 angles, and orient $B$ relative to $A$ by a right handed
+rotation by an angle $q_4$ about the $\bs{a}_2 = \bs{b}_2$ axis. Locate the
+system mass center relative to the inertial frame by the vector $r^{AB^*/N*} =
+q_5\bs{n}_1 + q_6\bs{n}_2 + q_7\bs{n}_3$.  These definitions, along with
+(\ref{u_defs1}, \ref{u_defs2}, \ref{u_defs3}) yield the following kinematic
+differential equations:
+
+\begin{align*}
+  \dot{q}_1 &=  -s_3u_1/c_2 + c_3u_3/c_2\\
+  \dot{q}_2 &=  c_3u_1 + s_3u_3 \\
+  \dot{q}_3 &=  t_2s_3u_1 + u_2 - t_2c_3u_3 \\
+  \dot{q}_4 &= -u_2 +  u_4 \\
+  \dot{q}_5 &= (c_1c_3 - s_1s_2s_3)u_5 - c_2s_1u_6 + (c_1s_3 + c_3s_1s_2)u_7\\
+  \dot{q}_6 &= (c_3s_1 + c_1s_2s_3)u_5 + c_1c_2u_6 + (s_1s_3 - c_1c_3s_2)u_7\\
+  \dot{q}_7 &= -c_2s_3u_5 + s_2u_6 + c_2c_3u_7
+\end{align*}
+
+While these equations are necessary for kinematics, they aren't too interesting
+because all the coordinates are ignorable with respect to the dynamic
+differential equations (no coordinates appear in the dynamic equations of
+motion).  Other parameterizations of orientation are certainly possible, and in
+fact desirable to avoid the singularities of the Euler 3-1-2 angles when $q_2 =
+\pm \pi/2$.
+
+\end{document}
