@@ -55,9 +55,4 @@ def animate(q, parameter_list):
     C3_1 = c1*s3 + c3*s1*s2
     C3_2 = s1*s3 - c1*c3*s2
     C3_3 = c2*c3
-<<<<<<< HEAD:examples/rollingdisc_eoms.py
-    return [p_N1_CO_1, p_N1_CO_2, p_N1_CO_3], [B2_1, B2_2, B2_3, q3], [C1_1, C1_2, C1_3, 0], [C3_1, C3_2, C3_3, 0]
-
-=======
     return [B2_1, B2_2, B2_3, q3], [C1_1, C1_2, C1_3, 0], [C3_1, C3_2, C3_3, 0]
->>>>>>> bicycle_work:examples/rollingdisc/rollingdisc_eoms_alt.py

@@ -4,17 +4,13 @@ from sympy import symbols, S, Symbol, Function, sin, cos, tan, Matrix, eye, \
     Rational, pprint, trigsimp, expand
 
 N = NewtonianReferenceFrame('N')
-(q1,q2,q3,q4,q5,q6), q_list, qdot_list = N.declare_coords('q', 6)
+q, qd = N.declare_coords('q', 6)
+q1, q2, q3, q4, q5, q6 = q
+q1p, q2p, q3p, q4p, q5p, q6p = qd
+
 A = N.rotate('A', 3, q1)
 B = A.rotate('B', 1, q2)
 C = B.rotate('C', 2, q3)
-q1p = qdot_list[0]
-q2p = qdot_list[1]
-q3p = qdot_list[2]
-q4p = qdot_list[3]
-q5p = qdot_list[4]
-q6p = qdot_list[5]
-
 
 zero = Vector({})
 
@@ -88,7 +84,8 @@ def test_cross_different_frames1():
 
 def test_cross_method():
     N = NewtonianReferenceFrame('N')
-    (q1, q2, q3), q_list, qdot_list = N.declare_coords('q', 3)
+    q, qd = N.declare_coords('q', 3)
+    q1, q2, q3 = q
     A = N.rotate('A', 1, q1)
     B = N.rotate('B', 2, q2)
     C = N.rotate('C', 3, q3)
@@ -859,3 +856,51 @@ def test_point_vel():
     assert CP.vel(P1, C) == -P1.vel(CP, C)
     assert CP.vel(P2, C) == P2.vel(CP, C)
     assert CP.vel(CP, C) == Vector(0)
+
+def test_Dyad_express():
+    A = N.rotate('A', 1, q1)
+    I = Symbol('I')
+    a1a1 = Dyad({A[1]*A[1]: 1})
+    a1a2 = Dyad({A[1]*A[2]: 1})
+    a1a3 = Dyad({A[1]*A[3]: 1})
+    a2a1 = Dyad({A[2]*A[1]: 1})
+    a2a2 = Dyad({A[2]*A[2]: 1})
+    a2a3 = Dyad({A[2]*A[3]: 1})
+    a3a1 = Dyad({A[3]*A[1]: 1})
+    a3a2 = Dyad({A[3]*A[2]: 1})
+    a3a3 = Dyad({A[3]*A[3]: 1})
+    """
+    assert a1a1.express(N) == Dyad({N[1]*N[1]: 1})
+    assert a1a2.express(N) == Dyad({N[1]*N[2]: cos(q1), N[1]*N[3]: sin(q1)})
+    assert a1a3.express(N) == Dyad(-sin(q1)*N[1]*N[2] + cos(q1)*N[1]*N[3])
+    assert a2a1.express(N) == Dyad(cos(q1)*N[2]*N[1] + sin(q1)*N[3]*N[1])
+    assert a2a2.express(N) == Dyad(cos(q1)**2*N[2]*N[2] + sin(q1)*cos(q1)*N[2]*N[3] + sin(q1)*cos(q1)*N[3]*N[2] + sin(q1)**2*N[3]*N[3])
+    assert a2a3.express(N) == Dyad(-sin(q1)*cos(q1)*N[2]*N[2] + cos(q1)**2*N[2]*N[3] - sin(q1)**2*N[3]*N[2] + sin(q1)*cos(q1)*N[3]*N[3])
+    assert a3a1.express(N) == Dyad(-sin(q1)*N[2]*N[1] + cos(q1)*N[3]*N[1])
+    assert a3a2.express(N) == Dyad(-sin(q1)*cos(q1)*N[2]*N[2] - sin(q1)**2*N[2]*N[3] + cos(q1)**2*N[3]*N[2] + sin(q1)*cos(q1)*N[3]*N[3])
+    assert a3a3.express(N) == Dyad(sin(q1)**2*N[2]*N[2] - sin(q1)*cos(q1)*N[2]*N[3] - sin(q1)*cos(q1)*N[3]*N[2] + cos(q1)**2*N[3]*N[3])
+    """
+    a1a1 = Dyad({A[1]*A[1]: I})
+    a1a2 = Dyad({A[1]*A[2]: I})
+    a1a3 = Dyad({A[1]*A[3]: I})
+    a2a1 = Dyad({A[2]*A[1]: I})
+    a2a2 = Dyad({A[2]*A[2]: I})
+    a2a3 = Dyad({A[2]*A[3]: I})
+    a3a1 = Dyad({A[3]*A[1]: I})
+    a3a2 = Dyad({A[3]*A[2]: I})
+    a3a3 = Dyad({A[3]*A[3]: I})
+    """
+    assert a1a1.express(N) == Dyad(I*N[1]*N[1])
+    assert a1a2.express(N) == Dyad(I*cos(q1)*N[1]*N[2] + I*sin(q1)*N[1]*N[3])
+    assert a1a3.express(N) == Dyad(-I*sin(q1)*N[1]*N[2] + I*cos(q1)*N[1]*N[3])
+    assert a2a1.express(N) == Dyad(I*cos(q1)*N[2]*N[1] + I*sin(q1)*N[3]*N[1])
+    assert a2a2.express(N) == Dyad(I*cos(q1)**2*N[2]*N[2] +
+            I*sin(q1)*cos(q1)*N[2]*N[3] + I*sin(q1)*cos(q1)*N[3]*N[2] + I*sin(q1)**2*N[3]*N[3])
+    assert a2a3.express(N) == Dyad(-I*sin(q1)*cos(q1)*N[2]*N[2] +
+            I*cos(q1)**2*N[2]*N[3] - I*sin(q1)**2*N[3]*N[2] + I*sin(q1)*cos(q1)*N[3]*N[3])
+    assert a3a1.express(N) == Dyad(-I*sin(q1)*N[2]*N[1] + I*cos(q1)*N[3]*N[1])
+    assert a3a2.express(N) == Dyad(-I*sin(q1)*cos(q1)*N[2]*N[2] -
+            I*sin(q1)**2*N[2]*N[3] + I*cos(q1)**2*N[3]*N[2] + I*sin(q1)*cos(q1)*N[3]*N[3])
+    assert a3a3.express(N) == Dyad(I*sin(q1)**2*N[2]*N[2] -
+            I*sin(q1)*cos(q1)*N[2]*N[3] - I*sin(q1)*cos(q1)*N[3]*N[2] + I*cos(q1)**2*N[3]*N[3])
+    """
