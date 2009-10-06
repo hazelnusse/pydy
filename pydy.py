@@ -731,7 +731,6 @@ class Vector(Basic):
     def mag_sqr(self):
         """Magnitude squared of a Vector.
         """
-        frame = most_frequent_frame(self)
         m = 0
         s = set([])
         for k1, k2 in ((x,y) for x in self.dict for y in self.dict):
@@ -741,11 +740,14 @@ class Vector(Basic):
                 s.add((k1, k2))
         for k1, k2 in s:
             if k1 == k2:
-                    m += expand(self.dict[k1]**2)
+                    #m += expand(self.dict[k1]**2)
+                    m += self.dict[k1]**2
             else:
-                    m += 2*expand(self.dict[k1]*self.dict[k2]*dot(k1, k2))
+                    #m += 2*expand(self.dict[k1]*self.dict[k2]*dot(k1, k2))
+                    m += 2*self.dict[k1]*self.dict[k2]*dot(k1, k2)
 
         # Try to factor things if possible
+        """
         if isinstance(m, Add):
             trigterms = m.atoms(sin, cos)
             replacements = []
@@ -769,6 +771,7 @@ class Vector(Basic):
             trigexprf = trigexprsf.subs(rsubsdict)
             m = trigexprf + otherexpr
             #m = trigexpr + otherexpr
+        """
         return m
 
     @property
