@@ -170,7 +170,7 @@ ui = [.1, cs[0]*2.1, 0.0]
 ui = [.1, cs[0], 0.0]
 # Initial condition below critical speed:
 ui = [.1, cs[0]*.6, 0.0]
-animate_steady = True
+animate_steady = False
 xi = set_ics(qi, ui, animate_steady)
 print xi
 # Integration time
