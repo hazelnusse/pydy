@@ -42,35 +42,37 @@ $\bs{a}_1, \bs{a}_2, \bs{a}_3$ be:
 \begin{align*}
   I^{A/A^*} & =
     \left[ \begin{array}{c c c}
-      I_{11} & I_{12} & I_{13} \\
-      I_{12} & I_{22} & I_{23} \\
-      I_{13} & I_{23} & I_{33}
+      I_{11} & 0 & I_{13} \\
+      0 & I_{22} & 0 \\
+      I_{13} & 0 & I_{33}
     \end{array} \right]
 \end{align*}
+The plane spanned by the $\bs{a}_1$ and $\bs{a}_3$ unit vectors is a plane of
+symmetry.
 
-Consider a second rigid body, $B$, of mass $m_b$, along with a dextral set of unit
+Consider a second rigid body $B$, of mass $m_b$, along with a dextral set of unit
 vectors $\bs{b}_1$, $\bs{b}_2$, $\bs{b}_3$, fixed to $B$, with $\bs{b}_3
 \triangleq \bs{b}_1 \times \bs{b}_2$.  Let $B^*$ denote the center of mass of
 $B$.  Let the inertia matrix of $B$ relative to its mass center  $B^*$ for
 $\bs{b}_1, \bs{b}_2, \bs{b}_3$ be:
-
 \begin{align*}
   I^{B/B^*} & =
     \left[ \begin{array}{c c c}
       I & 0 & 0 \\
       0 & J & 0 \\
-      0 & 0 & K
+      0 & 0 & I
     \end{array} \right]
 \end{align*}
+$B$ is axially symmetric about the $\bs{b}_2$ axis.
 
-The mass center $B^*$ is located relative to $A^*$ by:
+Let $B$ be rigidly fixed to $A$ such that the mass center $B^*$ is located
+relative to $A^*$ by:
 \begin{align*}
-  r^{B^* / A^*} & = l_1 \bs{a}_1 + l_2 \bs{a}_2 + l_3 \bs{a}_3
+  r^{B^* / A^*} & = l_1 \bs{a}_1 + l_3 \bs{a}_3
 \end{align*}
-
-Where $l_1, l_2, l_3$ are real constants.  Denote the center of mass of the
-system as $AB^*$. The position of $AB^*$ relative to the mass centers of $A$
-and $B$, is:
+Where $l_1, l_3$ are real constants.  Clearly, $B^*$ lies in the plane of
+symmetry of the rigid body $A$. Denote the center of mass of the system as
+$AB^*$. The position of $AB^*$ relative to the mass centers of $A$ and $B$, is:
 \begin{align*}
   r^{AB^* / A^*} & = (l_1 m_b\bs{a}_1 + l_2 m_b\bs{a}_2 + l_3
   m_b\bs{a}_3)/(m_a+m_b)\\
@@ -82,8 +84,9 @@ $B$ is oriented relative to $A$ by means of a revolute joint whose axis is
 aligned with the $\bs{a}_2$ and passes through $B^*$.  This implies that
 $\bs{a}_2 = \bs{b}_2$.
 
-A couple of torque $T$ is applied to by $A$ on $B$ about the axis of rotation
-$\bs{a}_2$.
+A couple of torque $T$ is applied between $A$ and $B$ about the axis of rotation
+$\bs{a}_2$.  If $A$ where held fixed, a positive torque $T$ would rotate $B$ in
+a counterclockwise direction about the $\bs{a}_2$ axis.
 
 \section*{Equations of motion}
 The system is completely described by seven generalized coordinates: three which
@@ -96,7 +99,7 @@ speeds:
 \begin{align}
   u_i & \triangleq \omega^A \cdot \bs{a}_i  \qquad  (i = 1,2,3) \label{u_defs1} \\
   u_4 & \triangleq \omega^B \cdot \bs{a}_2 \label{u_defs2} \\
-  u_i & \triangleq v^{AB^*} \cdot \bs{a}_{i-4} \qquad  (i = 5,6,7) \label{u_defs3}
+  u_i & \triangleq v^{AB^*} \cdot \bs{n}_{i-4} \qquad  (i = 5,6,7) \label{u_defs3}
 \end{align}
 
 Consider orienting $A$ relative to the inertial frame $N$ using $(q_1, q_2,
@@ -106,15 +109,14 @@ system mass center relative to the inertial frame by the vector $r^{AB^*/N*} =
 q_5\bs{n}_1 + q_6\bs{n}_2 + q_7\bs{n}_3$.  These definitions, along with
 (\ref{u_defs1}, \ref{u_defs2}, \ref{u_defs3}) yield the following kinematic
 differential equations:
-
 \begin{align*}
   \dot{q}_1 &=  -s_3u_1/c_2 + c_3u_3/c_2\\
   \dot{q}_2 &=  c_3u_1 + s_3u_3 \\
   \dot{q}_3 &=  t_2s_3u_1 + u_2 - t_2c_3u_3 \\
   \dot{q}_4 &= -u_2 +  u_4 \\
-  \dot{q}_5 &= (c_1c_3 - s_1s_2s_3)u_5 - c_2s_1u_6 + (c_1s_3 + c_3s_1s_2)u_7\\
-  \dot{q}_6 &= (c_3s_1 + c_1s_2s_3)u_5 + c_1c_2u_6 + (s_1s_3 - c_1c_3s_2)u_7\\
-  \dot{q}_7 &= -c_2s_3u_5 + s_2u_6 + c_2c_3u_7
+  \dot{q}_5 &= u_5 \\
+  \dot{q}_6 &= u_6 \\
+  \dot{q}_7 &= u_7 \\
 \end{align*}
 
 While these equations are necessary for kinematics, they aren't too interesting
@@ -124,4 +126,35 @@ motion).  Other parameterizations of orientation are certainly possible, and in
 fact desirable to avoid the singularities of the Euler 3-1-2 angles when $q_2 =
 \pm \pi/2$.
 
+The first four (orientation related) dynamic differential equations are:
+\begin{align*}
+  -\left(I + I_{11} + \frac{m_al_3^2m_b^2 + m_bl_3^2m_a^2}{(m_a +
+  m_b)^2}\right)\dot{u}_{1}
+  + \left(-I_{13} + \frac{l_1l_3m_am_b^2 + l_1l_3m_bm_a^2}{(m_a + m_b)^2}\right)\dot{u}_{3}
+  & = \\
+  \left(I_{13} - \frac{l_1l_3m_am_b^2 + l_1l_3m_bm_a^2}{(m_a + m_b)^2}\right)u_1u_2 +
+  \left(I + I_{33} - I_{22} - \frac{m_al_3^2m_b^2 + m_bl_3^2m_a^2}{(m_a +
+  m_b)^2}\right)u_2u_3 &- Ju_3u_4 &
+  \\
+  \left(-I_{22} - \frac{m_al_1^2m_b^2 + m_al_3^2m_b^2 + m_bl_1^2m_a^2 +
+  m_bl_3^2m_a^2}{(m_a + m_b)^2}\right) \dot{u}_2
+  & = \\
+  T + \left(-I_{13} + \frac{l_1l_3m_am_b^2 + l_1l_3m_bm_a^2}{(m_a +
+  m_b)^2}\right)u_1^2
+  + \left(I_{13} - \frac{l_1l_3m_am_b^2 + l_1l_3m_bm_a^2}{(m_a +
+  m_b)^2}\right)u_3^2 &
+  \\
+  +\left(I_{11} - I_{33} + \frac{m_al_3^2m_b^2 + m_bl_3^2m_a^2 -
+  m_al_1^2m_b^2 - m_bl_1^2m_a^2}{(m_a + m_b)^2}\right)u_1u_3 &
+  \\
+  \left(-I_{13} + \frac{l_1l_3m_am_b^2 + l_1l_3m_bm_a^2}{(m_a + m_b)^2}\right)
+  \dot{u}_1 -
+  \left(I + I_{33} + \frac{m_al_1^2m_b^2 + m_bl_1^2m_a^2}{(m_a + m_b)^2}
+  \right) \dot{u}_3
+  & = \\
+  \left(I_{22} - I - I_{11} + \frac{m_al_1^2m_b^2 +
+  m_bl_1^2m_a^2}{(m_a + m_b)^2}\right)u_1u_2 + \left(-I_{13} + \frac{l_1l_3m_am_b^2 + l_1l_3m_bm_a^2}{(m_a +
+  m_b)^2}\right)u_2u_3 &+ Ju_1u_4\\
+  -J\dot{u}_4 &=  -T
+\end{align*}
 \end{document}

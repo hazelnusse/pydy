@@ -2072,20 +2072,20 @@ class NewtonianReferenceFrame(ReferenceFrame):
             s = S(0)
             for j, ud in enumerate(self.udot_independent):
                 c_ud = self.mass_matrix[i, j]
-                if c_ud is not None:
-                    if c_ud.could_extract_minus_sign():
-                        s -= -c_ud * ud
-                    else:
-                        s += c_ud * ud
+                if c_ud != 0:
+                    #if c_ud.could_extract_minus_sign():
+                    #    s -= -c_ud * ud
+                    #else:
+                    s += c_ud * ud
             self.ke_lhs[i] = s
             s = S(0)
             for uu in self.crossterms:
                 c_uu = self.ke_rhs_if[i].coeff(uu)
                 if c_uu is not None:
-                    if c_uu.could_extract_minus_sign():
-                        s -= -c_uu * uu
-                    else:
-                        s += c_uu * uu
+                    #if c_uu.could_extract_minus_sign():
+                    #    s -= -c_uu * uu
+                    #else:
+                    s += c_uu * uu
             self.ke_rhs_if[i] = s
             af = factor(self.ke_rhs_af[i].subs(self.trig_subs_dict).\
                     subs(self.symbol_dict)).subs(self.symbol_dict_back).\

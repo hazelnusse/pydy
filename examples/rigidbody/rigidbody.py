@@ -31,6 +31,8 @@ qd_to_u_eqs = [Eq(ui, ui_rhs) for ui, ui_rhs in zip(u, u_rhs)]
 qd_to_u = coefficient_matrix(u_rhs, qd)
 
 u_to_qd = qd_to_u.inv(method='ADJ').subs({cos(q3)**2: 1-sin(q3)**2}).expand()
+print u_to_qd
+stop
 qd_rhs = u_to_qd * Matrix(u)
 
 # Create a list of Equations:
