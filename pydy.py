@@ -2728,6 +2728,21 @@ class PyDyStrPrinter(StrPrinter):
                 s += v_str + "*" + str(k.args[0]) + "*" + str(k.args[0]) + " + "
         return s[:-3]
 
+    def _print_Inertia(self, expr):
+        s = ""
+        if expr.dict == {}:
+            return "0>>"
+        for k, v in expr.dict.items():
+            if isinstance(v, Add):
+                v_str = "(" + str(v) + ")"
+            else:
+                v_str = str(v)
+            if k.is_Mul:
+                s += v_str + "*" + str(k.args[0]) + "*" + str(k.args[1]) + " + "
+            elif k.is_Pow:
+                s += v_str + "*" + str(k.args[0]) + "*" + str(k.args[0]) + " + "
+        return s[:-3]
+
     #def _print_Matrix(self, expr):
     #    return expr._format_str(lambda elem: elem.__str__())
 
@@ -3380,9 +3395,17 @@ def mass_center(O, points):
     return Vector(cm)
 
 def inertia_of_point_mass(m, p, F):
-    """Determine the Inertia Dyadic of a particle of mass m, located relative
-    to a point by a position vector p, expressed using UnitVectors fixed in
-    frame F.
+    """Determine the Inertia dyadic of a particle.
+
+    Input:
+        m:  Mass
+        p:  Position from point O to mass m
+        F:  Reference frame to express the dyad entries with respect to.
+
+    Output:
+        Inertia Dyadic relative to O of a particle of mass m, located relative
+        to the point O by the position vector p.
+
     """
     I11 = m*dot(cross(p, F[1]), cross(p, F[1]))
     I22 = m*dot(cross(p, F[2]), cross(p, F[2]))
