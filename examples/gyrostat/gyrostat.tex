@@ -82,11 +82,6 @@ The system is completely described by seven generalized coordinates: three
 which locate the system in inertial space, three which orient $A$ in inertial
 space, and one which orients $B$ relative to $A$.
 
-Let the mass center $AB^*$ be located relative to the inertial origin $N^*$ by:
-\begin{align*}
-  \bs{r}^{AB^*/N^*} & = q_5 \bs{n}_1 + q_6 \bs{n}_2 + q_7 \bs{n}_3
-\end{align*}
-
 The orientation of $A$ relative to the inertial frame $N$ is given by a
 sequence of rotations ($q_1$, $q_2$, $q_3$) 3-1-2 Euler angles.  The direction
 cosine matrix relating the unit vectors fixed in $N$ and $A$ is shown in Table
@@ -106,9 +101,14 @@ cosine matrix relating the unit vectors fixed in $N$ and $A$ is shown in Table
   \label{directioncosines}
 \end{table}
 
-$B$ is oriented relative to $A$ by first aligning $\bs{b}_i$ with $\bs{a}_i \:
-(i = 1,2,3)$ then performing a right handed rotation of $B$ by an angle $q_4$ about
-the $a_2$ axis.
+$B$ is oriented relative to $A$ by first aligning $\bs{b}_i$ with $\bs{a}_i
+\:\: (i = 1,2,3)$ then performing a right handed rotation of $B$ by an angle
+$q_4$ about the $\bs{a}_2$ axis.
+
+Let the mass center $AB^*$ be located relative to the inertial origin $N^*$ by:
+\begin{align*}
+  \bs{r}^{AB^*/N^*} & = q_5 \bs{n}_1 + q_6 \bs{n}_2 + q_7 \bs{n}_3
+\end{align*}
 
 For sake of symbolic brevity, introduce the following terms:
 \begin{align*}
@@ -120,8 +120,8 @@ For sake of symbolic brevity, introduce the following terms:
 
 Let $\omega^A$ and $\omega^B$ denote the angular velocity of $A$ and $B$
 relative to the inertial frame, respectively.  Let $v^{A^*}$, $v^{B^*}$, and $v^{AB^*}$ denote the
-velocity of $A^*$, $B^*$, and $AB^*$ relative to the inertial frame.
-The position of the mass centers are:
+velocity of $A^*$, $B^*$, and $AB^*$ relative to the inertial frame,
+respectively.
 
 Define the following generalized speeds:
 \begin{align}
@@ -204,23 +204,60 @@ differential equations (no coordinates appear in the dynamic equations of
 motion).
 
 \subsection*{Dynamics}
-The angular accelerations relative to the inertial frame are:
+There are two types of active forces acting on the system, the first arising
+from gravity, the second arising from the applied torque between the two
+bodies.
+\begin{align*}
+  \bs{G}_A & = m_ag\bs{n}_3 \\
+  \bs{G}_B & = m_bg\bs{n}_3 \\
+  \bs{T}_A & = - T \bs{a}_2 \\
+  \bs{T}_B & = T \bs{a}_2
+\end{align*}
+
+In order to compute the inertia forces of the system, we need to form the
+angular accelerations of $A$ and $B$ as well as accelerations of the points
+$AB^*$, $A^*$, and $B^*$. The angular accelerations relative to the inertial
+frame are:
 \begin{align*}
   \bs{\alpha}^A & = \dot{u}_1 \bs{a}_1 + \dot{u}_2 \bs{a}_2 + \dot{u}_3 \bs{a}_3\\
   \bs{\alpha}^B & =(u_2u_3 - u_3u_4 + \dot{u}_1)\bs{a}_1 + \dot{u}_4\bs{a}_2 + (u_1u_4 -
   u_1u_2 + \dot{u}_3)\bs{a}_3
 \end{align*}
-The accelerations of the $AB^*$, $A^*$, and $B^*$, relative to the inertial
+The accelerations of $AB^*$, $A^*$, and $B^*$, relative to the inertial
 origin are:
 \begin{align*}
-  \bs{a}^{AB^*} &= \dot{u}_5\bs{n}_1 + \dot{u}_6\bs{n}_2 + \dot{u}_7\bs{n}_3 \\
-  \bs{a}^A &= \dot{u}_5\bs{n}_1 + \dot{u}_6\bs{n}_2 + \dot{u}_7\bs{n}_3 \\
-  & + (l_{3a}\dot{u}_2 + l_{3a}u_1u_3 - l_{1a}u_2^2 - l_{1a}u_3^2)\bs{a}_1
-  + (l_{1a}\dot{u}_3 - l_{3a}\dot{u}_1 + l_{1a}u_1u_2 + l_{3a}u_2u_3)\bs{a}_2 \\
-  & - (l_{1a}\dot{u}_2 - l_{1a}u_1u_3 + l_{3a}u_1^2 + l_{3a}u_2^2)\bs{a}_3 \\
-  \bs{a}^B &= \dot{u}_5\bs{n}_1 + \dot{u}_6\bs{n}_2 + \dot{u}_7\bs{n}_3 \\
+  \bs{a}^{AB^*} &= \dot{u}_5\bs{n}_1 + \dot{u}_6\bs{n}_2 + \dot{u}_7\bs{n}_3
+  \\
+  \bs{a}^A &= \dot{u}_5\bs{n}_1 + \dot{u}_6\bs{n}_2 + \dot{u}_7\bs{n}_3
+  + (l_{3a}(\dot{u}_2 + u_1u_3) - l_{1a}(u_2^2 + u_3^2))\bs{a}_1 \\
+  &+ (l_{1a}(\dot{u}_3 + u_1u_2) + l_{3a}(u_2u_3 - \dot{u}_1))\bs{a}_2
+  - (l_{1a}(\dot{u}_2 + u_1u_3) + l_{3a}(u_1^2 + u_2^2))\bs{a}_3
+  \\
+  \bs{a}^B &= \dot{u}_5\bs{n}_1 + \dot{u}_6\bs{n}_2 + \dot{u}_7\bs{n}_3
+  + (l_{3b}(\dot{u}_2 + u_1u_3) - l_{1b}(u_2^2 + u_3^2))\bs{a}_1 \\
+  &+ (l_{1b}(\dot{u}_3 + u_1u_2) + l_{3b}(u_2u_3 - \dot{u}_1))\bs{a}_2
+  - (l_{1b}(\dot{u}_2 + u_1u_3) + l_{3b}(u_1^2 + u_2^2))\bs{a}_3
 \end{align*}
 
+The inertia force and inertia torque for the rigid bodies $A$ and $B$ are:
+\begin{align*}
+  \bs{R}^*_A  =& -m_a \bs{a}^{A^*} \\
+  \bs{T}^*_A  =& -\bs{\alpha}^A \cdot \bs{I}^{A/A^*} - \bs{\omega}^A \times
+  \bs{I}^{A/A^*} \cdot \bs{\omega}^A \\
+  = &-(I_{11}\dot{u}_1 + I_{13}\dot{u}_3)\bs{a}_1 - I_{22}\dot{u}_2\bs{a}_2 -
+  (I_{13}\dot{u}_1 + I_{33}\dot{u}_3)\bs{a}_3 \\
+   + & (I_{13}u_1u_2 + (I_{33} - I_{22})u_2u_3)\bs{a}_1 +
+  (I_{13}u_1^2 + (I_{33}- I_{11})u_1u_3 - I_{13}u_3^2)\bs{a}_2 \\
+  + & ((I_{11} - I_{22})u_1u_2 + I_{13}u_2u_3)\bs{a}_3 \\
+  \bs{R}^*_B = & -m_b \bs{a}^{B^*} \\
+  \bs{T}^*_B = & -\bs{\alpha}^B \cdot \bs{I}^{B/B^*} - \bs{\omega}^B \times
+  \bs{I}^{B/B^*} \cdot \bs{\omega}^B \\
+  = & -I(u_2u_3 - u_3u_4 + \dot{u}_1)\bs{a}_1 - J\dot{u}_4\bs{a}_2 - I(u_1u_4 - u_1u_2 +
+  \dot{u}_3)\bs{a}_3 \\
+  + & (Ju_3u_4 - Iu_3u_4)\bs{a}_1 + (Iu_1u_4 - Ju_1u_4)\bs{a}_3 \\
+  = &-(I\dot{u}_1 - Ju_3u_4 + Iu_2u_3)\bs{a}_1 - J\dot{u}_4\bs{a}_2 -
+  (I\dot{u}_3 + Ju_1u_4 - Iu_1u_2)\bs{a}_3
+\end{align*}
 
 The first four (orientation related) dynamic differential equations are:
 \begin{align*}

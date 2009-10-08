@@ -73,22 +73,16 @@ AO.abs_vel = ABO.abs_vel + cross(A.ang_vel(N), AO.rel(ABO)).subs(l_dict)
 BO.abs_vel = ABO.abs_vel + cross(A.ang_vel(N), BO.rel(ABO)).subs(l_dict)
 print AO.abs_vel
 print BO.abs_vel
-raw_input()
 # Set accelerations and angular accelerations
 A.abs_ang_acc = dt(A.abs_ang_vel, N)
 B.abs_ang_acc = dt(B.abs_ang_vel, N)
 AO.abs_acc = dt(AO.abs_vel, N)
 BO.abs_acc = dt(BO.abs_vel, N)
 print A.abs_ang_acc
-raw_input()
 print B.abs_ang_acc
-raw_input()
 print AO.abs_acc
-raw_input()
 print BO.abs_acc
-raw_inpu()
 
-stop
 # Apply gravity
 N.gravity(g*N[3])
 # Apply a torque between the two bodies
@@ -96,6 +90,15 @@ B.apply_torque(T*A[2], A)
 
 # Form Kane's equations and solve them for the udots
 kanes_eqns = N.form_kanes_equations()
+print A.gen_inertia_force
+raw_input()
+print B.gen_inertia_force
+raw_input()
+print AO.gen_inertia_force
+raw_input()
+print BO.gen_inertia_force
+raw_input()
+stop
 
 print 'Dynamic differential equations'
 for i in range(7):
