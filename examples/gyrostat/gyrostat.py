@@ -18,6 +18,7 @@ u1d, u2d, u3d, u4d, u5d, u6d, u7d = ud
 
 # Some extra symbols for convenience
 l1a, l3a, l1b, l3b = symbols('l1a l3a l1b l3b')
+M, Md = symbols('M Md')
 
 # Frame fixed to the rigid body
 A = N.rotate("A", 'BODY312', (q1, q2, q3), I=(I11, I22, I33, 0, 0, I13))
@@ -41,8 +42,11 @@ l_dict = dict([(v, k) for k, v in l_dict_r.items()])
 # Locate the mass center of the system
 ABO = N.O.locate('ABO', q5*N[1] + q6*N[2] + q7*N[3])
 # Overwrite previous definitions of AO and BO
-AO = ABO.locate('AO', P_ABO_AO.subs(l_dict), mass=ma)
-BO = ABO.locate('AO', P_ABO_BO.subs(l_dict), mass=mb)
+#AO = ABO.locate('AO', P_ABO_AO.subs(l_dict), mass=ma)
+#BO = ABO.locate('AO', P_ABO_BO.subs(l_dict), mass=mb)
+# Overwrite previous definitions of AO and BO
+AO = ABO.locate('AO', P_ABO_AO, mass=ma)
+BO = ABO.locate('AO', P_ABO_BO, mass=mb)
 
 # Define the generalized speeds
 u_rhs = [dot(A.ang_vel(), A[i]) for i in (1, 2, 3)] + \
@@ -69,19 +73,16 @@ for qdot, eqn in zip(qd, qd_rhs):
 A.abs_ang_vel = Vector(u1*A[1] + u2*A[2] + u3*A[3])
 B.abs_ang_vel = Vector(u1*A[1] + u4*A[2] + u3*A[3])
 ABO.abs_vel = Vector(u5*N[1] + u6*N[2] + u7*N[3])
-AO.abs_vel = ABO.abs_vel + cross(A.ang_vel(N), AO.rel(ABO)).subs(l_dict)
-BO.abs_vel = ABO.abs_vel + cross(A.ang_vel(N), BO.rel(ABO)).subs(l_dict)
-print AO.abs_vel
-print BO.abs_vel
+#AO.abs_vel = ABO.abs_vel + cross(A.ang_vel(N), AO.rel(ABO)).subs(l_dict)
+#BO.abs_vel = ABO.abs_vel + cross(A.ang_vel(N), BO.rel(ABO)).subs(l_dict)
+AO.abs_vel = ABO.abs_vel + cross(A.ang_vel(N), AO.rel(ABO))#.subs(l_dict)
+BO.abs_vel = ABO.abs_vel + cross(A.ang_vel(N), BO.rel(ABO))#.subs(l_dict)
 # Set accelerations and angular accelerations
 A.abs_ang_acc = dt(A.abs_ang_vel, N)
 B.abs_ang_acc = dt(B.abs_ang_vel, N)
+ABO.abs_acc = Vector(u5d*N[1] + u6d*N[2] + u7d*N[3])
 AO.abs_acc = dt(AO.abs_vel, N)
 BO.abs_acc = dt(BO.abs_vel, N)
-print A.abs_ang_acc
-print B.abs_ang_acc
-print AO.abs_acc
-print BO.abs_acc
 
 # Apply gravity
 N.gravity(g*N[3])
@@ -90,19 +91,29 @@ B.apply_torque(T*A[2], A)
 
 # Form Kane's equations and solve them for the udots
 kanes_eqns = N.form_kanes_equations()
-print A.gen_inertia_force
-raw_input()
-print B.gen_inertia_force
-raw_input()
-print AO.gen_inertia_force
-raw_input()
-print BO.gen_inertia_force
-raw_input()
-stop
 
 print 'Dynamic differential equations'
 for i in range(7):
     print kanes_eqns[i]
+
+# Alternative formulation
+AO.mass = S(0)
+AO.force = Vector(0)
+BO.mass = S(0)
+BO.force = Vector(0)
+ABO.mass = M
+ABO.force = Vector(M*g*N[3])
+IAB11, IAB22, IAB33, IAB13 = symbols('IAB11 IAB22 IAB33 IAB13')
+A.inertia = Inertia(A, (IAB11, IAB22, IAB33, 0, 0, IAB13))
+B.inertia = Inertia(A, (0, J, 0, 0, 0, 0))
+
+# Form Kane's equations and solve them for the udots
+kanes_eqns2 = N.form_kanes_equations()
+
+print 'Dynamic differential equations combined'
+for i in range(7):
+    print kanes_eqns2[i]
+
 #l1a, l2a, l3a, l1b, l2b, l3b = symbols('l1a l2a l3a l1b l2b l3b')
 #l_sd = {l1a: dot(P_AO_ABO, A[1]),
 #        l2a: dot(P_AO_ABO, A[2]),
@@ -116,14 +127,12 @@ for i in range(7):
 #mab = Symbol('mab')
 #m_subs_dict = {ma+mb:mab}
 
-I_AO_ABO = inertia_of_point_mass(ma, -P_AO_ABO, A)
-I_BO_ABO = inertia_of_point_mass(mb, -P_BO_ABO, A)
+I_AO_ABO = inertia_of_point_mass(ma, P_ABO_AO, A)
+I_BO_ABO = inertia_of_point_mass(mb, P_ABO_BO, A)
+I_A_AO = Dyad({A[1]*A[1]: I11, A[2]*A[2]: I22, A[3]*A[3]:I33, A[1]*A[3]:I13,
+    A[3]*A[1]:I13})
 
 # Planar components of B's inertia
 I_B_BO_p = Dyad({A[1]*A[1]: I, A[3]*A[3]: I})
-# Combined system inertia
-I_SYS_ABO = A.inertia + I_AO_ABO + I_B_BO_p + I_BO_ABO
-#I_BO_ABO.dict.pop(A[2]*A[2])
-#B.inertia.dict.pop(A[2]*A[2])
-# Combined inertia of A and B about ABO, except out of plane components of B
-I_SYS_ABO = A.inertia + I_AO_ABO + I_BO_ABO + B.inertia
+# Combined system inertia except for B's out of plane moment of inertia
+I_SYS_ABO = I_A_AO + I_AO_ABO + I_B_BO_p + I_BO_ABO

@@ -2728,21 +2728,6 @@ class PyDyStrPrinter(StrPrinter):
                 s += v_str + "*" + str(k.args[0]) + "*" + str(k.args[0]) + " + "
         return s[:-3]
 
-    def _print_Inertia(self, expr):
-        s = ""
-        if expr.dict == {}:
-            return "0>>"
-        for k, v in expr.dict.items():
-            if isinstance(v, Add):
-                v_str = "(" + str(v) + ")"
-            else:
-                v_str = str(v)
-            if k.is_Mul:
-                s += v_str + "*" + str(k.args[0]) + "*" + str(k.args[1]) + " + "
-            elif k.is_Pow:
-                s += v_str + "*" + str(k.args[0]) + "*" + str(k.args[0]) + " + "
-        return s[:-3]
-
     #def _print_Matrix(self, expr):
     #    return expr._format_str(lambda elem: elem.__str__())
 

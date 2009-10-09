@@ -115,7 +115,7 @@ For sake of symbolic brevity, introduce the following terms:
   l_{1a} & = -\frac{l_1 m_b}{m_a + m_b} &
   l_{3a} & = -\frac{l_3 m_b}{m_a + m_b} \\
   l_{1b} & = \frac{l_1 m_a}{m_a + m_b} &
-  l_{3b} & = \frac{l_3 m_a}{m_a + m_b} \\
+  l_{3b} & = \frac{l_3 m_a}{m_a + m_b}
 \end{align*}
 
 Let $\omega^A$ and $\omega^B$ denote the angular velocity of $A$ and $B$
@@ -125,9 +125,11 @@ respectively.
 
 Define the following generalized speeds:
 \begin{align}
-  u_i & \triangleq \bs{\omega}^A \cdot \bs{a}_i  \qquad  (i = 1,2,3) \label{u_defs1} \\
+  u_i & \triangleq \bs{\omega}^A \cdot \bs{a}_i  \qquad  (i = 1,2,3)
+  \label{u_defs1} \\
   u_4 & \triangleq \bs{\omega}^B \cdot \bs{a}_2 \label{u_defs2} \\
-  u_i & \triangleq \bs{v}^{AB^*} \cdot \bs{n}_{i-4} \qquad  (i = 5,6,7) \label{u_defs3}
+  u_i & \triangleq \bs{v}^{AB^*} \cdot \bs{n}_{i-4} \qquad  (i = 5,6,7)
+  \label{u_defs3}
 \end{align}
 The above generalized speeds result in the following angular velocities and
 velocities:
@@ -142,10 +144,11 @@ velocities:
   & = u_5 \bs{n}_1 + u_6 \bs{n}_2 + u_7 \bs{n}_3 +l_{3b}u_2\bs{a}_1 +
   (l_{1b}u_3 - l_{3b}u_1)\bs{a}_2 - l_{1b}u_2\bs{a}_3
 \end{align*}
-All of the above velocities are relative to the inertial frame, and of particular
-interest here is that the angular velocity expressions for $A$ and $B$ only
-differ by the $\bs{a}_2$ component, which is the axis of rotation of $B$
-relative to $A$.
+
+All of the above velocities are relative to the inertial frame, and of
+particular interest here is that the angular velocity expressions for $A$ and
+$B$ only differ by the $\bs{a}_2$ component, which is the axis of rotation of
+$B$ relative to $A$.
 
 By inspection of the angular velocity expressions for $A$ and $B$, and the
 velocity expressions for $A^*$ and $B^*$, the partial angular velocities and
@@ -166,20 +169,22 @@ velocity expressions.  They are shown in Table \ref{partialvelocities}.
       $\bs{\omega}^B_5 = \bs{0}$ & $\bs{\omega}^B_6 = \bs{0}$ &
       $\bs{\omega}^B_7 = \bs{0}$ \\
 %
-      $\bs{v}^{AB^*}_1 = \bs{0}$ & $\bs{v}^{AB^*}_2 =
-      \bs{0}$ & $\bs{v}^{AB^*}_3 = \bs{0}$ &
-      $\bs{v}^{AB^*}_4 = \bs{0}$ & $\bs{v}^{AB^*}_5 = \bs{n}_1$ & $\bs{v}^{AB^*}_6
-      = \bs{n}_2$ & $\bs{v}^{AB^*}_7 = \bs{n}_3$ \\
+      $\bs{v}^{AB^*}_1 = \bs{0}$ & $\bs{v}^{AB^*}_2 = \bs{0}$ &
+      $\bs{v}^{AB^*}_3 = \bs{0}$ & $\bs{v}^{AB^*}_4 = \bs{0}$ &
+      $\bs{v}^{AB^*}_5 = \bs{n}_1$ & $\bs{v}^{AB^*}_6 = \bs{n}_2$ &
+      $\bs{v}^{AB^*}_7 = \bs{n}_3$ \\
 %
-      $\bs{v}^{A^*}_1 = -l_{3a}\bs{a}_2$ & $\bs{v}^{A^*}_2 =
-      l_{3a}\bs{a}_1 - l_{1a}\bs{a}_3$ & $\bs{v}^{A^*}_3 = l_{1a} \bs{a}_2$ &
-      $\bs{v}^{A^*}_4 = \bs{0}$ & $\bs{v}^{A^*}_5 = \bs{n}_1$ & $\bs{v}^{A^*}_6
-      = \bs{n}_2$ & $\bs{v}^{A^*}_7 = \bs{n}_3$ \\
+      $\bs{v}^{A^*}_1 = -l_{3a}\bs{a}_2$ &
+      $\bs{v}^{A^*}_2 = l_{3a}\bs{a}_1 - l_{1a}\bs{a}_3$ &
+      $\bs{v}^{A^*}_3 = l_{1a} \bs{a}_2$ &
+      $\bs{v}^{A^*}_4 = \bs{0}$ & $\bs{v}^{A^*}_5 = \bs{n}_1$ & 
+      $\bs{v}^{A^*}_6 = \bs{n}_2$ & $\bs{v}^{A^*}_7 = \bs{n}_3$ \\
 %
-        $\bs{v}^{B^*}_1 = -l_{3b}\bs{a}_2$ & $\bs{v}^{B^*}_2 = l_{3b}\bs{a}_1 -
-        l_{1b}\bs{a}_3$ & $\bs{v}^{B^*}_3 = l_{1b} \bs{a}_2$ & $\bs{v}^{B^*}_4
-        = \bs{0}$ & $\bs{v}^{B^*}_5 = \bs{n}_1$ & $\bs{v}^{B^*}_6 = \bs{n}_2$ &
-        $\bs{v}^{B^*}_7 = \bs{n}_3$
+      $\bs{v}^{B^*}_1 = -l_{3b}\bs{a}_2$ &
+      $\bs{v}^{B^*}_2 = l_{3b}\bs{a}_1 - l_{1b}\bs{a}_3$ &
+      $\bs{v}^{B^*}_3 = l_{1b} \bs{a}_2$ & $\bs{v}^{B^*}_4 = \bs{0}$ &
+      $\bs{v}^{B^*}_5 = \bs{n}_1$ & $\bs{v}^{B^*}_6 = \bs{n}_2$ &
+      $\bs{v}^{B^*}_7 = \bs{n}_3$
 %
     \end{tabular}
   \end{center}
@@ -204,12 +209,12 @@ differential equations (no coordinates appear in the dynamic equations of
 motion).
 
 \subsection*{Dynamics}
-There are two types of active forces acting on the system, the first arising
+There are two active forces acting on the system, the first arising
 from gravity, the second arising from the applied torque between the two
 bodies.
 \begin{align*}
-  \bs{G}_A & = m_ag\bs{n}_3 \\
-  \bs{G}_B & = m_bg\bs{n}_3 \\
+  \bs{G}_{A^*} & = m_ag\bs{n}_3 \\
+  \bs{G}_{B^*} & = m_bg\bs{n}_3 \\
   \bs{T}_A & = - T \bs{a}_2 \\
   \bs{T}_B & = T \bs{a}_2
 \end{align*}
@@ -259,37 +264,162 @@ The inertia force and inertia torque for the rigid bodies $A$ and $B$ are:
   (I\dot{u}_3 + Ju_1u_4 - Iu_1u_2)\bs{a}_3
 \end{align*}
 
-The first four (orientation related) dynamic differential equations are:
+Kane's equations of motion can now be written concisely as:
 \begin{align*}
-  -\left(I + I_{11} + \frac{m_al_3^2m_b^2 + m_bl_3^2m_a^2}{(m_a +
-  m_b)^2}\right)\dot{u}_{1}
-  + \left(-I_{13} + \frac{l_1l_3m_am_b^2 + l_1l_3m_bm_a^2}{(m_a + m_b)^2}\right)\dot{u}_{3}
-  & = \\
-  \left(I_{13} - \frac{l_1l_3m_am_b^2 + l_1l_3m_bm_a^2}{(m_a + m_b)^2}\right)u_1u_2 +
-  \left(I + I_{33} - I_{22} - \frac{m_al_3^2m_b^2 + m_bl_3^2m_a^2}{(m_a +
-  m_b)^2}\right)u_2u_3 &- Ju_3u_4 &
+  \bs{v}^{A^*}_r \cdot (\bs{G}_{A^*} + \bs{R}^*_A) +
+  \bs{v}^{B^*}_r \cdot (\bs{G}_{B^*} + \bs{R}^*_B) +
+  \bs{\omega}^A_r \cdot (\bs{T}_A + \bs{T}^*_A) +
+  \bs{\omega}^B_r \cdot (\bs{T}_B + \bs{T}^*_B) & = 0
+\end{align*}
+Where $\quad r = 1,\dots,7$.
+
+Explicitly, the first four (orientation related) dynamic differential equations are:
+\begin{align*}
+  -\left(I_{11} + m_al_{3a}^2 + I + m_bl_{3b}^2\right)\dot{u}_{1}
+  + \left(-I_{13} + m_al_{1a}l_{3a} + m_bl_{1b}l_{3b})\right)\dot{u}_{3}
+  & =
+  (I_{13}  - m_al_{1a}l_{3a} - m_bl_{1b}l_{3b})u_1u_2\\
+  + (I + I_{33} - I_{22}& - m_al_{3a}^2 - m_bl_{3b}^2)u_2u_3 - Ju_3u_4
   \\
-  \left(-I_{22} - \frac{m_al_1^2m_b^2 + m_al_3^2m_b^2 + m_bl_1^2m_a^2 +
-  m_bl_3^2m_a^2}{(m_a + m_b)^2}\right) \dot{u}_2
-  & = \\
-  T + \left(-I_{13} + \frac{l_1l_3m_am_b^2 + l_1l_3m_bm_a^2}{(m_a +
-  m_b)^2}\right)u_1^2
-  + \left(I_{13} - \frac{l_1l_3m_am_b^2 + l_1l_3m_bm_a^2}{(m_a +
-  m_b)^2}\right)u_3^2 &
+(-I_{22} - m_a(l_{1a}^2 + l_{3a}^2) - m_b(l_{1b}^2 + l_{3b}^2)) \dot{u}_2
+  =
+  T
+  +(-I_{13} + &m_al_{1a}l_{3a} + m_bl_{1b}l_{3b})u_1^2 \\
+  + (I_{13} - m_al_{1a}l_{3a} - m_bl_{1b}l_{3b})u_3^2 +
+  (I_{11} - I_{33} + &m_a(l_{3a}^2 - l_{1a}^2)
+  + m_b(l_{3b} - l_{1b}^2))u_1u_3 
   \\
-  +\left(I_{11} - I_{33} + \frac{m_al_3^2m_b^2 + m_bl_3^2m_a^2 -
-  m_al_1^2m_b^2 - m_bl_1^2m_a^2}{(m_a + m_b)^2}\right)u_1u_3 &
+  (-I_{13} + m_al_{1a}l_{3a} + m_bl_{1b}l_{3b}) \dot{u}_1 - (I + I_{33} +
+  m_al_{1a}^2 + m_bl_{1b}^2) \dot{u}_3
+  & = Ju_1u_4
   \\
-  \left(-I_{13} + \frac{l_1l_3m_am_b^2 + l_1l_3m_bm_a^2}{(m_a + m_b)^2}\right)
-  \dot{u}_1 -
-  \left(I + I_{33} + \frac{m_al_1^2m_b^2 + m_bl_1^2m_a^2}{(m_a + m_b)^2}
-  \right) \dot{u}_3
-  & = \\
-  \left(I_{22} - I - I_{11} + \frac{m_al_1^2m_b^2 +
-  m_bl_1^2m_a^2}{(m_a + m_b)^2}\right)u_1u_2 + \left(-I_{13} + \frac{l_1l_3m_am_b^2 + l_1l_3m_bm_a^2}{(m_a +
-  m_b)^2}\right)u_2u_3 &+ Ju_1u_4\\
+  + (I_{22} - I - I_{11} + m_al_{1a}^2 + m_bl_{1b}^2)u_1u_2 + (&-I_{13} + m_al_{1a}l_{3a} + m_bl_{1b}l_{3b})u_3u_3
+  \\
   -J\dot{u}_4 &=  -T
 \end{align*}
-The three equations of motion associated with translation are trivial:
-$\dot{u}_5 = 0$, $\dot{u}_6 = 0$, $\dot{u}_7 = -g$.
+
+If not for the introduction of the variables $l_{1a}, l_{1b}, l_{3a}$, and
+$l_{3b}$, these equations would be significantly longer. As it is, there are a
+substantial number of multiply and add operations that need only be done once,
+but if the above symbolic expressions were coded (or autogenerated) in a
+numerical routine verbatim (i.e., numerical integration), they would be
+performed at every time step (and intermediate time step).  This is a
+computationally wasteful approach, and further, the structure of the equations
+is more clouded by excessively long symbolic expressions.
+
+The three equations of motion associated with translation are:
+$\dot{u}_5 = 0$, $\dot{u}_6 = 0$, $\dot{u}_7 = g$.  Although these equations
+are trivial and intuitive, the symbolic manipulations required in order for
+this simple form to be apparent is substantial when each mass center is treated
+individually; when computed symbollically on a computer, these necessary
+symbolic cancellations may or may not happen without additional user input.
+
+\subsubsection*{Equivalent formulation}
+Consider now $\tilde{A}$ as a rigid body of mass $M$, whose mass center
+$\tilde{A}^*$ is coincident with $AB^*$, and additionally has the same angular
+orientation as $A$. Let the central inertia dyadic of $\tilde{A}$ be:
+\begin{align*}
+  \bs{I}^{\tilde{A}/\tilde{A}^*} & = I_{\tilde{A}11}\bs{a}_1\bs{a}_1 + I_{\tilde{A}22}\bs{a}_2\bs{a}_2 +
+  I_{\tilde{A}33}\bs{a}_3\bs{a}_3 + I_{\tilde{A}13}\bs{a}_1\bs{a}_3 + I_{\tilde{A}13}\bs{a}_3\bs{a}_1
+\end{align*}
+
+Consider a second rigid body $\tilde{B}$ as massless yet having a central inertia
+dyadic of
+\begin{align*}
+  \bs{I}^{\tilde{B}/\tilde{B}^*} & = J\bs{a}_2\bs{a}_2
+\end{align*}
+The active force and torques are:
+\begin{align*}
+  \bs{G}_{\tilde{A}^*} & = Mg\bs{n}_3 \\
+  \bs{T}_{\tilde{A}} & = - T \bs{a}_2 \\
+  \bs{T}_{\tilde{B}} & = T \bs{a}_2
+\end{align*}
+
+Only one inertia force needs to be computed:
+\begin{align*}
+  \bs{R}^*_{\tilde{A}} & = -M\bs{a}^{AB^*}\\
+  & = -M\left(\dot{u}_5 \bs{n}_1 + \dot{u}_6 \bs{n}_2 + \dot{u}_7
+  \bs{n}_3\right)
+\end{align*}
+The two inertia torques are:
+\begin{align*}
+  \bs{T}^*_{\tilde{A}} & = - \bs{\alpha}^A \cdot \bs{I}^{\tilde{A}/\tilde{A}^*}
+  - \bs{\omega}^A \times \bs{I}^{\tilde{A}/\tilde{A}^*} \cdot \bs{\omega}^A
+  \\
+  & = 
+  (-I_{AB11}\dot{u}_1 - I_{AB13}\dot{u}_3 - I_{AB13}u_1u_2 + (I_{AB22} - I_{AB33})u_2u_3 )\bs{a}_1 
+  \\
+  & - (I_{AB22}\dot{u}_2 + (I_{AB11} - I_{AB33})u_1u_3 + I_{AB13}u_1^2 - I_{AB13}u_3^2)\bs{a}_2
+  \\
+  & - (I_{AB13}\dot{u}_1 + I_{AB33}\dot{u}_3 + (I_{AB22} - I_{AB11})u_1u_2 - I_{AB13}u_2u_3)\bs{a}_3
+  \\
+  \bs{T}^*_{\tilde{B}} & = -\bs{\alpha}^B \cdot \bs{I}^{\tilde{B}/\tilde{B}^*}
+  - \bs{\omega}^B \times \bs{I}^{\tilde{B}/\tilde{B}^*} \cdot \bs{\omega}^B \\
+  & = J(u_3u_4\bs{a}_1 - \dot{u}_4\bs{a}_2 - u_1u_4)\bs{a}_3
+\end{align*}
+
+Kane's equations of motions are:
+\begin{align*}
+  \bs{v}^{AB^*}_r \cdot (\bs{G}_{\tilde{A}} + \bs{R}^*_{\tilde{A}}) +
+  \bs{\omega}^A_r \cdot (\bs{T}_{\tilde{A}} + \bs{T}^*_{\tilde{A}}) +
+  \bs{\omega}^B_r \cdot (\bs{T}_{\tilde{B}} + \bs{T}^*_{\tilde{B}}) & = \bs{0} \qquad r = 1,\dots,7
+\end{align*}
+More explicitly, the first four of these equations are:
+\begin{align*}
+  -I_{\tilde{A}11}\dot{u}_1 - I_{\tilde{A}13}\dot{u}_3 &= I_{\tilde{A}13}u_1u_2 + (I_{\tilde{A}33} - I_{\tilde{A}22})u_2u_3 - Ju_3u_4
+  \\
+  -I_{\tilde{A}22}\dot{u}_2 &=  T + (I_{\tilde{A}11} - I_{\tilde{A}33})u_1u_3 +
+  I_{\tilde{A}13}u_3^2 - I_{\tilde{A}13}u_1^2
+ \\
+ -I_{\tilde{A}13}\dot{u}_1 - I_{\tilde{A}33}\dot{u}_3 & =  Ju_1u_4 +
+ (I_{\tilde{A}22} - I_{\tilde{A}11})u_1u_2 - I_{\tilde{A}13}u_2u_3
+ \\
+ -J\dot{u}_4 &= -T
+\end{align*}
+It is important to note that the form of these equations are identical to the
+previous formulation, and that the only difference is the coefficients of the
+$\dot{u}_i$ terms and the $u_iu_j$ terms.
+
+To see the relationship between these two sets of equations, we compute the
+inertia dyadic of particles of mass $m_a$ and $m_b$, relative to the system
+mass center $AB^*$.  They are:
+\begin{align*}
+  \bs{I}^{A^* / AB^*} & = 
+  m_al_{3a}^2\bs{a}_1\bs{a}_1 + m_a(l_{1a}^2 + l_{3a}^2)\bs{a}_2 \bs{a}_2 +
+  m_al_{1a}^2\bs{a}_3\bs{a}_3 - 
+  m_al_{1a}l_{3a}\bs{a}_1\bs{a}_3 - m_al_{1a}l_{3a}\bs{a}_3\bs{a}_1 \\
+  \bs{I}^{B^* / AB^*} & = 
+  m_bl_{3b}^2\bs{a}_1\bs{a}_1 + m_b(l_{1b}^2 + l_{3b}^2)\bs{a}_2 \bs{a}_2 +
+  m_bl_{1b}^2\bs{a}_3\bs{a}_3 - 
+  m_bl_{1b}l_{3b}\bs{a}_1\bs{a}_3 - m_bl_{1b}l_{3b}\bs{a}_3\bs{a}_1
+\end{align*}
+Additionally, consider the inertia dyadic of $B$ as being comprised of two
+components, those in the plane of symmetry $(\bs{I}^{B/B^*}_p)$ and those out
+the plane of symmetry $(\bs{I}^{B/B^*}_a)$:
+\begin{align*}
+  \bs{I}^{B/B^*} & = \bs{I}^{B/B^*}_p + \bs{I}^{B/B^*}_a \\
+  & = (I\bs{a}_1\bs{a}_1 + I\bs{a}_3\bs{a}_3) + J\bs{a}_2\bs{a}_2
+\end{align*}
+
+Next, consider the inertia dyadic of the whole system, about the point $AB^*$,
+{\it{except}} the out of plane component of the symmetric rotor $B$:
+\begin{align*}
+  \bs{I}^{AB/AB^*} & = \bs{I}^{A/A^*} + \bs{I}^{A^*/AB^*} + \bs{I}^{B/B^*}_p +
+  \bs{I}^{B^*/AB^*} \\
+  & = (I_{11} + m_a l_{3a}^2 + I + m_b l_{3b}^2) \bs{a}_1\bs{a}_1 \\
+  &
+  +
+  (I_{22} + m_a(l_{1a}^2 + l_{3a}^2) + m_b(l_{1b}^2 + l_{3b}^2))\bs{a}_2\bs{a}_2
+  \\
+  &
+  + (I_{33} + m_al_{1a}^2 + I + m_b l_{1b}^2) \bs{a}_3\bs{a}_3
+  \\
+  &
+  +
+  (I_{13} - m_a l_{1a}l_{3a} - m_b l_{1b}l_{3b}) \bs{a}_1\bs{a}_3
+  + 
+  (I_{13} - m_a l_{1a}l_{3a} - m_b l_{1b}l_{3b}) \bs{a}_3\bs{a}_1
+\end{align*}
+
+
 \end{document}
