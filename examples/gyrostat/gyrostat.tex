@@ -19,8 +19,7 @@
   treated separately as each having their own mass and inertia.  In the second
   approach, the symmetry of the rotor is used to combine the inertias in such a
   way that simplifies the derivation of the equations of motion.  It is shown
-  that the two approaches are equivalent.  For generality, the axis of rotation
-  of the rotor is not aligned with a principal axis of the carrier.
+  that the two approaches are equivalent.
 
 \end{abstract}
 
@@ -28,7 +27,7 @@
 Consider a rigid body $A$, of mass $m_a$, along with a dextral set of unit
 vectors $\bs{a}_1$, $\bs{a}_2$, $\bs{a}_3$, fixed to $A$, with $\bs{a}_3
 \triangleq \bs{a}_1 \times \bs{a}_2$.  Let $A^*$ denote the center of mass of
-$A$.  Let the inertia dyadic of $A$ relative to its mass center $A^*$ for be:
+$A$.  Let the inertia dyadic of $A$ relative to its mass center $A^*$ be:
 \begin{align*}
   \bs{I}^{A/A^*} & = I_{11}\bs{a}_1\bs{a}_1 + I_{22}\bs{a}_2\bs{a}_2 +
   I_{33}\bs{a}_3\bs{a}_3 + I_{13}\bs{a}_1\bs{a}_3 + I_{13}\bs{a}_3\bs{a}_1
@@ -36,38 +35,35 @@ $A$.  Let the inertia dyadic of $A$ relative to its mass center $A^*$ for be:
 The plane spanned by the $\bs{a}_1$ and $\bs{a}_3$ unit vectors is a plane of
 symmetry.
 
-Consider a second rigid body $B$, of mass $m_b$, along with a dextral set of unit
-vectors $\bs{b}_1$, $\bs{b}_2$, $\bs{b}_3$, fixed to $B$, with $\bs{b}_3
+Consider a second rigid body $B$, of mass $m_b$, along with a dextral set of
+unit vectors $\bs{b}_1$, $\bs{b}_2$, $\bs{b}_3$, fixed to $B$, with $\bs{b}_3
 \triangleq \bs{b}_1 \times \bs{b}_2$.  Let $B^*$ denote the center of mass of
-$B$.  Let the inertia dyadic of $B$ relative to its mass center  $B^*$ for be:
+$B$.  Let the inertia dyadic of $B$ relative to its mass center  $B^*$ be:
 \begin{align*}
   \bs{I}^{B/B^*} & = I\bs{b}_1\bs{b}_1 + J\bs{b}_2\bs{b}_2 + I\bs{b}_3\bs{b}_3
 \end{align*}
 $B$ is axially symmetric about the $\bs{b}_2$ axis.
 
-Let $B$ be rigidly fixed to $A$ such that the mass center $B^*$ is located
-relative to $A^*$ by:
+Let $B$ be rigidly fixed to $A$ such that the mass center $B^*$ is located in
+the plane of symmetry of $A$ so that:
 \begin{align*}
   \bs{r}^{B^* / A^*} & = l_1 \bs{a}_1 + l_3 \bs{a}_3
 \end{align*}
-Where $l_1, l_3$ are real constants.  Clearly, $B^*$ lies in the plane of
-symmetry of the rigid body $A$.
+where $l_1, l_3$ are real constants.
 
 Denote the center of mass of the system as $AB^*$. The position of $A^*$ and
 $B^*$ relative to the system mass center $AB^*$ is:
-
 \begin{align*}
   \bs{r}^{A^* / AB^*} & = -\frac{m_b}{m_a+m_b}(l_1 \bs{a}_1 + l_3 \bs{a}_3) \\
   \bs{r}^{B^* / AB^*} & =  \frac{m_a}{m_a+m_b}(l_1 \bs{a}_1 + l_3 \bs{a}_3)
 \end{align*}
 
 $B$ is oriented relative to $A$ by means of a revolute joint whose axis is
-aligned with the $\bs{a}_2$ and passes through $B^*$.  Because of the inertial
+aligned with $\bs{a}_2$ and passes through $B^*$.  Because of the inertial
 symmetry of the rotor, the central inertia dyadic of $B$ can be expressed
 equivalently in the $A$ frame:
-
 \begin{align*}
-  \bs{I}^{A/A^*} & = I\bs{a}_1\bs{a}_1 + J\bs{a}_2\bs{a}_2 + I\bs{a}_3\bs{a}_3
+  \bs{I}^{B/B^*} & = I\bs{a}_1\bs{a}_1 + J\bs{a}_2\bs{a}_2 + I\bs{a}_3\bs{a}_3
 \end{align*}
 
 A couple of torque $T$ is applied between $A$ and $B$ about the axis of
@@ -118,12 +114,11 @@ For sake of symbolic brevity, introduce the following terms:
   l_{3b} & = \frac{l_3 m_a}{m_a + m_b}
 \end{align*}
 
-Let $\omega^A$ and $\omega^B$ denote the angular velocity of $A$ and $B$
-relative to the inertial frame, respectively.  Let $v^{A^*}$, $v^{B^*}$, and $v^{AB^*}$ denote the
+Let $\bs{\omega}^A$ and $\bs{\omega}^B$ denote the angular velocity of $A$ and $B$
+relative to the inertial frame, respectively.  Let $\bs{v}^{A^*}$,
+$\bs{v}^{B^*}$, and $\bs{v}^{AB^*}$ denote the
 velocity of $A^*$, $B^*$, and $AB^*$ relative to the inertial frame,
-respectively.
-
-Define the following generalized speeds:
+respectively.  Define the following generalized speeds:
 \begin{align}
   u_i & \triangleq \bs{\omega}^A \cdot \bs{a}_i  \qquad  (i = 1,2,3)
   \label{u_defs1} \\
@@ -147,7 +142,7 @@ velocities:
 
 All of the above velocities are relative to the inertial frame, and of
 particular interest here is that the angular velocity expressions for $A$ and
-$B$ only differ by the $\bs{a}_2$ component, which is the axis of rotation of
+$B$ only in their $\bs{a}_2$ component, which is the axis of rotation of
 $B$ relative to $A$.
 
 By inspection of the angular velocity expressions for $A$ and $B$, and the
@@ -205,13 +200,12 @@ yield the following kinematic differential equations:
 \end{align*}
 While these equations are necessary for kinematics, they aren't too interesting
 because all the coordinates are ignorable with respect to the dynamic
-differential equations (no coordinates appear in the dynamic equations of
-motion).
+differential equations.
 
 \subsection*{Dynamics}
-There are two active forces acting on the system, the first arising
-from gravity, the second arising from the applied torque between the two
-bodies.
+There are two contributing forces and torques acting on the system, the first
+arising from gravity, the second arising from the applied torque between the
+two bodies.
 \begin{align*}
   \bs{G}_{A^*} & = m_ag\bs{n}_3 \\
   \bs{G}_{B^*} & = m_bg\bs{n}_3 \\
@@ -219,7 +213,7 @@ bodies.
   \bs{T}_B & = T \bs{a}_2
 \end{align*}
 
-In order to compute the inertia forces of the system, we need to form the
+To compute the inertia forces of the system, we need to form the
 angular accelerations of $A$ and $B$ as well as accelerations of the points
 $AB^*$, $A^*$, and $B^*$. The angular accelerations relative to the inertial
 frame are:
@@ -233,12 +227,12 @@ origin are:
 \begin{align*}
   \bs{a}^{AB^*} &= \dot{u}_5\bs{n}_1 + \dot{u}_6\bs{n}_2 + \dot{u}_7\bs{n}_3
   \\
-  \bs{a}^A &= \dot{u}_5\bs{n}_1 + \dot{u}_6\bs{n}_2 + \dot{u}_7\bs{n}_3
+  \bs{a}^{A^*} &= \dot{u}_5\bs{n}_1 + \dot{u}_6\bs{n}_2 + \dot{u}_7\bs{n}_3
   + (l_{3a}(\dot{u}_2 + u_1u_3) - l_{1a}(u_2^2 + u_3^2))\bs{a}_1 \\
   &+ (l_{1a}(\dot{u}_3 + u_1u_2) + l_{3a}(u_2u_3 - \dot{u}_1))\bs{a}_2
   - (l_{1a}(\dot{u}_2 + u_1u_3) + l_{3a}(u_1^2 + u_2^2))\bs{a}_3
   \\
-  \bs{a}^B &= \dot{u}_5\bs{n}_1 + \dot{u}_6\bs{n}_2 + \dot{u}_7\bs{n}_3
+  \bs{a}^{B^*} &= \dot{u}_5\bs{n}_1 + \dot{u}_6\bs{n}_2 + \dot{u}_7\bs{n}_3
   + (l_{3b}(\dot{u}_2 + u_1u_3) - l_{1b}(u_2^2 + u_3^2))\bs{a}_1 \\
   &+ (l_{1b}(\dot{u}_3 + u_1u_2) + l_{3b}(u_2u_3 - \dot{u}_1))\bs{a}_2
   - (l_{1b}(\dot{u}_2 + u_1u_3) + l_{3b}(u_1^2 + u_2^2))\bs{a}_3
@@ -271,30 +265,38 @@ Kane's equations of motion can now be written concisely as:
   \bs{\omega}^A_r \cdot (\bs{T}_A + \bs{T}^*_A) +
   \bs{\omega}^B_r \cdot (\bs{T}_B + \bs{T}^*_B) & = 0
 \end{align*}
-Where $\quad r = 1,\dots,7$.
+where $\quad r = 1,\dots,7$.
 
 Explicitly, the first four (orientation related) dynamic differential equations are:
 \begin{align*}
+  % EOM1 LHS
   -\left(I_{11} + m_al_{3a}^2 + I + m_bl_{3b}^2\right)\dot{u}_{1}
-  + \left(-I_{13} + m_al_{1a}l_{3a} + m_bl_{1b}l_{3b})\right)\dot{u}_{3}
+  - \left(I_{13} - m_al_{1a}l_{3a} - m_bl_{1b}l_{3b}\right)\dot{u}_{3}
   & =
+  % EOM1 RHS
   (I_{13}  - m_al_{1a}l_{3a} - m_bl_{1b}l_{3b})u_1u_2\\
-  + (I + I_{33} - I_{22}& - m_al_{3a}^2 - m_bl_{3b}^2)u_2u_3 - Ju_3u_4
+  + (I_{33} + I - I_{22}& - m_al_{3a}^2 - m_bl_{3b}^2)u_2u_3 - Ju_3u_4
   \\
-(-I_{22} - m_a(l_{1a}^2 + l_{3a}^2) - m_b(l_{1b}^2 + l_{3b}^2)) \dot{u}_2
+  % EOM2 LHS
+-(I_{22} + m_a(l_{1a}^2 + l_{3a}^2) + m_b(l_{1b}^2 + l_{3b}^2)) \dot{u}_2
   =
+  % EOM2 RHS
   T
-  +(-I_{13} + &m_al_{1a}l_{3a} + m_bl_{1b}l_{3b})u_1^2 \\
-  + (I_{13} - m_al_{1a}l_{3a} - m_bl_{1b}l_{3b})u_3^2 +
-  (I_{11} - I_{33} + &m_a(l_{3a}^2 - l_{1a}^2)
-  + m_b(l_{3b} - l_{1b}^2))u_1u_3 
+  -(I_{13} - &m_al_{1a}l_{3a} - m_bl_{1b}l_{3b})u_1^2 \\
+  + (I_{13} - m_al_{1a}l_{3a} - m_bl_{1b}l_{3b})u_3^2
+  + (I_{11} - I_{33} + &m_a(l_{3a}^2 - l_{1a}^2)
+  + m_b(l_{3b} - l_{1b}^2))u_1u_3
   \\
-  (-I_{13} + m_al_{1a}l_{3a} + m_bl_{1b}l_{3b}) \dot{u}_1 - (I + I_{33} +
-  m_al_{1a}^2 + m_bl_{1b}^2) \dot{u}_3
+  % EOM3 LHS
+  -(I_{13} - m_al_{1a}l_{3a} - m_bl_{1b}l_{3b}) \dot{u}_1 - (I_{33} +
+  m_al_{1a}^2 + I + m_bl_{1b}^2) \dot{u}_3
+  % EOM3 RHS
   & = Ju_1u_4
   \\
-  + (I_{22} - I - I_{11} + m_al_{1a}^2 + m_bl_{1b}^2)u_1u_2 + (&-I_{13} + m_al_{1a}l_{3a} + m_bl_{1b}l_{3b})u_3u_3
+  + (I_{22} - I_{11} + m_al_{1a}^2 - I + m_bl_{1b}^2)u_1u_2 -
+  (&I_{13} - m_al_{1a}l_{3a} - m_bl_{1b}l_{3b})u_2u_3
   \\
+  % EOM4
   -J\dot{u}_4 &=  -T
 \end{align*}
 
@@ -302,32 +304,36 @@ If not for the introduction of the variables $l_{1a}, l_{1b}, l_{3a}$, and
 $l_{3b}$, these equations would be significantly longer. As it is, there are a
 substantial number of multiply and add operations that need only be done once,
 but if the above symbolic expressions were coded (or autogenerated) in a
-numerical routine verbatim (i.e., numerical integration), they would be
-performed at every time step (and intermediate time step).  This is a
+numerical routine verbatim (i.e., for numerical integration), they would be
+performed at every time step (and intermediate time steps).  This is a
 computationally wasteful approach, and further, the structure of the equations
-is more clouded by excessively long symbolic expressions.
+is clouded by excessively long symbolic expressions.
 
 The three equations of motion associated with translation are:
 $\dot{u}_5 = 0$, $\dot{u}_6 = 0$, $\dot{u}_7 = g$.  Although these equations
 are trivial and intuitive, the symbolic manipulations required in order for
-this simple form to be apparent is substantial when each mass center is treated
+this simple form to be apparent are substantial when each mass center is treated
 individually; when computed symbollically on a computer, these necessary
 symbolic cancellations may or may not happen without additional user input.
 
 \subsubsection*{Equivalent formulation}
 Consider now $\tilde{A}$ as a rigid body of mass $M$, whose mass center
 $\tilde{A}^*$ is coincident with $AB^*$, and additionally has the same angular
-orientation as $A$. Let the central inertia dyadic of $\tilde{A}$ be:
+orientation as $A$.
+Let the central inertia dyadic of $\tilde{A}$ be:
 \begin{align*}
   \bs{I}^{\tilde{A}/\tilde{A}^*} & = I_{\tilde{A}11}\bs{a}_1\bs{a}_1 + I_{\tilde{A}22}\bs{a}_2\bs{a}_2 +
   I_{\tilde{A}33}\bs{a}_3\bs{a}_3 + I_{\tilde{A}13}\bs{a}_1\bs{a}_3 + I_{\tilde{A}13}\bs{a}_3\bs{a}_1
 \end{align*}
 
-Consider a second rigid body $\tilde{B}$ as massless yet having a central inertia
+Consider a second rigid body $\tilde{B}$ as massless, yet having a central inertia
 dyadic of
 \begin{align*}
-  \bs{I}^{\tilde{B}/\tilde{B}^*} & = J\bs{a}_2\bs{a}_2
+  \bs{I}^{\tilde{B}/\tilde{B}^*} & = \tilde{J}\bs{a}_2\bs{a}_2
 \end{align*}
+Additionally, consider the angular orientation of $\tilde{B}$ to be identical
+to that of $B$ in the original system.
+
 The active force and torques are:
 \begin{align*}
   \bs{G}_{\tilde{A}^*} & = Mg\bs{n}_3 \\
@@ -346,16 +352,19 @@ The two inertia torques are:
   \bs{T}^*_{\tilde{A}} & = - \bs{\alpha}^A \cdot \bs{I}^{\tilde{A}/\tilde{A}^*}
   - \bs{\omega}^A \times \bs{I}^{\tilde{A}/\tilde{A}^*} \cdot \bs{\omega}^A
   \\
-  & = 
-  (-I_{AB11}\dot{u}_1 - I_{AB13}\dot{u}_3 - I_{AB13}u_1u_2 + (I_{AB22} - I_{AB33})u_2u_3 )\bs{a}_1 
+  & =
+  (-I_{\tilde{A}11}\dot{u}_1 - I_{\tilde{A}13}\dot{u}_3
+  - I_{\tilde{A}13}u_1u_2 + (I_{\tilde{A}22} - I_{\tilde{A}33})u_2u_3 )\bs{a}_1
   \\
-  & - (I_{AB22}\dot{u}_2 + (I_{AB11} - I_{AB33})u_1u_3 + I_{AB13}u_1^2 - I_{AB13}u_3^2)\bs{a}_2
+  & - (I_{\tilde{A}22}\dot{u}_2 + (I_{\tilde{A}11} - I_{\tilde{A}33})u_1u_3
+  + I_{\tilde{A}13}u_1^2 - I_{\tilde{A}13}u_3^2)\bs{a}_2
   \\
-  & - (I_{AB13}\dot{u}_1 + I_{AB33}\dot{u}_3 + (I_{AB22} - I_{AB11})u_1u_2 - I_{AB13}u_2u_3)\bs{a}_3
+  & - (I_{\tilde{A}13}\dot{u}_1 + I_{\tilde{A}33}\dot{u}_3 + (I_{\tilde{A}22}
+  - I_{\tilde{A}11})u_1u_2 - I_{\tilde{A}13}u_2u_3)\bs{a}_3
   \\
   \bs{T}^*_{\tilde{B}} & = -\bs{\alpha}^B \cdot \bs{I}^{\tilde{B}/\tilde{B}^*}
   - \bs{\omega}^B \times \bs{I}^{\tilde{B}/\tilde{B}^*} \cdot \bs{\omega}^B \\
-  & = J(u_3u_4\bs{a}_1 - \dot{u}_4\bs{a}_2 - u_1u_4)\bs{a}_3
+  & = \tilde{J}(u_3u_4\bs{a}_1 - \dot{u}_4\bs{a}_2 - u_1u_4)\bs{a}_3
 \end{align*}
 
 Kane's equations of motions are:
@@ -366,36 +375,44 @@ Kane's equations of motions are:
 \end{align*}
 More explicitly, the first four of these equations are:
 \begin{align*}
-  -I_{\tilde{A}11}\dot{u}_1 - I_{\tilde{A}13}\dot{u}_3 &= I_{\tilde{A}13}u_1u_2 + (I_{\tilde{A}33} - I_{\tilde{A}22})u_2u_3 - Ju_3u_4
+  -I_{\tilde{A}11}\dot{u}_1 - I_{\tilde{A}13}\dot{u}_3 &= I_{\tilde{A}13}u_1u_2
+  + (I_{\tilde{A}33} - I_{\tilde{A}22})u_2u_3 - \tilde{J}u_3u_4
   \\
-  -I_{\tilde{A}22}\dot{u}_2 &=  T + (I_{\tilde{A}11} - I_{\tilde{A}33})u_1u_3 +
-  I_{\tilde{A}13}u_3^2 - I_{\tilde{A}13}u_1^2
+  -I_{\tilde{A}22}\dot{u}_2 &=  T - I_{\tilde{A}13}u_1^2 + I_{\tilde{A}13}u_3^2
+  + (I_{\tilde{A}11} - I_{\tilde{A}33})u_1u_3
  \\
- -I_{\tilde{A}13}\dot{u}_1 - I_{\tilde{A}33}\dot{u}_3 & =  Ju_1u_4 +
+ -I_{\tilde{A}13}\dot{u}_1 - I_{\tilde{A}33}\dot{u}_3 & =  \tilde{J}u_1u_4 +
  (I_{\tilde{A}22} - I_{\tilde{A}11})u_1u_2 - I_{\tilde{A}13}u_2u_3
  \\
- -J\dot{u}_4 &= -T
+ -\tilde{J}\dot{u}_4 &= -T
 \end{align*}
 It is important to note that the form of these equations are identical to the
 previous formulation, and that the only difference is the coefficients of the
-$\dot{u}_i$ terms and the $u_iu_j$ terms.
+$\dot{u}_i$ terms and the $u_iu_j$ terms.  From a symbolic computation point of
+view, these equations are {\it{much}} easier to obtain because all of the dot
+products necessary for Kane'e equations are between unit vectors in the
+{\it{same}} frame.  This means that the direction cosine matrix is never
+needed to compute the dynamic equations of motion.  This is not the case in the
+first formulation, specifically because the velocities of $A^*$ and $B^*$ have
+terms in both the inertial frame $N$ and the body frame $A$.
 
 To see the relationship between these two sets of equations, we compute the
-inertia dyadic of particles of mass $m_a$ and $m_b$, relative to the system
-mass center $AB^*$.  They are:
+inertia dyadic of ficticious particles of mass $m_a$ and $m_b$, located at
+$A^*$ and $B^*$, respectively, relative to the system mass center $AB^*$.  They
+are:
 \begin{align*}
-  \bs{I}^{A^* / AB^*} & = 
+  \bs{I}^{A^* / AB^*} & =
   m_al_{3a}^2\bs{a}_1\bs{a}_1 + m_a(l_{1a}^2 + l_{3a}^2)\bs{a}_2 \bs{a}_2 +
-  m_al_{1a}^2\bs{a}_3\bs{a}_3 - 
+  m_al_{1a}^2\bs{a}_3\bs{a}_3 -
   m_al_{1a}l_{3a}\bs{a}_1\bs{a}_3 - m_al_{1a}l_{3a}\bs{a}_3\bs{a}_1 \\
-  \bs{I}^{B^* / AB^*} & = 
+  \bs{I}^{B^* / AB^*} & =
   m_bl_{3b}^2\bs{a}_1\bs{a}_1 + m_b(l_{1b}^2 + l_{3b}^2)\bs{a}_2 \bs{a}_2 +
-  m_bl_{1b}^2\bs{a}_3\bs{a}_3 - 
+  m_bl_{1b}^2\bs{a}_3\bs{a}_3 -
   m_bl_{1b}l_{3b}\bs{a}_1\bs{a}_3 - m_bl_{1b}l_{3b}\bs{a}_3\bs{a}_1
 \end{align*}
 Additionally, consider the inertia dyadic of $B$ as being comprised of two
-components, those in the plane of symmetry $(\bs{I}^{B/B^*}_p)$ and those out
-the plane of symmetry $(\bs{I}^{B/B^*}_a)$:
+components, one in the plane of symmetry $(\bs{I}^{B/B^*}_p)$ and one about
+the axis of symmetry $(\bs{I}^{B/B^*}_a)$:
 \begin{align*}
   \bs{I}^{B/B^*} & = \bs{I}^{B/B^*}_p + \bs{I}^{B/B^*}_a \\
   & = (I\bs{a}_1\bs{a}_1 + I\bs{a}_3\bs{a}_3) + J\bs{a}_2\bs{a}_2
@@ -417,9 +434,42 @@ Next, consider the inertia dyadic of the whole system, about the point $AB^*$,
   &
   +
   (I_{13} - m_a l_{1a}l_{3a} - m_b l_{1b}l_{3b}) \bs{a}_1\bs{a}_3
-  + 
+  +
   (I_{13} - m_a l_{1a}l_{3a} - m_b l_{1b}l_{3b}) \bs{a}_3\bs{a}_1
 \end{align*}
 
+Define the following inertia scalars:
+\begin{align*}
+  I_{\tilde{A}11} & = I_{11} + m_a l_{3a}^2 + I + m_b l_{3b}^2 \\
+  I_{\tilde{A}22} & = I_{22} + m_a(l_{1a}^2 + l_{3a}^2) + m_b(l_{1b}^2 +
+  l_{3b}^2) \\
+  I_{\tilde{A}33} & = I_{33} + m_al_{1a}^2 + I + m_b l_{1b}^2 \\
+  I_{\tilde{A}13} & = I_{13} - m_a l_{1a}l_{3a} - m_b l_{1b}l_{3b} \\
+  \tilde{J} & = J
+\end{align*}
+
+Using these definitions, and substituting them into the equations of motion
+obtained in the alternative formulation, we obtain identical equations of
+motion as in the first formulation where each rigid body was treated
+separately.
+
+\section*{Conclusions}
+
+The fundamental concept that allows for this lumping of rigid bodies is that
+the inertia of the system not change with configuration (as generalized
+coordinates change, the system inertia remains constant).  While it should be
+clear that under these circumstances, inertia forces are identical for both
+formulations, it may not be so clear that active forces are also the same.  In
+the case of gravitational forces (as in this example), one can probably be
+convinced that they may be treated as acting at the system center of mass
+without much effort.  But what about contact forces, or systems with linear
+motion constraints (nonholonomic constraints)?  The formulation of the
+generalized active forces as advocated by Kane will be identical in either case
+-- therefore the final equations of motion will also be the same.
+Specifically, linear motion constraints will require the solution of constraint
+equations (i.e., solving a linear system), so that nonholonomic partial
+velocities and partial angular velocities can be formed.  These are independent
+of inertial considerations and therefore will not affect the equations of
+motion.
 
 \end{document}

@@ -114,19 +114,6 @@ print 'Dynamic differential equations combined'
 for i in range(7):
     print kanes_eqns2[i]
 
-#l1a, l2a, l3a, l1b, l2b, l3b = symbols('l1a l2a l3a l1b l2b l3b')
-#l_sd = {l1a: dot(P_AO_ABO, A[1]),
-#        l2a: dot(P_AO_ABO, A[2]),
-#        l3a: dot(P_AO_ABO, A[3]),
-#        l1b: dot(P_BO_ABO, A[1]),
-#        l2b: dot(P_BO_ABO, A[2]),
-#        l3b: dot(P_BO_ABO, A[3])}
-#
-#P_AO_ABO = Vector(l1a*A[1] + l3a*A[3])
-#P_BO_ABO = Vector(l1b*A[1] + l3b*A[3])
-#mab = Symbol('mab')
-#m_subs_dict = {ma+mb:mab}
-
 I_AO_ABO = inertia_of_point_mass(ma, P_ABO_AO, A)
 I_BO_ABO = inertia_of_point_mass(mb, P_ABO_BO, A)
 I_A_AO = Dyad({A[1]*A[1]: I11, A[2]*A[2]: I22, A[3]*A[3]:I33, A[1]*A[3]:I13,
@@ -136,3 +123,8 @@ I_A_AO = Dyad({A[1]*A[1]: I11, A[2]*A[2]: I22, A[3]*A[3]:I33, A[1]*A[3]:I13,
 I_B_BO_p = Dyad({A[1]*A[1]: I, A[3]*A[3]: I})
 # Combined system inertia except for B's out of plane moment of inertia
 I_SYS_ABO = I_A_AO + I_AO_ABO + I_B_BO_p + I_BO_ABO
+
+print 'I_AB11', dot(A[1], dot(I_SYS_ABO, A[1]))
+print 'I_AB22', dot(A[2], dot(I_SYS_ABO, A[2]))
+print 'I_AB33', dot(A[3], dot(I_SYS_ABO, A[3]))
+print 'I_AB13', dot(A[1], dot(I_SYS_ABO, A[3]))
