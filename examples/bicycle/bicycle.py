@@ -1,21 +1,23 @@
-from sympy import collect, Function
+from sympy import collect, Function, solve
 from pydy import *
 
 # Declare a NewtonianReferenceFrame
 N = NewtonianReferenceFrame('N')
 
 # Declare parameters
-params = N.declare_parameters('rr rf lr ls lf l1 l2 l3 l4 mcd mef IC22 ICD11 ID13 ICD33 ID22 IEF11 IE13 IEF33 IE22 IF22 g')
+params = N.declare_parameters('rr rf lr ls lf l1 l2 l3 l4 mcd mef IC22 ICD11\
+        ICD13 ICD33 ICD22 IEF11 IEF13 IEF33 IEF22 IF22 g')
 # Declare coordinates and their time derivatives
 q, qd = N.declare_coords('q', 8)
 # Declare speeds and their time derivatives
 u, ud = N.declare_speeds('u', 6)
 # Unpack the lists
-rr, rf, lr, ls, lf, l1, l2, l3, l4, mcd, mef, IC22, ICD11, ID13, ICD33, ID22, IEF11, IE13, IEF33, IE22, IF22, g = params
-q0, q1, q2, q3, q4, q5, q6, q7 = q
-q0d, q1d, q2d, q3d, q4d, q5d, q6d, q7d = qd
-u0, u1, u2, u3, u4, u5 = u
-u0d, u1d, u2d, u3d, u4d, u5d = ud
+rr, rf, lr, ls, lf, l1, l2, l3, l4, mcd, mef, IC22, ICD11, ICD13, ICD33,\
+        ICD22, IEF11, IEF13, IEF33, IEF22, IF22, g = params
+q1, q2, q3, q4, q5, q6, q7, q8 = q
+q1d, q2d, q3d, q4d, q5d, q6d, q7d, q8d = qd
+u1, u2, u3, u4, u5, u6 = u
+u1d, u2d, u3d, u4d, u5d, u6d = ud
 
 # Create variables for to act as place holders in the vector from FO to FN
 e1c = Function('e1c')(t)
@@ -23,14 +25,12 @@ e3c = Function('e3c')(t)
 e1c_s, e3c_s = symbols('e1c e3c')
 
 # Some simplifying symbols / trig expressions
-s0, s1, s2, s3, s4, s5, c0, c1, c2, c3, c4, c5, e1c_s, e3c_s, t1 = symbols('s0 s1 \
-        s2 s3 s4 s5 c0 c1 c2 c3 c4 c5 e1c_s e3c_s t1')
+s1, s2, s3, s4, s5, s6, c1, c2, c3, c4, c5, c6, e1c_s, e3c_s, t2 = symbols('s1 \
+        s2 s3 s4 s5 s6 c1 c2 c3 c4 c5 c6 e1c_s e3c_s t2')
 
-symbol_subs_dict = {sin(q0): s0,
-                    cos(q0): c0,
-                    sin(q1): s1,
+symbol_subs_dict = {sin(q1): s1,
                     cos(q1): c1,
-                    tan(q1): t1,
+                    tan(q2): t2,
                     cos(q2): c2,
                     sin(q2): s2,
                     cos(q3): c3,
@@ -39,39 +39,44 @@ symbol_subs_dict = {sin(q0): s0,
                     sin(q4): s4,
                     cos(q5): c5,
                     sin(q5): s5,
+                    cos(q6): c6,
+                    sin(q6): s6,
                     e1c    : e1c_s,
                     e3c    : e3c_s,
-                    u0     : Symbol('u0'),
                     u1     : Symbol('u1'),
                     u2     : Symbol('u2'),
                     u3     : Symbol('u3'),
                     u4     : Symbol('u4'),
-                    u5     : Symbol('u5')}
+                    u5     : Symbol('u5'),
+                    u6     : Symbol('u6')}
 
 symbol_subs_dict_back = dict([(v,k) for k,v in symbol_subs_dict.items()])
-trig_subs_dict = {c0**2: 1-s0**2,
-                  c1**2: 1-s1**2,
+trig_subs_dict = {c1**2: 1-s1**2,
                   c2**2: 1-s2**2,
                   c3**2: 1-s3**2,
                   c4**2: 1-s4**2,
-                  c5**2: 1-s5**2}
+                  c5**2: 1-s5**2,
+                  c6**2: 1-s6**2}
 
 # Reference Frames
 # Yaw frame
-A = N.rotate('A', 3, q0)
+A = N.rotate('A', 3, q1)
 # Lean frame
-B = A.rotate('B', 1, q1)
+B = A.rotate('B', 1, q2)
 # Bicycle frame with rigidly attached rider
-D = N.rotate('D', 'BODY312', (q0, q1, q3), I=(ICD11, ID22, ICD33, 0, 0, ID13))
+D = N.rotate('D', 'BODY312', (q1, q2, q4), I=(ICD11, ICD22, ICD33, 0, 0, ICD13))
 # Rear wheel
-C = N.rotate('C', 'BODY312', (q0, q1, q2), I=(0, IC22, 0, 0, 0, 0), I_frame=D)
+C = N.rotate('C', 'BODY312', (q1, q2, q3), I=(0, IC22, 0, 0, 0, 0), I_frame=D)
 # Fork / handle bar assembly
-E = D.rotate('E', 3, q4, I=(IEF11, IE22, IEF33, 0, 0, IE13))
+E = D.rotate('E', 3, q5, I=(IEF11, IEF22, IEF33, 0, 0, IEF13))
 # Front wheel
-F = E.rotate('F', 2, q5, I=(0, IF22, 0, 0, 0, 0), I_frame=E)
+F = E.rotate('F', 2, q6, I=(0, IF22, 0, 0, 0, 0), I_frame=E)
 
 # Unit vector in the plane of the front wheel, pointed towards the ground
 fo_fn_uv = Vector(N[3] - dot(E[2], N[3])*E[2]).normalized
+
+print fo_fn_uv
+stop
 
 # Some manual manipulations to express g in the E frame without expanding the
 # coefficients
@@ -102,118 +107,7 @@ EFO = FO.locate('EFO', l3*E[1] + l4*E[3], E, mass=mef)
 # Locate front wheel contact point (fixed in the front wheel)
 FN = FO.locate('FN', fo_fn, F)
 # Locate another point fixed in N
-N1 = CO.locate('N1', rr*B[3] - q6*N[1] - q7*N[2])
-
-###############################################################################
-##  Construction of function mapping in dependent qdots to dependent qdots  ###
-###############################################################################
-# Form the kinematic constraints in terms of the qdots.
-kinematic_constraint_eqns = [dot(FN.vel(), A[1]).expand().subs(N.csqrd_dict).expand(),\
-                   dot(FN.vel(), A[2]).expand().subs(N.csqrd_dict).expand(),\
-                   dot(FN.vel(), A[3]).expand().subs(N.csqrd_dict).expand(),\
-                   dot(N1.vel(), N[1]).expand().subs(N.csqrd_dict).expand(),\
-                   dot(N1.vel(), N[2]).expand().subs(N.csqrd_dict).expand()]
-
-# Determine the constraint matrix for the qdots in the form:
-# B*qd = 0
-# B_d*qd_d + B_i*qd_i = 0
-# qd_d = -inv(B_d)*B_i*qd_i
-B_qd = coefficient_matrix(kinematic_constraint_eqns, qd).subs(symbol_subs_dict)
-B_qd_d = B_qd[:,0].row_join(B_qd[:,2:4]).row_join(B_qd[:,6:])
-B_qd_i = B_qd[:,1].row_join(B_qd[:,4]).row_join(B_qd[:,5])
-
-dummyd= zeros((5,5))
-dummyi = zeros((5,3))
-dd = {}
-di = {}
-for i in range(5):
-    for j in range(5):
-        bd_ij = B_qd_d[i,j]
-        if bd_ij != 0:
-            if bd_ij == 1:
-                dummyd[i,j] = -1
-                continue
-            ds = Symbol('_d%d%d'%(i,j))
-            dummyd[i,j] = ds
-            dd[ds] = bd_ij
-    for j in range(3):
-        bi_ij = B_qd_i[i,j]
-        if bi_ij != 0:
-            ds = Symbol('_i%d%d'%(i,j))
-            dummyi[i,j] = ds
-            di[ds] = bi_ij
-_d00, _d01, _d02, _d10, _d12, _d22, _d31, _d41 = symbols('_d00 _d01 _d02 _d10 _d12 _d22 _d31 _d41')
-_i01, _i02, _i10, _i11, _i12, _i20, _i21, _i22 = symbols('_i01 _i02 _i10 _i11 _i12 _i20 _i21 _i22')
-dd_new = {}
-di_new = {}
-dd_new[_d00] = s1*(-rr + c3*(e3c_s + ls) - s3*(lr + c4*(e1c_s + lf))) - c1*s4*(e1c_s + lf)
-dd_new[_d01] = dd[_d01]
-dd_new[_d02] = c3*(e3c_s + ls) - s3*(lr + c4*(e1c_s + lf))
-dd_new[_d10] = s3*(e3c_s + ls) + c3*(lr + c4*(e1c_s + lf))
-dd_new[_d12] =  s1*(s3*(e3c_s + ls) + c3*(lr + c4*(e1c_s + lf)))
-dd_new[_d22] = -c1*(s3*(e3c_s + ls) + c3*(lr + c4*(e1c_s + lf)))
-dd_new[_d31] = dd[_d31]
-dd_new[_d41] = dd[_d41]
-
-for k,v in dd_new.items():
-    assert v.expand() == dd[k]
-
-di_new[_i01] = factor(di[_i01])
-di_new[_i02] = di[_i02]
-di_new[_i10] = c1*(rr - c3*(e3c_s + ls) + s3*(lr + c4*(e1c_s + lf))) - s1*s4*(e1c_s + lf)
-di_new[_i11] = (e1c_s + lf)*(c1*c4 - s1*s3*s4)
-di_new[_i12] =  s1*c3*e1c_s + e3c_s*(c1*s4 + c4*s1*s3)
-di_new[_i20] = s1*(rr - c3*(e3c_s + ls) + s3*(lr + c4*(e1c_s + lf))) + c1*s4*(e1c_s + lf)
-di_new[_i21] = (e1c_s + lf)*(c4*s1 + c1*s3*s4)
-di_new[_i22] = -c1*c3*e1c_s + e3c_s*(s1*s4 - c1*c4*s3)
-
-for k,v in di_new.items():
-    assert v.expand() == di[k]
-
-T_qd = -dummyd.inverse_ADJ()*dummyi
-for i in range(5):
-    for j in range(3):
-        T_qd[i,j] = simplify(T_qd[i,j])
-
-# Join both dictionaries together
-dd_new.update(di_new)
-# Back substitude Symbols like 's1' for actual Functions like 'sin(q1)'
-symbol_subs_dict_back.pop(e3c_s)
-symbol_subs_dict_back.pop(e1c_s)
-
-for k,v in dd_new.items():
-    dd_new[k] = v.subs(symbol_subs_dict_back)
-
-symbol_subs_dict_back[e3c_s] = e3c
-symbol_subs_dict_back[e1c_s] = e1c
-
-# Choose which qdots will be taken as independent.  For numerical integration,
-# we often like to specify the initial condition in terms of the initial
-# coordinate rates, rather than the initial generalized speeds.
-# Choose yaw rate, rear wheel rate, pitch rate, and translational rates as the
-# independent qdots.  This implies the independent rates are the lean rate,
-# steer rate and the front wheel rate.
-
-# Docstring for the generated function.
-ds = """\
-Linear mapping from lean rate, steer rate, front wheel rate to yaw rate, rear
-    wheel rate, pitch rate, rear wheel contact point velocity in N[1] and N[2]
-    directions.
-"""
-
-qd_dep = [q0d, q2d, q3d, q6d, q7d]  # Yaw, rear wheel, pitch, rear contact rates
-qd_indep = [q1d, q4d, q5d]          # Lean, Steer, Front wheel rate
-
-fw_terms = {e1c_s: e1c_expr, e3c_s: e3c_expr}
-nt = [fw_terms, dd_new]
-func_params = params[:5] + (q0, q1, q3, q4)
-output_string = "from __future__ import division\nfrom math import sin, cos" +\
-        ", tan, pi\n\n"
-output_string += linear_transform(T_qd, func_params, "dependent_qdot",\
-        x=qd_indep, y=qd_dep, nested_terms=nt, docstring=ds)
-###############################################################################
-
-
+N1 = CO.locate('N1', rr*B[3] - q7*N[1] - q8*N[2])
 
 ###############################################################################
 #  Construction of kinematic differential equations ###########################
@@ -221,26 +115,24 @@ output_string += linear_transform(T_qd, func_params, "dependent_qdot",\
 # Form mapping from u's to qdots
 # Definitions of the generalized speeds in terms of time derivatives of
 # coordinates
-u_rhs = [dot(D.ang_vel(N), D[1]),   # := u0
-         dot(D.ang_vel(N), D[2]),   # := u1
-         dot(D.ang_vel(N), D[3]),   # := u2
-         dot(E.ang_vel(N), E[3]),   # := u3
-         dot(C.ang_vel(N), C[2]),   # := u4
-         dot(F.ang_vel(N), E[2])]   # := u5
+u_rhs = [dot(D.ang_vel(N), D[1]),   # := u1
+         dot(D.ang_vel(N), D[2]),   # := u2
+         dot(D.ang_vel(N), D[3]),   # := u3
+         dot(E.ang_vel(N), E[3]),   # := u4
+         dot(C.ang_vel(N), C[2]),   # := u5
+         dot(F.ang_vel(N), E[2])]   # := u6
 
 qd_to_u = coefficient_matrix(u_rhs, qd[:-2])
 
-u_to_qd = qd_to_u.inverse_ADJ().expand().subs(N.csqrd_dict).expand().subs({sin(q1)/cos(q1):
-    tan(q1)})
+u_to_qd = qd_to_u.inverse_ADJ().expand().subs(N.csqrd_dict).expand().\
+        subs({sin(q2)/cos(q2):tan(q2)})
 
 # Form velocity of rear wheel center in two distinct but equivalent ways.  This
 # allows for the rates of the rear wheel coordinates to be determined.
 vco1 = dt(CO.rel(N1), N)
-vco2 = cross(C.ang_vel(N),CO.rel(N.O))
+vco2 = cross(C.ang_vel(N), CO.rel(N.O))
 eq1 = dot(vco1 - vco2, N[1]).expand().subs(N.csqrd_dict).expand()
 eq2 = dot(vco1 - vco2, N[2]).expand().subs(N.csqrd_dict).expand()
-
-from sympy import solve
 xy_rates = solve([eq1, eq2], qd[6:])
 
 # Create the kinematic differential equations as both a list of Sympy Eq
@@ -249,31 +141,35 @@ xy_rates = solve([eq1, eq2], qd[6:])
 kindiff_rhs = u_to_qd*Matrix(u)
 
 kindiff_eqns = [Eq(qdot, qdot_rhs) for qdot, qdot_rhs in zip(qd[:6], kindiff_rhs)] +\
-               [Eq(qd[6], xy_rates[qd[6]]),
-                Eq(qd[7], xy_rates[qd[7]])]
+               [Eq(qd[6], xy_rates[q7d]),
+                Eq(qd[7], xy_rates[q8d])]
 
 # Depends upon yaw, lean, pitch, steer
-func_params = (q0, q1, q3, q4)
+func_params = (q1, q2, q4, q5)
 ds = """\
 Linear mapping from generalized speeds to time derivatives of coordinates.
 """
-output_string += generate_function("kindiffs", kindiff_eqns, func_params,
+output_string = "from __future__ import division\n"
+output_string += "from math import sin, cos, tan\n\n"
+
+output_string = generate_function("kindiffs", kindiff_eqns, func_params,
         docstring=ds)
 ###############################################################################
 
+
 ###############################################################################
-# Set velocity and angular velocities using only generalized speeds, no
-# time derivatives of coordinates
+# Set velocity and angular velocities using only generalized speeds, and
+# possibly generalized coordinates, but no time derivatives of coordinates
 ###############################################################################
 # Rigid body angular velocities
 # Angular velocity of rear frame with rigidly attached rider
-D.abs_ang_vel = Vector(u0*D[1] + u1*D[2] + u2*D[3])
+D.abs_ang_vel = Vector(u1*D[1] + u2*D[2] + u3*D[3])
 # Angular velocity of fork handlebar assembly
-E.abs_ang_vel = Vector(u0*D[1] + u1*D[2] + u3*E[3]).express(E)
+E.abs_ang_vel = Vector(u1*D[1] + u4*D[2] + u3*E[3]).express(E)
 # Angular velocity of rear wheel
-C.abs_ang_vel = Vector(u0*D[1] + u4*D[2] + u2*D[3])
+C.abs_ang_vel = Vector(u1*D[1] + u5*D[2] + u3*D[3])
 # Angular velocity of front wheel
-F.abs_ang_vel = E.abs_ang_vel - E.abs_ang_vel.dot(E[2])*E[2] + Vector(u5*E[2])
+F.abs_ang_vel = E.abs_ang_vel - E.abs_ang_vel.dot(E[2])*E[2] + Vector(u6*E[2])
 
 # Mass center velocities
 CDO.abs_vel = express(cross(C.ang_vel(), CO.rel(N.O)) + cross(D.ang_vel(),\
@@ -295,10 +191,11 @@ EFO.abs_vel = express(cross(F.ang_vel(), FO.rel(FN)) + cross(E.ang_vel(),\
 # Velocity of point DE must be identical when formulated in the following two
 # ways:
 # Method 1:
-vden1 = cross(C.ang_vel(), CO.rel(N.O).express(D)) + cross(D.ang_vel(),\
-        DE.rel(CO))
+vden1 = cross(C.ang_vel(), CO.rel(N.O).express(D)) +\
+        cross(D.ang_vel(), DE.rel(CO))
 # Method 2:
-vden2 = cross(F.ang_vel(), FO.rel(FN)) + cross(E.ang_vel(), DE.rel(FO))
+vden2 = cross(F.ang_vel(), FO.rel(FN)) +\
+        cross(E.ang_vel(), DE.rel(FO))
 # Form the constraint equations:
 speed_constraint_eqs = [dot(vden1 - vden2, D[1]),\
                         dot(vden1 - vden2, D[2]),\
@@ -306,24 +203,24 @@ speed_constraint_eqs = [dot(vden1 - vden2, D[1]),\
 
 # Form the constraint matrix for B*u = 0
 B_con = coefficient_matrix(speed_constraint_eqs, u)
-#stop
-# Some simplifications
-B_con = B_con.subs({cos(q4)**2: 1-sin(q4)**2}).expand()
-B_con[1,0] = B_con[1,0].subs({sin(q4)**2: 1-cos(q4)**2}).expand()
-B_con[0,3] =\
-    factor(B_con[0,3].subs(symbol_subs_dict)).subs(symbol_subs_dict_back)
-B_con[1,3] =\
-    factor(B_con[1,3].subs(symbol_subs_dict)).subs(symbol_subs_dict_back)
+B_con[0, 3] = B_con[0, 3].subs({cos(q5)**2: 1-sin(q5)**2}).expand()
+B_con[1, 0] = B_con[1, 0].subs({sin(q5)**2: 1-cos(q5)**2}).expand()
 
-# Use: u0 = dot(W_D_N>, D[1])
-#      u3 = dot(W_E_N>, E[3])
-#      u5 = dot(W_F_N>, 2[2])
+# Use: u1 = dot(W_D_N>, D[1])
+#      u4 = dot(W_E_N>, E[3])
+#      u6 = dot(W_F_N>, 2[2])
 # As the independent speeds
-u_indep = [u0, u3, u5]
-u_dep = [u1, u2, u4]
+u_indep = [u1, u4, u6]
+u_dep = [u2, u3, u5]
+
+# The constraints can be written as:
+# B*u = 0
+# Bd * ud + Bi * ui = 0
+# ud = -inv(Bd)*Bi*ui
 # Form inv(Bd), Bi, and a substitution dictionary
 Bd_inv, Bi, dep_ci, indep_ci, B_subs_dict = \
         transform_matrix(B_con, u, u_dep, subs_dict=True)
+stop
 B_subs_dict_time = {}
 B_subs_dict_time_rev = {}
 B_subs_dict_derivs = {}
