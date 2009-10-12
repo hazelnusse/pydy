@@ -1681,25 +1681,6 @@ class NewtonianReferenceFrame(ReferenceFrame):
         self.parameter_list = symbols(string)
         return self.parameter_list
 
-    def set_constraint_matrix(self, B, u_dep, u_indep):
-        """Sets the linear speed constraint matrix.
-        """
-        self.constraint_matrix = B
-        self.u_dependent = u_dep
-        self.u_independent = u_indep
-        n = len(u_dep + u_indep)
-        independent_ci = []
-        dependent_ci = []
-        for ud in u_dep:
-            dependent_ci.append(self.u_list.index(ud))
-        dependent_ci.sort()
-        independent_ci = list(set(range(n)) - set(dependent_ci))
-        independent_ci.sort()
-
-        self.independent_ci = independent_ci
-        self.dependent_ci = dependent_ci
-
-
     def set_motion_constraint_matrix(self, T_con, T_con_dt, u_dep, u_indep,
             d_ci, i_ci):
         """Set the motion constraint matrix and it's time derivative.
@@ -1732,147 +1713,6 @@ class NewtonianReferenceFrame(ReferenceFrame):
         self.independent_ci = i_ci
 
         return T_con_dict, T_con_dt_dict
-
-    def impose_constraints(self, eqns, dependent, method='ADJ', trig_subs=True):
-        """Form the constraint matrix associated with linear velocity
-        constraints.
-
-        Must be of the form:
-        B*u == 0
-        Where B is (m, n)
-
-        Includes both differentiated holonomic constraints and nonholonomic
-        constraints.  Both types of constraints must be linear in the time
-        derivatives of the generalized coordinates.
-
-        Requires that both kinematic_chain and/or self.set_nhc_eqns has been
-        called.
-
-        If you want to do each of the steps that impose_constraints does, but
-        one a time, see:
-        form_constraint_matrix
-        set_constraint_matrix
-        form_speed_transform_matrix
-        set_speed_transform_matrix
-
-        """
-        #  Check to make sure the user passes compatible equations and
-        #  determine the columns associated with the independent and dependent
-        #  speeds
-        m = len(eqns)
-        md = len(dependent)
-        n = len(self.u_list)
-        if m != md:
-            raise ValueError('Number of equations must equal number of\
-                dependent speeds.')
-        independent_ci = []
-        dependent_ci = []
-        try:
-            for ud in dependent:
-                dependent_ci.append(self.u_list.index(ud))
-            dependent_ci.sort()
-            independent_ci = list(set(range(n)) - set(dependent_ci))
-            independent_ci.sort()
-        except ValueError:
-            print('Each of the dependent speeds must be in the speed list used\
-                in the declare_speeds.')
-        # Assign the dependent and independent speeds
-        self.u_dependent = [self.u_list[jd] for jd in dependent_ci]
-        self.u_independent = [self.u_list[ji] for ji in independent_ci]
-        # Independent and dependent column indices of self.ulist and
-        # self.udot_list
-        self.independent_ci = independent_ci
-        self.dependent_ci = dependent_ci
-        self.udot_dependent = [self.udot_list[i] for i in dependent_ci]
-        self.udot_independent = [self.udot_list[i] for i in independent_ci]
-
-        # Put the equations in Matrix form and create a matrix with dummy
-        # symbols representing non-zero entries
-        B = zeros((m, n))
-        B_dummy = zeros((m, n))
-        d = {}
-        for i in range(m):
-            for j in range(n):
-                if trig_subs:
-                    bij = eqns[i].lhs.expand().subs(self.csqrd_dict).expand().coeff(self.u_list[j])
-                else:
-                    bij = eqns[i].lhs.expand().coeff(self.u_list[j])
-
-                if bij is not None:
-                    dummy_sym = Symbol('a%d%d'%(i,j), dummy=True)
-                    d[dummy_sym] = bij
-                    B[i, j] = bij
-                    B_dummy[i, j] = dummy_sym
-        self.constraint_matrix = B
-
-        # Generate the independent and dependent matrices
-        # i.e. Bd * ud + Bi * ui = 0
-        # Where Bd is m x m and Bi is m x (n-m)
-        Bd = zeros((m, m))
-        Bi = zeros((m, n-m))
-        for j, jd in enumerate(dependent_ci):
-            Bd[:, j] = B_dummy[:, jd]
-        for j, ji in enumerate(independent_ci):
-            Bi[:, j] = B_dummy[:, ji]
-
-        # Invert the Bd matrix and determine the dependent speeds
-        # ud = -inv(Bd) * Bi * ui = T * ui
-        # inv(Bd) = adjugate(Bd) / det(Bd)
-        BdaBi = -(Bd.adjugate() * Bi).subs(d).expand().subs(self.csqrd_dict).expand()
-        Bd_det = Bd.det().subs(d).expand().subs(self.csqrd_dict).expand()
-        assert Bd_det != 0, "Constraint equations are singular."
-        T = BdaBi / Bd_det
-        self.u_dependent_transform = T
-
-        # Create dictionary for dependent speeds
-        ud = {}
-        ui = Matrix(self.u_independent)
-        uidot = Matrix(self.udot_independent)
-        #T_ui = T*ui
-        for i, ud_i in enumerate(self.u_dependent):
-            s = 0
-            for j, ui_j in enumerate(self.u_independent):
-                s += BdaBi[i, j] * ui_j
-            ud[ud_i] = s / Bd_det
-        self.u_dependent_eqs = ud
-
-        # Compute the time derivatives of the dependent speeds.
-        # Hand code the quotient rule so that we can prevent so much
-        # unnecessary expansion from occuring.  All entries in the T matrix are
-        # of the form num / den, where num comes from -Bd.adjugate()*Bi and
-        # den from the determinant of Bd
-        ud_dot = {}
-        T_dot = zeros(T.shape)
-        T_dot_no_qdot = zeros(T.shape)
-        Bd_det_dot = Bd_det.diff(t)
-        #print Bd_det_dot
-        #print self.kindiffs
-        #Bd_det_dot_no_qdot =\
-        #    Bd_det_dot.subs(self.csqrd_dict).expand().subs(self.kindiffs).expand()#.subs(self.csqrd_dict).expand()
-        #print Bd_det_dot_no_qdot
-        #stop
-        for i in range(T.shape[0]):
-            for j in range(T.shape[1]):
-                BdaBi_ij = BdaBi[i,j]
-                BdaBi_ij_dot = BdaBi_ij.diff(t)
-                T_dot[i, j] = (BdaBi_ij_dot*Bd_det - BdaBi_ij*Bd_det_dot) / (Bd_det**2)
-                #T_dot_no_qdot[i, j] =\
-                #    (BdaBi_ij_dot.subs(self.kindiffs).expand()*Bd_det - \
-                #     BdaBi_ij*Bd_det_dot_no_qdot) / (Bd_det**2)
-        self.u_dependent_transform_dot = T_dot
-        #self.u_dependent_transform_dot_no_qdot = T_dot_no_qdot
-
-        # Create a dictionary for dependent speeds time derivatives
-        ud_dot = {}
-        #ud_dot_no_qdot = {}
-        Tdot_ui_plus_T_uidot = T_dot*ui + T*uidot
-        #Tdot_ui_plus_T_uidot_noqdot = T_dot_no_qdot*ui + T*uidot
-        for i, u_dot in enumerate(self.udot_independent):
-            ud_dot[u_dot] = Tdot_ui_plus_T_uidot[i]
-            #ud_dot_no_qdot[u_dot] = Tdot_ui_plus_T_uidot[i]
-
-        return B, T, T_dot, ud, ud_dot
-        #return B, T, T_dot, T_dot_no_qdot, ud, ud_dot, ud_dot_no_qdot
 
     def frstar(self):
         """Computes the generalized inertia forces of the system.
@@ -2407,79 +2247,6 @@ def most_frequent_frame(vector):
         frame_counter[uv.frame] = frame_counter.get(uv.frame, 0) + 1
     return max([(frame_counter[x], x) for x in frame_counter])[1]
 
-def kinematic_chain(point1, point2, r=None, vec_list=None):
-    """Close a kinematic loop and form the associated constraint equations.
-
-    point1: begin point
-    point2: end point
-    r: vector from point2 to point1 which closes the loop kinematic loop
-    vec_list:  List of UnitVectors to dot the constraint with
-
-    Returns the kinematic constraint equations, along with the time derivatives
-    of those equations.
-    """
-    if r is None:
-        loop = point2.rel(point1)
-    else:
-        loop = point2.rel(point1) + r
-
-    if vec_list is None:
-        frame = most_frequent_frame(loop)
-        vec_list = [frame[i] for i in (1, 2, 3)]
-    hc_eqs = []
-    dhc_eqs = []
-
-    q_list = point1.NewtonianFrame.q_list
-    q_list_s = point1.NewtonianFrame.q_list_s
-    q_list_dict = point1.NewtonianFrame.q_list_dict
-    q_list_dict_back = point1.NewtonianFrame.q_list_dict_back
-
-    qdot_list = point1.NewtonianFrame.qdot_list
-    qdot_list_s = point1.NewtonianFrame.qdot_list_s
-    qdot_list_dict = point1.NewtonianFrame.qdot_list_dict
-    qdot_list_dict_back = point1.NewtonianFrame.qdot_list_dict_back
-
-    cm_row_list = []
-    # Generate the scalar holonomic constraint equations
-    for uv in vec_list:
-        hc = dot(uv, loop)
-        if hc != 0:
-            hc_eqs.append(hc)
-            hc_s = hc.subs(q_list_dict)
-            # Get a list of the coordinates involved in the constraint equation
-            coords_s = list(hc_s.atoms(Symbol) & set(q_list_s))
-            print coords_s
-            coords_gc = [cd_s.subs(q_list_dict_back) for
-                    cd_s in coords_s]
-            coords_gc_dot = [c_gc.diff(t) for c_gc in coords_gc]
-
-            dhc = S(0)
-            cm_row_i = [0]*len(qdot_list)
-            for j, q in enumerate(coords_s):
-                col_index =\
-                    point1.NewtonianFrame.qdot_list.index(coords_gc_dot[j])
-                cm_entry = hc_s.diff(q).subs(q_list_dict_back)
-                cm_row_i[col_index] = cm_entry
-                dhc += cm_entry*coords_gc_dot[j]
-            if any(cm_row_i):
-                cm_row_list.insert(-1, cm_row_i)
-
-    point1.NewtonianFrame.constraint_matrix = Matrix(cm_row_list)
-
-    subs_dhc_eqs = [collect(eq.subs(qdot_list_dict), qdot_list_s) for eq in dhc_eqs]
-    if len(dhc_eqs) != 0:
-        dhc_eqs = [eq.subs(qdot_list_dict_back) for eq in subs_dhc_eqs]
-    # Append the constraints to the Newtonian Reference constraint list
-    for hc_eqn in hc_eqs:
-        point1.NewtonianFrame.hc_eqns.append(hc_eqn)
-
-    for dhc_eqn in dhc_eqs:
-        point1.NewtonianFrame.dhc_eqns.append(dhc_eqn)
-
-    # Return the constraint equations so the user can look at them if they
-    # want.
-    return hc_eqs, subs_dhc_eqs
-
 def express(v, frame):
     """Expresses a vector in terms of UnitVectors fixed in a specified frame.
     """
@@ -2546,6 +2313,8 @@ def cross(v1, v2):
 def coeffv(v, scalar):
     if isinstance(v, Vector):
         return v.coeffv(scalar)
+    elif isinstance(v, UnitVector):
+        return S(1)
     else:
         raise NotImplementedError()
 
@@ -3217,14 +2986,14 @@ def transform_matrix(B, x, x_dependent, subs_dict=None):
     xd = -inv(Bd)*Bi*xi
        = T*xi
 
-    Returns: inv(Bd), Bi, dependent_index, independent_index
+    Returns: -inv(Bd), Bi, dependent_index, independent_index
 
     """
     m, n = B.shape
     md = len(x_dependent)
     if m != md:
-        raise ValueError('Number of equations must equal number of\
-            dependent terms.')
+        raise ValueError('Number of equations must equal number of ' +
+                         'dependent terms.')
     independent_ci = []
     dependent_ci = []
     try:
@@ -3234,29 +3003,11 @@ def transform_matrix(B, x, x_dependent, subs_dict=None):
         independent_ci = list(set(range(n)) - set(dependent_ci))
         independent_ci.sort()
     except ValueError:
-        print('Each of the dependent speeds must be in the speed list used\
-            in the declare_speeds.')
+        print('Each of the dependent speeds must be in the speed list used' +
+              'in the declare_speeds.')
 
     # Create a matrix with dummy symbols representing non-zero entries
-    B_dummy = zeros((m, n))
-    d = {}
-    dr = {}
-    for i in range(m):
-        for j in range(n):
-            bij = B[i, j]
-            if bij != 0:
-                if bij == 1 or bij == -1:
-                    B_dummy[i, j] = bij
-                    continue
-                if bij in d.values():
-                    B_dummy[i, j] = dr[bij]
-                elif -bij in d.values():
-                    B_dummy[i, j] = -dr[-bij]
-                else:
-                    dummy_sym = Symbol('b%d%d'%(i,j), dummy=True)
-                    d[dummy_sym] = B[i, j]
-                    dr[B[i,j]] = dummy_sym
-                    B_dummy[i, j] = dummy_sym
+    B_dummy, d = dummy_matrix(B, 'b')
 
     # Generate the independent and dependent matrices
     Bd = zeros((m, m))
@@ -3266,16 +3017,18 @@ def transform_matrix(B, x, x_dependent, subs_dict=None):
     for j, ji in enumerate(independent_ci):
         Bi[:, j] = B_dummy[:, ji]
 
-    # Invert the Bd matrix and determine the dependent speeds
+    # Invert the Bd matrix and determine
     # xd = -inv(Bd) * Bi * xi = T * xi
-    # inv(Bd) = adjugate(Bd) / det(Bd)
     # Form the adjugate and matrix multiply by Bi
     Bd_adj = Bd.adjugate().expand()
-    Bd_inv = zeros((m,m))
+
     # Form the negative of the determinant
     Bd_det = -factor(Bd.det().expand())
     assert Bd_det != 0, "Equations are singular."
+
     # Form inv(Bd)
+    # inv(Bd) = adjugate(Bd) / det(Bd)
+    Bd_inv = zeros((m,m))
     for i in range(m):
         for j in range(m):
             if Bd_adj[i,j] != 0:
@@ -3283,9 +3036,9 @@ def transform_matrix(B, x, x_dependent, subs_dict=None):
     if subs_dict==None:
         Bd_inv = Bd_inv.subs(d)
         Bi = Bi.subs(d)
-        return Bd_inv, Bi, dependent_ci, independent_ci
+        return Bd_inv, Bi
     else:
-        return Bd_inv, Bi, dependent_ci, independent_ci, d
+        return Bd_inv, Bi, d
 
 def eqn_list_to_dict(eqn_list, reverse=None):
     """Convert a list of Sympy Relational objects to a dictionary.

@@ -1,4 +1,4 @@
-from sympy import collect, Function, solve
+from sympy import collect, Function, solve, asin
 from pydy import *
 
 # Declare a NewtonianReferenceFrame
@@ -73,7 +73,13 @@ E = D.rotate('E', 3, q5, I=(IEF11, IEF22, IEF33, 0, 0, IEF13))
 F = E.rotate('F', 2, q6, I=(0, IF22, 0, 0, 0, 0), I_frame=E)
 
 # Unit vector in the plane of the front wheel, pointed towards the ground
+fw_lean = asin(dot(E[2], N[3]))
+print 'Front wheel lean: ', fw_lean
 fo_fn_uv = Vector(N[3] - dot(E[2], N[3])*E[2]).normalized
+test = Vector(N[3] - dot(E[2], N[3])*E[2]).express(E)
+print test.dict[E[1]]**2 + test.dict[E[3]]**2
+
+stop
 
 print fo_fn_uv
 stop
