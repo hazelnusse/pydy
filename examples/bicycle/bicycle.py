@@ -20,13 +20,13 @@ u1, u2, u3, u4, u5, u6 = u
 u1d, u2d, u3d, u4d, u5d, u6d = ud
 
 # Create variables for to act as place holders in the vector from FO to FN
-e1c = Function('e1c')(t)
-e3c = Function('e3c')(t)
-e1c_s, e3c_s = symbols('e1c e3c')
+g31 = Function('g31')(t)
+g33 = Function('g31')(t)
+g31_s, g33_s = symbols('g31 g33')
 
 # Some simplifying symbols / trig expressions
-s1, s2, s3, s4, s5, s6, c1, c2, c3, c4, c5, c6, e1c_s, e3c_s, t2 = symbols('s1 \
-        s2 s3 s4 s5 s6 c1 c2 c3 c4 c5 c6 e1c_s e3c_s t2')
+s1, s2, s3, s4, s5, s6, c1, c2, c3, c4, c5, c6, t2 = symbols('s1 \
+        s2 s3 s4 s5 s6 c1 c2 c3 c4 c5 c6 t2')
 
 symbol_subs_dict = {sin(q1): s1,
                     cos(q1): c1,
@@ -41,8 +41,8 @@ symbol_subs_dict = {sin(q1): s1,
                     sin(q5): s5,
                     cos(q6): c6,
                     sin(q6): s6,
-                    e1c    : e1c_s,
-                    e3c    : e3c_s,
+                    g31    : g31_s,
+                    g33    : g33_s,
                     u1     : Symbol('u1'),
                     u2     : Symbol('u2'),
                     u3     : Symbol('u3'),
@@ -64,40 +64,42 @@ A = N.rotate('A', 3, q1)
 # Lean frame
 B = A.rotate('B', 1, q2)
 # Bicycle frame with rigidly attached rider
-D = N.rotate('D', 'BODY312', (q1, q2, q4), I=(ICD11, ICD22, ICD33, 0, 0, ICD13))
+D = N.rotate('D', 'BODY312', (q1, q2, q3), I=(ICD11, ICD22, ICD33, 0, 0, ICD13))
 # Rear wheel
-C = N.rotate('C', 'BODY312', (q1, q2, q3), I=(0, IC22, 0, 0, 0, 0), I_frame=D)
+C = D.rotate('C', 2, q4, I=(0, IC22, 0, 0, 0, 0), I_frame=D)
 # Fork / handle bar assembly
 E = D.rotate('E', 3, q5, I=(IEF11, IEF22, IEF33, 0, 0, IEF13))
 # Front wheel
 F = E.rotate('F', 2, q6, I=(0, IF22, 0, 0, 0, 0), I_frame=E)
 
+g3_num = Vector(N[3] - dot(E[2], N[3])*E[2]).express(E)
+g3_den = sqrt(g3_num.dict[E[1]]**2 + g3_num.dict[E[3]]**2)
+g3 = Vector({E[1]: g3_num.dict[E[1]] / g3_den, E[3]: g3_num.dict[E[3]] / g3_den})
+print g3
+
 # Unit vector in the plane of the front wheel, pointed towards the ground
-fw_lean = asin(dot(E[2], N[3]))
-print 'Front wheel lean: ', fw_lean
-fo_fn_uv = Vector(N[3] - dot(E[2], N[3])*E[2]).normalized
-test = Vector(N[3] - dot(E[2], N[3])*E[2]).express(E)
-print test.dict[E[1]]**2 + test.dict[E[3]]**2
-
-stop
-
-print fo_fn_uv
-stop
+q9 = asin(dot(E[2], N[3]))
+print 'Front assembly lean q9: ', q9
+print dot(E[2], N[3])
+q10 = asin(-dot(E[1], g3))
+print 'Front assembly pitch q10: ', q10
+print -dot(E[1], g3)
 
 # Some manual manipulations to express g in the E frame without expanding the
 # coefficients
-N3inE = N[3].express(E)
-e1c_expr = rf*N3inE.dict[E[1]]*fo_fn_uv.dict[N[3]]
-e3c_expr = rf*N3inE.dict[E[3]]*fo_fn_uv.dict[N[3]]
-n1, d1 = e1c_expr.as_numer_denom()
-n2, d2 = e3c_expr.as_numer_denom()
-assert d1 == d2
+g31_expr = rf*dot(g3, E[1])
+g33_expr = rf*dot(g3, E[3])
+print g31_expr
+print g33_expr
+num1 = g3_num.dict[E[1]]
+num2 = g3_num.dict[E[3]]
+den = g3_den
 # Compute time derivatives using quotient rule and prevent unneccessary expansion
-e1c_expr_dt = (n1.diff(t)*d1 - n1*d1.diff(t))/d1**2
-e3c_expr_dt = (n2.diff(t)*d2 - n2*d2.diff(t))/d2**2
-fo_fn_subs_dict = {e1c: e1c_expr, e3c: e3c_expr, e1c.diff(t): e1c_expr_dt,
-        e3c.diff(t): e3c_expr_dt}
-fo_fn = Vector({E[1]: e1c, E[3]: e3c})
+g31_expr_dt = (num1.diff(t)*den - num1*den.diff(t))/den**2
+g33_expr_dt = (num2.diff(t)*den - num2*den.diff(t))/den**2
+fo_fn_subs_dict = {g31: g31_expr, g33: e3c_expr, g31.diff(t): g31_expr_dt,
+        g33.diff(t): g33_expr_dt}
+fo_fn = Vector({E[1]: g31, E[3]: g33})
 
 # Locate rear wheel center relative to point fixed in N, coincident with rear
 # wheel contact
