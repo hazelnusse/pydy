@@ -1,0 +1,139 @@
+\documentclass[letterpaper,11pt]{article}
+\usepackage[margin=1in,centering]{geometry}
+\usepackage{fancyhdr}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\newcommand{\bs}[1]{ \boldsymbol{ #1 } }
+\newcommand{\ud}{\mathrm{d}}
+\pagestyle{fancy}
+\fancyhead[L]{Benchmark bicycle model equations of motion, Dale L. Peterson}
+\fancyhead[R]{\today}
+\fancyfoot[L,R]{}
+\fancyfoot[C]{\thepage}
+\begin{document}
+\begin{abstract}
+
+  Nonlinear equations of motion for a benchmark bicycle are presented in
+  symbolic form.  They are validated numerically against Meijaard et al. and
+  Basu-Mandal et al.  Numerical results match to at least 14 decimal places.
+
+\end{abstract}
+
+\section*{Model description}
+Consider the following four rigid bodies: a rear wheel $C$, a frame with
+rigidly attached rider $D$, a front fork/handlebar assembly $E$, and a front
+wheel $F$.
+The following eight (non-minimal) generalized coordinates are defined:
+\begin{table}[h]
+  \begin{center}
+    \begin{tabular}{rl}
+      $q_1:$ & Rear frame yaw \\
+      $q_2:$ & Rear frame lean \\
+      $q_3:$ & Rear frame pitch \\
+      $q_4:$ & Rear wheel angle relative to rear frame \\
+      $q_5:$ & Steer angle relative to rear frame \\
+      $q_6:$ & Front wheel angle relative to front fork \\
+      $q_7:$ & Rear wheel contact point position in $\bs{n}_1$ direction \\
+      $q_8:$ & Rear wheel contact point position in $\bs{n}_2$ direction
+    \end{tabular}
+  \end{center}
+\end{table}
+
+The bicycle frame with rigidly attached rider $D$ are oriented with Euler 3-1-2
+($q_1, q_2, q_3$) angles (identical to the ($\psi, \phi, \theta_B$) Euler angles
+in \cite{Meijaard2007}).  The rear wheel $R$ is oriented relative to $D$ by
+an angle $q_4$ ($\theta_R$ in \cite{Meijaard2007}), the front fork relative to
+$D$ by an angle $q_5$ ($\phi$ in \cite{Meijaard2007}), and the front wheel
+relative to the front fork $E$ by an angle $q_6$ ($\theta_F$ in
+\cite{Meijaard2007}).  Explicit direction cosine matrices are provided in the
+appendix.
+
+Define six generalized speeds:
+\begin{align*}
+  u_i & \triangleq \bs{\omega}^D \cdot \bs{d}_i \qquad (i = 1, 2, 3)\\
+  u_4 & \triangleq \bs{\omega}^C \cdot \bs{d}_2\\
+  u_5 & \triangleq \bs{\omega}^E \cdot \bs{d}_3\\
+  u_6 & \triangleq \bs{\omega}^F \cdot \bs{e}_2
+\end{align*}
+
+These generalized speed definitions follow the guidelines of \cite{Mitiguy1996}
+for generating `efficient' equations of motion.  As it turns out, they also
+simplify the formulation of the motion constraints imposed by pure rolling.  As
+will be made clear in the next section, only three of these six generalized
+speeds can be treated as independent.  The resulting angular velocities (with
+respect to the inertial frame) of each of the four rigid bodies are:
+\begin{align*}
+  \bs{\omega}^D & = u_1 \bs{d}_1 + u_2 \bs{d}_2 + u_3 \bs{d}_3 \\
+  \bs{\omega}^C & = u_1 \bs{d}_1 + u_4 \bs{d}_2 + u_3 \bs{d}_3 \\
+  \bs{\omega}^E & = u_1 \bs{d}_1 + u_2 \bs{d}_2 + u_5 \bs{d}_3 \\
+                & = (c_5 u_1 + s_5 u_2)\bs{e}_1 + (-s_5 u_1 + c_5 u_2) \bs{e}_2
+                    + u_5 \bs{e}_3 \\
+  \bs{\omega}^F & = (c_5 u_1 + s_5 u_2)\bs{e}_1 + u_6 \bs{e}_2
+                    + u_5 \bs{e}_3
+\end{align*}
+
+\section*{Motion constraints}
+
+Before formulating the motion constraints, some geometric considerations
+must be addressed.  The unit vector lying in the plane of the front wheel that
+can be thought of as pointing from the front wheel center torwards the front
+contact point is formed by taking the projection of the $\bs{n}_3$ unit vector
+onto the plane of the front wheel, and normalizing to make it unit length:
+\begin{align*}
+  \bs{g}_3 & = (\bs{n}_3 - (\bs{n}_3 \cdot \bs{e}_2) \bs{e}_2) / |(\bs{n}_3 -
+  (\bs{n}_3 \cdot \bs{e}_2) \bs{e}_2)| \\
+  & = ((s_2 s_5 - c_2 s_3 c_5) \bs{e}_1 + c_2 c_3 \bs{e}_3) / \sqrt{(s_2 s_5 -
+  c_2 s_3 c_5)^2 + (c_2 c_3)^2}
+\end{align*}
+
+Given rear frame lean $q_2$, rear frame pitch $q_3$, and the steer angle
+$q_5$, the front frame lean $q_9$ and front frame pitch $q_{10}$ are determined by:
+\begin{align*}
+    q_9 & = \arcsin(\bs{e}_2 \cdot \bs{n}_3) \\
+    & = \arcsin(s_2 c_5 + c_2 s_3 s_5) \\
+    q_{10} & = \arcsin(-\bs{e}_1 \cdot \bs{g}_3) \\
+           & = \arcsin((c_2 s_3 c_5 - s_2 s_5) / \sqrt{(s_2 s_5 -
+                c_2 s_3 c_5)^2 + (c_2 c_3)^2})
+\end{align*}
+
+For purpose of determining ground reaction forces, the vectors in the ground
+plane that are aligned with, and perpendicular to, the front and rear wheel
+tracks, are:
+
+\begin{tabular}{rcc}
+  & Rear wheel & Front wheel \\
+  Tangent to path: & $\bs{a}_1$ & blah \\
+  Normal to path: & $\bs{a}_2$ & blah
+\end{tabular}
+
+%\begin{align*}
+%  \bs{g}_1 & = \bs{e}_2 \times \bs{g}_3 \\
+%  & = ( c_2 c_4 \bs{e}_1 + (s_2 s_5 - c_2 c_5 s_4) \bs{e}_3) / \sqrt{(s_2 s_5 -
+%  c_2 c_5 s_4)^2 + (c_2 c_4)^2}
+%\end{align*}
+%The unit vector parallel to the ground plane and perpendicular to the
+%front wheel track, expressed in the yawed frame $A$, is:
+%\begin{align*}
+%  \bs{h}_2 & = \bs{n}_3 \times \bs{g}_1 \\
+%(c2*c5 - s2*s4*s5)*a1> + c4*s5*a2>
+%  & = ( (c_2 c_5 - s_2 s_4 s_5) \bs{a}_1 + c_4 s_5 \bs{a}_2) / \sqrt{(s_2 s_5 -
+%  c_2 c_5 s_4)^2 + (c_2 c_4)^2}
+%\end{align*}
+
+
+The nonholonomic constraints may be written by formulating the velocity of the
+top of the steer axis $DE$ in two separate ways, and requiring that both be
+equal.  The first approach makes use of the rear wheel and rear frame, while
+the second approach makes use of the front wheel and frame.
+\begin{align*}
+  \bs{v}^{DE} & = \bs{\omega}^C \times \bs{r}^{C^* / CN} + \bs{\omega}^D
+  \times \bs{r}^{DE / C^*} \\
+  & = (u_1 \bs{d}_1 + u_4 \bs{d}_2 + u_3 \bs{d}_3) \times (-rr \bs{b}_3) + (u_1
+  \bs{d}_1 + u_2 \bs{d}_2 + u_3 \bs{d}_3) \times (l_r \bs{d}_1) \\
+  & = -r_r u_4 \bs{b}_1 + (r_r c_4 u_1 + r_r s_4 u_3) \bs{b}_2
+\end{align*}
+
+\bibliographystyle{plain}
+\bibliography{../../../../../Documents/references}
+
+\end{document}
