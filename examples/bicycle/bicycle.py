@@ -97,7 +97,7 @@ den = g3_den
 # Compute time derivatives using quotient rule and prevent unneccessary expansion
 g31_expr_dt = (num1.diff(t)*den - num1*den.diff(t))/den**2
 g33_expr_dt = (num2.diff(t)*den - num2*den.diff(t))/den**2
-fo_fn_subs_dict = {g31: g31_expr, g33: e3c_expr, g31.diff(t): g31_expr_dt,
+fo_fn_subs_dict = {g31: g31_expr, g33: g33_expr, g31.diff(t): g31_expr_dt,
         g33.diff(t): g33_expr_dt}
 fo_fn = Vector({E[1]: g31, E[3]: g33})
 
@@ -126,14 +126,20 @@ N1 = CO.locate('N1', rr*B[3] - q7*N[1] - q8*N[2])
 u_rhs = [dot(D.ang_vel(N), D[1]),   # := u1
          dot(D.ang_vel(N), D[2]),   # := u2
          dot(D.ang_vel(N), D[3]),   # := u3
-         dot(E.ang_vel(N), E[3]),   # := u4
-         dot(C.ang_vel(N), C[2]),   # := u5
+         dot(C.ang_vel(N), D[2]),   # := u4
+         dot(E.ang_vel(N), D[3]),   # := u5
          dot(F.ang_vel(N), E[2])]   # := u6
 
 qd_to_u = coefficient_matrix(u_rhs, qd[:-2])
 
+# Steady turning conditions: q2d = q3d = q5d = 0 rad / sec
+u_steady = qd_to_u * Matrix([q1d, 0, 0, q4d, 0, q6d])
+
 u_to_qd = qd_to_u.inverse_ADJ().expand().subs(N.csqrd_dict).expand().\
         subs({sin(q2)/cos(q2):tan(q2)})
+
+print u_to_qd
+stop
 
 # Form velocity of rear wheel center in two distinct but equivalent ways.  This
 # allows for the rates of the rear wheel coordinates to be determined.
