@@ -19,6 +19,7 @@ q1d, q2d, q3d, q4d, q5d, q6d, q7d, q8d = qd
 u1, u2, u3, u4, u5, u6 = u
 u1d, u2d, u3d, u4d, u5d, u6d = ud
 
+tan_lean = {sin(q2)/cos(q2): tan(q2)}
 # Create variables for to act as place holders in the vector from FO to FN
 g31 = Function('g31')(t)
 g33 = Function('g31')(t)
@@ -58,13 +59,17 @@ trig_subs_dict = {c1**2: 1-s1**2,
                   c5**2: 1-s5**2,
                   c6**2: 1-s6**2}
 
+###############################################################################
+# Orientation of frames, locations of points
+###############################################################################
 # Reference Frames
 # Yaw frame
 A = N.rotate('A', 3, q1)
 # Lean frame
 B = A.rotate('B', 1, q2)
 # Bicycle frame with rigidly attached rider
-D = N.rotate('D', 'BODY312', (q1, q2, q3), I=(ICD11, ICD22, ICD33, 0, 0, ICD13))
+#D = N.rotate('D', 'BODY312', (q1, q2, q3), I=(ICD11, ICD22, ICD33, 0, 0, ICD13))
+D = B.rotate('D', 2, q3, I=(ICD11, ICD22, ICD33, 0, 0, ICD13))
 # Rear wheel
 C = D.rotate('C', 2, q4, I=(0, IC22, 0, 0, 0, 0), I_frame=D)
 # Fork / handle bar assembly
@@ -72,32 +77,36 @@ E = D.rotate('E', 3, q5, I=(IEF11, IEF22, IEF33, 0, 0, IEF13))
 # Front wheel
 F = E.rotate('F', 2, q6, I=(0, IF22, 0, 0, 0, 0), I_frame=E)
 
+# Front fork kinematic analysis
 g3_num = Vector(N[3] - dot(E[2], N[3])*E[2]).express(E)
 g3_den = sqrt(g3_num.dict[E[1]]**2 + g3_num.dict[E[3]]**2)
 g3 = Vector({E[1]: g3_num.dict[E[1]] / g3_den, E[3]: g3_num.dict[E[3]] / g3_den})
-print g3
 
 # Unit vector in the plane of the front wheel, pointed towards the ground
 q9 = asin(dot(E[2], N[3]))
-print 'Front assembly lean q9: ', q9
-print dot(E[2], N[3])
 q10 = asin(-dot(E[1], g3))
-print 'Front assembly pitch q10: ', q10
-print -dot(E[1], g3)
 
-# Some manual manipulations to express g in the E frame without expanding the
-# coefficients
+# Unit vector tangent to front wheel path
+g1 = cross(E[2], g3_num).express(A)
+h2 = cross(A[3], g1)
+g1.dict[A[1]] /= g3_den
+g1.dict[A[2]] /= g3_den
+
+h2.dict[A[1]] /= g3_den
+h2.dict[A[2]] /= g3_den
+print h2
+stop
+
+# Expressions for E[1] and E[3] measure numbers of g3
 g31_expr = rf*dot(g3, E[1])
 g33_expr = rf*dot(g3, E[3])
-print g31_expr
-print g33_expr
 num1 = g3_num.dict[E[1]]
 num2 = g3_num.dict[E[3]]
 den = g3_den
-# Compute time derivatives using quotient rule and prevent unneccessary expansion
+# Time derivatives of expressions for E[1] and E[3] measure numbers of g3
 g31_expr_dt = (num1.diff(t)*den - num1*den.diff(t))/den**2
 g33_expr_dt = (num2.diff(t)*den - num2*den.diff(t))/den**2
-fo_fn_subs_dict = {g31: g31_expr, g33: g33_expr, g31.diff(t): g31_expr_dt,
+g3_dict = {g31: g31_expr, g33: g33_expr, g31.diff(t): g31_expr_dt,
         g33.diff(t): g33_expr_dt}
 fo_fn = Vector({E[1]: g31, E[3]: g33})
 
@@ -116,6 +125,8 @@ EFO = FO.locate('EFO', l3*E[1] + l4*E[3], E, mass=mef)
 FN = FO.locate('FN', fo_fn, F)
 # Locate another point fixed in N
 N1 = CO.locate('N1', rr*B[3] - q7*N[1] - q8*N[2])
+###############################################################################
+
 
 ###############################################################################
 #  Construction of kinematic differential equations ###########################
@@ -136,10 +147,7 @@ qd_to_u = coefficient_matrix(u_rhs, qd[:-2])
 u_steady = qd_to_u * Matrix([q1d, 0, 0, q4d, 0, q6d])
 
 u_to_qd = qd_to_u.inverse_ADJ().expand().subs(N.csqrd_dict).expand().\
-        subs({sin(q2)/cos(q2):tan(q2)})
-
-print u_to_qd
-stop
+        subs(tan_lean)
 
 # Form velocity of rear wheel center in two distinct but equivalent ways.  This
 # allows for the rates of the rear wheel coordinates to be determined.
@@ -154,7 +162,8 @@ xy_rates = solve([eq1, eq2], qd[6:])
 # the right hand sides of the kinematic differential equations.
 kindiff_rhs = u_to_qd*Matrix(u)
 
-kindiff_eqns = [Eq(qdot, qdot_rhs) for qdot, qdot_rhs in zip(qd[:6], kindiff_rhs)] +\
+#kindiff_eqns = [Eq(qdot, qdot_rhs) for qdot, qdot_rhs in zip(qd[:6], kindiff_rhs)] +\
+kindiff_eqns = [Eq(e[0], e[1]) for e in zip(qd[:6], kindiff_rhs)] +\
                [Eq(qd[6], xy_rates[q7d]),
                 Eq(qd[7], xy_rates[q8d])]
 
@@ -175,21 +184,22 @@ output_string = generate_function("kindiffs", kindiff_eqns, func_params,
 # Set velocity and angular velocities using only generalized speeds, and
 # possibly generalized coordinates, but no time derivatives of coordinates
 ###############################################################################
+# All generalized speeds are those advocated by Mitiguy and Kane (1996)
 # Rigid body angular velocities
 # Angular velocity of rear frame with rigidly attached rider
 D.abs_ang_vel = Vector(u1*D[1] + u2*D[2] + u3*D[3])
-# Angular velocity of fork handlebar assembly
-E.abs_ang_vel = Vector(u1*D[1] + u4*D[2] + u3*E[3]).express(E)
 # Angular velocity of rear wheel
-C.abs_ang_vel = Vector(u1*D[1] + u5*D[2] + u3*D[3])
+C.abs_ang_vel = Vector(u1*D[1] + u4*D[2] + u3*D[3]).express(D)
+# Angular velocity of fork handlebar assembly
+E.abs_ang_vel = Vector(u1*D[1] + u2*D[2] + u5*D[3]).express(E)
 # Angular velocity of front wheel
 F.abs_ang_vel = E.abs_ang_vel - E.abs_ang_vel.dot(E[2])*E[2] + Vector(u6*E[2])
 
 # Mass center velocities
-CDO.abs_vel = express(cross(C.ang_vel(), CO.rel(N.O)) + cross(D.ang_vel(),\
-                CDO.rel(CO)), D)
-EFO.abs_vel = express(cross(F.ang_vel(), FO.rel(FN)) + cross(E.ang_vel(),\
-                EFO.rel(FO)), E)
+CDO.abs_vel = express(cross(C.ang_vel(), CO.rel(N.O)) + \
+                      cross(D.ang_vel(), CDO.rel(CO)), D)
+EFO.abs_vel = express(cross(F.ang_vel(), FO.rel(FN)) + \
+                      cross(E.ang_vel(), EFO.rel(FO)), E)
 ###############################################################################
 
 ###############################################################################
@@ -205,11 +215,14 @@ EFO.abs_vel = express(cross(F.ang_vel(), FO.rel(FN)) + cross(E.ang_vel(),\
 # Velocity of point DE must be identical when formulated in the following two
 # ways:
 # Method 1:
-vden1 = cross(C.ang_vel(), CO.rel(N.O).express(D)) +\
+vden1 = cross(C.ang_vel(), CO.rel(N.O)) + \
         cross(D.ang_vel(), DE.rel(CO))
+#print vden1.express(D)
+
 # Method 2:
-vden2 = cross(F.ang_vel(), FO.rel(FN)) +\
+vden2 = cross(F.ang_vel(), FO.rel(FN)) + \
         cross(E.ang_vel(), DE.rel(FO))
+
 # Form the constraint equations:
 speed_constraint_eqs = [dot(vden1 - vden2, D[1]),\
                         dot(vden1 - vden2, D[2]),\
@@ -217,7 +230,9 @@ speed_constraint_eqs = [dot(vden1 - vden2, D[1]),\
 
 # Form the constraint matrix for B*u = 0
 B_con = coefficient_matrix(speed_constraint_eqs, u)
-B_con[0, 3] = B_con[0, 3].subs({cos(q5)**2: 1-sin(q5)**2}).expand()
+
+# Simplify some of the entries manually
+B_con[0, 1] = B_con[0, 1].subs({cos(q5)**2: 1-sin(q5)**2}).expand()
 B_con[1, 0] = B_con[1, 0].subs({sin(q5)**2: 1-cos(q5)**2}).expand()
 
 # Use: u1 = dot(W_D_N>, D[1])
@@ -232,8 +247,7 @@ u_dep = [u2, u3, u5]
 # Bd * ud + Bi * ui = 0
 # ud = -inv(Bd)*Bi*ui
 # Form inv(Bd), Bi, and a substitution dictionary
-Bd_inv, Bi, dep_ci, indep_ci, B_subs_dict = \
-        transform_matrix(B_con, u, u_dep, subs_dict=True)
+Bd_inv, Bi, B_dict = transform_matrix(B_con, u, u_dep, subs_dict=True)
 stop
 B_subs_dict_time = {}
 B_subs_dict_time_rev = {}

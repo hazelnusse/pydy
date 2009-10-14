@@ -2,22 +2,45 @@
 import pendulum_lib as p
 from scipy.integrate import odeint
 from numpy import array, arange, zeros, pi
+import matplotlib.pyplot as plt
+
+def plot_energy(t, x):
+    # Plot the kinetic energy, potential energy, and total energy
+    ke = zeros((n,1))
+    pe = zeros((n,1))
+    te = zeros((n,1))
+    for i in range(n):
+        ke[i], pe[i] = p.energy(x[i,:], params)
+        te[i] = ke[i] + pe[i]
+
+    plt.figure()
+    plt.plot(t, ke, label='KE')
+    plt.plot(t, pe, label='PE')
+    plt.plot(t, te, label='TE')
+    plt.legend()
+    plt.title('Energy of pendulum during integration\n m = %0.2f, g = %0.2f, l = %0.2f, b = %0.2f'%(m, g, l, b))
+    plt.xlabel('Time [s]')
+    plt.ylabel('Energy [kg * m ** 2 / s**2]')
+    plt.show()
+    ############################
 
 m = 1.
 g = 9.8
 l = 1.
-b = 1.
+b = 0.
 params = [m, g, l, b]
 x0 = [pi/4., 0.0]
 
 # Integration time
 ti = 0.0
 ts = 0.01
-tf = 40.0
+tf = 100.0
 t = arange(ti, tf+ts, ts)
 n = len(t)
 # Integrate the differential equations
 x = odeint(p.eoms, x0, t, args = (params,))
+plot_energy(t, x)
+stop
 
 # Animate using Visual-Python
 from visual import display, rate, arrow, cylinder, sphere

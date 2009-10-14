@@ -96,42 +96,94 @@ $q_5$, the front frame lean $q_9$ and front frame pitch $q_{10}$ are determined 
                 c_2 s_3 c_5)^2 + (c_2 c_3)^2})
 \end{align*}
 
-For purpose of determining ground reaction forces, the vectors in the ground
-plane that are aligned with, and perpendicular to, the front and rear wheel
-tracks, are:
+For purpose of determining ground reaction forces, the unit vectors parallel to
+the the ground plane that are aligned with, and perpendicular to, the front and
+rear wheel tracks, are:
 
 \begin{tabular}{rcc}
   & Rear wheel & Front wheel \\
-  Tangent to path: & $\bs{a}_1$ & blah \\
-  Normal to path: & $\bs{a}_2$ & blah
+  Tangent to path: & $\bs{a}_1$ & $\left( (c_2 c_5 - s_2 s_3 s_5)\bs{a}_1
+  + c_3 s_5 \bs{a}_2 \right) /\sqrt{(s_2 s_5 - c_2 s_3 c_5)^2 + (c_2 c_3)^2}$ \\
+  Normal to path: & $\bs{a}_2$ & $\left( - c_3 s_5 \bs{a}_1
+  + (c_2 c_5 - s_2 s_3 s_5) \bs{a}_2 \right) /\sqrt{(s_2 s_5 - c_2 s_3 c_5)^2 + (c_2 c_3)^2}$
 \end{tabular}
 
-%\begin{align*}
-%  \bs{g}_1 & = \bs{e}_2 \times \bs{g}_3 \\
-%  & = ( c_2 c_4 \bs{e}_1 + (s_2 s_5 - c_2 c_5 s_4) \bs{e}_3) / \sqrt{(s_2 s_5 -
-%  c_2 c_5 s_4)^2 + (c_2 c_4)^2}
-%\end{align*}
-%The unit vector parallel to the ground plane and perpendicular to the
-%front wheel track, expressed in the yawed frame $A$, is:
-%\begin{align*}
-%  \bs{h}_2 & = \bs{n}_3 \times \bs{g}_1 \\
-%(c2*c5 - s2*s4*s5)*a1> + c4*s5*a2>
-%  & = ( (c_2 c_5 - s_2 s_4 s_5) \bs{a}_1 + c_4 s_5 \bs{a}_2) / \sqrt{(s_2 s_5 -
-%  c_2 c_5 s_4)^2 + (c_2 c_4)^2}
-%\end{align*}
-
-
 The nonholonomic constraints may be written by formulating the velocity of the
-top of the steer axis $DE$ in two separate ways, and requiring that both be
-equal.  The first approach makes use of the rear wheel and rear frame, while
-the second approach makes use of the front wheel and frame.
+top of the steer axis $DE$ in two equivalent ways.  The first approach makes
+use of the rear wheel and rear frame, while the second approach makes use of
+the front wheel and frame; the constraints arise by equating these two
+expressions for the velocity of $DE$.
 \begin{align*}
-  \bs{v}^{DE} & = \bs{\omega}^C \times \bs{r}^{C^* / CN} + \bs{\omega}^D
-  \times \bs{r}^{DE / C^*} \\
-  & = (u_1 \bs{d}_1 + u_4 \bs{d}_2 + u_3 \bs{d}_3) \times (-rr \bs{b}_3) + (u_1
-  \bs{d}_1 + u_2 \bs{d}_2 + u_3 \bs{d}_3) \times (l_r \bs{d}_1) \\
-  & = -r_r u_4 \bs{b}_1 + (r_r c_4 u_1 + r_r s_4 u_3) \bs{b}_2
+  \bs{v}^{DE}_r & = \bs{\omega}^C \times \bs{r}^{C^* / CN} + \bs{\omega}^D
+      \times \bs{r}^{DE / C^*} \\
+      & = -r_r c_3 u_4 \bs{d}_1 + (l_r u_3 + r_r c_3 u_1 + r_r s_3 u_3)\bs{d}_2
+      - (l_r u_2 + r_r s_3 u_4)\bs{d}_3 \\
+    \bs{v}^{DE}_f & = \bs{\omega}^F \times \bs{r}^{F^* / FN} + \bs{\omega}^E
+      \times \bs{r}^{DE / F^*} \\
+      & = (-l_s (c_5 u_2 - s_5 u_1) - g_{31} u_6) \bs{e}_1 +
+      (l_s (c_5 u_1 + s_5 u_2) + (c_5 u_1 + s_5 u_2) g_{31} - l_f u_5 -
+        g_{31} u_5) \bs{e}_2 \\
+        & \quad + (l_f (c_5 u_2 - s_5 u_1) + g_{31} u_6) \bs{e}_3
 \end{align*}
+Equating these two expressions and resolving into components ($\bs{d}_i \cdot
+(\bs{v}^{DE}_r - \bs{v}^{DE}_f) = 0$) allows for the constraints to be written
+in matrix form as:
+\begin{align*}
+  \left[
+  \begin{array}{cccccc}
+    c_5 g_{31} s_5 & l_s + s_5^2 g_{31} & 0 & -r_r c_3 & -l_f s_5 - g_{31} s_5
+    & c_5 g_{31} \\
+    -l_s + r_r c_3 - c_5^2 g_{31} & -c_5 g_{31} s_5 & l_r + r_r s_3 & 0 & l_f
+    c_5 + c_5 g_{31} & g_{31} s_5 \\
+    l_f s_5 & -l_r - l_f c_5 & 0 & -r_r s_3 & 0 & -g_{31}
+  \end{array}
+  \right]
+  \left[
+    \begin{array}{c}
+      u_1 \\ u_2 \\ u_3 \\ u_4 \\ u_5 \\ u_6
+    \end{array}
+    \right]
+  & =
+  \left[
+    \begin{array}{c}
+      0 \\ 0 \\ 0
+    \end{array}
+    \right]
+\end{align*}
+
+By choosing three of the six generalized speeds as independent, the constraint
+equations can be rewritten and solved for the dependent speeds:
+\begin{align*}
+  B u & = 0 \\
+  B_d u_d + B_i u_i & = 0 \\
+  u_d & = -B_d^{-1} B_i u_i \\
+      & = T u_i
+\end{align*}
+Where $B_d$ and $B_i$ are formed by choosing the columns of $B$ corresponding
+to the index (subscript) of the dependent and independent generalized speeds.
+
+Given any three of the generalized speeds, the above constraints provide the
+means to determine the three.  The resulting kinematic differential equations
+(involving {\it{all}} generalized speeds) are shown in Table \ref{kindiffs}
+Note that expressions for $\dot{q}_7$ and $\dot{q}_8$ in Table \ref{kindiffs}
+are implicitly defined in terms of $\dot{q}_3$ and $\dot{q}_4$ for brevity.
+
+\begin{table}[!h]
+  \begin{center}
+    \begin{tabular}{rclcrcl}
+        $\dot{q}_1$ & $=$ & $-(s_3/c_2) u_1 + (c_3/c_2) u_3$ &$\quad$&
+        $\dot{q}_5$ & $=$ & $u_5 - u_3$ \\
+        $\dot{q}_2$ & $=$ & $c_3 u_1 + s_3 u_3$ &$\quad$&
+        $\dot{q}_6$ & $=$ & $s_5 u_1 - c_5 u_2 + u_6$ \\
+        $\dot{q}_3$ & $=$ & $s_3 t_2 u_1 + u_2 - c_3 t_2 u_3$ &$\quad$&
+        $\dot{q}_7$ & $=$ & $-r_r c_1 (\dot{q}_3 + \dot{q}_4)$ \\
+        $\dot{q}_4$ & $=$ & $u_4 - u_2$ & $\quad$ &
+        $\dot{q}_8$ & $=$ & $-r_r s_1 (\dot{q}_3 + \dot{q}_4)$
+    \end{tabular}
+  \end{center}
+  \caption{Kinematic differential equations}
+  \label{kindiffs}
+\end{table}
 
 \bibliographystyle{plain}
 \bibliography{../../../../../Documents/references}

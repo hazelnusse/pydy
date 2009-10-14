@@ -172,7 +172,7 @@ ui = [.1, cs[0], 0.0]
 ui = [.1, cs[0]*.6, 0.0]
 animate_steady = False
 xi = set_ics(qi, ui, animate_steady)
-print xi
+
 # Integration time
 ti = 0.0
 ts = 0.001
@@ -182,6 +182,6 @@ n = len(t)
 # Integrate the differential equations
 x = odeint(rd.eoms, xi, t, args=(params,))
 # Plot the kinetic and potential energies
-#plot_energy(t, x)
+plot_energy(t, x)
 # Animate the simulation
 animate_motion(x, .2)
