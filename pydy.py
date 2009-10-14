@@ -2479,6 +2479,8 @@ class PyDyStrPrinter(StrPrinter):
     def _print_Derivative(self, expr):
         if len(expr.args) == 2:
             return str(expr.args[0].func) + "d"*len(expr.args[1:])
+        elif len(expr.args) == 3:
+            return str(expr.args[0].func) + "d"*len(expr.args[1:])
         else:
             return StrPrinter().doprint(expr)
 

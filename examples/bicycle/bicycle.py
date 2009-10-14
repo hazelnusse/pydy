@@ -8,14 +8,14 @@ N = NewtonianReferenceFrame('N')
 params = N.declare_parameters('rr rf lr ls lf l1 l2 l3 l4 mcd mef IC22 ICD11\
         ICD13 ICD33 ICD22 IEF11 IEF13 IEF33 IEF22 IF22 g')
 # Declare coordinates and their time derivatives
-q, qd = N.declare_coords('q', 8)
+q, qd = N.declare_coords('q', 11)
 # Declare speeds and their time derivatives
 u, ud = N.declare_speeds('u', 6)
 # Unpack the lists
 rr, rf, lr, ls, lf, l1, l2, l3, l4, mcd, mef, IC22, ICD11, ICD13, ICD33,\
         ICD22, IEF11, IEF13, IEF33, IEF22, IF22, g = params
-q1, q2, q3, q4, q5, q6, q7, q8 = q
-q1d, q2d, q3d, q4d, q5d, q6d, q7d, q8d = qd
+q1, q2, q3, q4, q5, q6, q7, q8, q9, q10, q11 = q
+q1d, q2d, q3d, q4d, q5d, q6d, q7d, q8d, q9d, q10d, q11d = qd
 u1, u2, u3, u4, u5, u6 = u
 u1d, u2d, u3d, u4d, u5d, u6d = ud
 
@@ -76,15 +76,26 @@ C = D.rotate('C', 2, q4, I=(0, IC22, 0, 0, 0, 0), I_frame=D)
 E = D.rotate('E', 3, q5, I=(IEF11, IEF22, IEF33, 0, 0, IEF13))
 # Front wheel
 F = E.rotate('F', 2, q6, I=(0, IF22, 0, 0, 0, 0), I_frame=E)
+# Front assembly yaw frame
+H = N.rotate('H', 3, q9)
+# Front assembly lean frame
+G = A.rotate('G', 1, q10)
+# Front assembly pitch (Same as E frame obtained by (q1,q2,q3,q5) Euler
+# (3-1-2-3) angles
+E2 = G.rotate('E', 2, q11)
 
 # Front fork kinematic analysis
 g3_num = Vector(N[3] - dot(E[2], N[3])*E[2]).express(E)
 g3_den = sqrt(g3_num.dict[E[1]]**2 + g3_num.dict[E[3]]**2)
 g3 = Vector({E[1]: g3_num.dict[E[1]] / g3_den, E[3]: g3_num.dict[E[3]] / g3_den})
 
-# Unit vector in the plane of the front wheel, pointed towards the ground
-q9 = asin(dot(E[2], N[3]))
-q10 = asin(-dot(E[1], g3))
+# Dependent coordinates
+print dot(H[1], N[2])
+stop
+
+q9  = asin(dot(H[1], N[2]))                       # Front wheel yaw
+q10 = asin(dot(E[2], N[3]))  # Front assembly lean
+front_pitch = asin(-dot(E[1], g3))   # Front assembly pitch
 
 # Unit vector tangent to front wheel path
 g1 = cross(E[2], g3_num).express(A)

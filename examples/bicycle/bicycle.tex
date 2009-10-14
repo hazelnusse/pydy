@@ -23,7 +23,7 @@
 Consider the following four rigid bodies: a rear wheel $C$, a frame with
 rigidly attached rider $D$, a front fork/handlebar assembly $E$, and a front
 wheel $F$.
-The following eight (non-minimal) generalized coordinates are defined:
+The following eleven (non-minimal) configuration coordinates are defined:
 \begin{table}[h]
   \begin{center}
     \begin{tabular}{rl}
@@ -34,45 +34,50 @@ The following eight (non-minimal) generalized coordinates are defined:
       $q_5:$ & Steer angle relative to rear frame \\
       $q_6:$ & Front wheel angle relative to front fork \\
       $q_7:$ & Rear wheel contact point position in $\bs{n}_1$ direction \\
-      $q_8:$ & Rear wheel contact point position in $\bs{n}_2$ direction
+      $q_8:$ & Rear wheel contact point position in $\bs{n}_2$ direction \\
+      $q_9:$ & Front frame yaw relative to rear frame \\
+      $q_{10}:$ & Front frame lean \\
+      $q_{11}:$ & Front frame pitch
     \end{tabular}
   \end{center}
 \end{table}
 
 The bicycle frame with rigidly attached rider $D$ are oriented with Euler 3-1-2
-($q_1, q_2, q_3$) angles (identical to the ($\psi, \phi, \theta_B$) Euler angles
-in \cite{Meijaard2007}).  The rear wheel $R$ is oriented relative to $D$ by
-an angle $q_4$ ($\theta_R$ in \cite{Meijaard2007}), the front fork relative to
-$D$ by an angle $q_5$ ($\phi$ in \cite{Meijaard2007}), and the front wheel
+($q_1, q_2, q_3$) angles (identical to the ($\psi, \phi, \theta_B$) Euler
+angles in \cite{Meijaard2007}).  The rear wheel $R$ is oriented relative to $D$
+by an angle $q_4$ ($\theta_R$ in \cite{Meijaard2007}), the front fork relative
+to $D$ by an angle $q_5$ ($\phi$ in \cite{Meijaard2007}), and the front wheel
 relative to the front fork $E$ by an angle $q_6$ ($\theta_F$ in
-\cite{Meijaard2007}).  Explicit direction cosine matrices are provided in the
+\cite{Meijaard2007}).  The last three configuration coordinates are dependent
+upon $q_2$, $q_3$, and $q_5$ in relatively simple ways.  In contrast, the
+relationship between rear frame lean $q_2$, rear frame pitch $q_3$ and the
+steer $q_5$, is relatively complex \cite{Peterson2008a}.  For these reasons,
+rear frame lean and steer will be treated as independent, rear frame pitch
+$q_4$ will be determined numerically by solving the associated holonomic
+constraint equation, and {\it{then}} analytic expressions for determining
+$q_9$, $q_{10}$, and $q_{11}$ can be used.
+
+Explicit direction cosine matrices are provided in the
 appendix.
 
-Define six generalized speeds:
+\section*{Kinematic constraints}
+The use of a non-minimal set of coordinates necessitates the discussion of
+holonomic constraints associated with the extra generalized coordinates.  The
+relationship between the rear frame lean, rear frame pitch, and the steer is:
 \begin{align*}
-  u_i & \triangleq \bs{\omega}^D \cdot \bs{d}_i \qquad (i = 1, 2, 3)\\
-  u_4 & \triangleq \bs{\omega}^C \cdot \bs{d}_2\\
-  u_5 & \triangleq \bs{\omega}^E \cdot \bs{d}_3\\
-  u_6 & \triangleq \bs{\omega}^F \cdot \bs{e}_2
+0 & =  \bs{r}^{FN/CN} \cdot \bs{n}_3 \\
+  & = r_{ft} + l_s s_2 + l_f (s_2 s_5 - c_2 s_3 c_5) +
+    r_f \sqrt{1 - (s_2 c_5 + c_2 s_3 s_5)^2} - r_{rt} - r_r c_2 - l_r c_2 s_3
+  \label{eq:holonomic}
 \end{align*}
+Put simply, this equation requires that the vector from the rear wheel ground
+contact to the front wheel ground contact have no component out of the ground
+plane.  Given $q_2$ and $q_5$, this equation is readily solved numerically for
+the rear frame pitch $q_3$ \cite{Peterson2008a}.
 
-These generalized speed definitions follow the guidelines of \cite{Mitiguy1996}
-for generating `efficient' equations of motion.  As it turns out, they also
-simplify the formulation of the motion constraints imposed by pure rolling.  As
-will be made clear in the next section, only three of these six generalized
-speeds can be treated as independent.  The resulting angular velocities (with
-respect to the inertial frame) of each of the four rigid bodies are:
-\begin{align*}
-  \bs{\omega}^D & = u_1 \bs{d}_1 + u_2 \bs{d}_2 + u_3 \bs{d}_3 \\
-  \bs{\omega}^C & = u_1 \bs{d}_1 + u_4 \bs{d}_2 + u_3 \bs{d}_3 \\
-  \bs{\omega}^E & = u_1 \bs{d}_1 + u_2 \bs{d}_2 + u_5 \bs{d}_3 \\
-                & = (c_5 u_1 + s_5 u_2)\bs{e}_1 + (-s_5 u_1 + c_5 u_2) \bs{e}_2
-                    + u_5 \bs{e}_3 \\
-  \bs{\omega}^F & = (c_5 u_1 + s_5 u_2)\bs{e}_1 + u_6 \bs{e}_2
-                    + u_5 \bs{e}_3
-\end{align*}
-
-\section*{Motion constraints}
+The relationships between the three other dependent configuration coordinates
+$q_9$, $q_{10}$, and $q_{11}$ can now be expressed conveniently in terms of
+$q_2$, $q_3$, and $q_5$.  The
 
 Before formulating the motion constraints, some geometric considerations
 must be addressed.  The unit vector lying in the plane of the front wheel that
@@ -107,6 +112,33 @@ rear wheel tracks, are:
   Normal to path: & $\bs{a}_2$ & $\left( - c_3 s_5 \bs{a}_1
   + (c_2 c_5 - s_2 s_3 s_5) \bs{a}_2 \right) /\sqrt{(s_2 s_5 - c_2 s_3 c_5)^2 + (c_2 c_3)^2}$
 \end{tabular}
+
+
+\section*{Motion constraints}
+Define six generalized speeds:
+\begin{align*}
+  u_i & \triangleq \bs{\omega}^D \cdot \bs{d}_i \qquad (i = 1, 2, 3)\\
+  u_4 & \triangleq \bs{\omega}^C \cdot \bs{d}_2\\
+  u_5 & \triangleq \bs{\omega}^E \cdot \bs{d}_3\\
+  u_6 & \triangleq \bs{\omega}^F \cdot \bs{e}_2
+\end{align*}
+
+These generalized speed definitions follow the guidelines of \cite{Mitiguy1996}
+for generating `efficient' equations of motion.  As it turns out, they also
+simplify the formulation of the motion constraints imposed by pure rolling.  As
+will be made clear in the next section, only three of these six generalized
+speeds can be treated as independent.  The resulting angular velocities (with
+respect to the inertial frame) of each of the four rigid bodies are:
+\begin{align*}
+  \bs{\omega}^D & = u_1 \bs{d}_1 + u_2 \bs{d}_2 + u_3 \bs{d}_3 \\
+  \bs{\omega}^C & = u_1 \bs{d}_1 + u_4 \bs{d}_2 + u_3 \bs{d}_3 \\
+  \bs{\omega}^E & = u_1 \bs{d}_1 + u_2 \bs{d}_2 + u_5 \bs{d}_3 \\
+                & = (c_5 u_1 + s_5 u_2)\bs{e}_1 + (-s_5 u_1 + c_5 u_2) \bs{e}_2
+                    + u_5 \bs{e}_3 \\
+  \bs{\omega}^F & = (c_5 u_1 + s_5 u_2)\bs{e}_1 + u_6 \bs{e}_2
+                    + u_5 \bs{e}_3
+\end{align*}
+
 
 The nonholonomic constraints may be written by formulating the velocity of the
 top of the steer axis $DE$ in two equivalent ways.  The first approach makes
