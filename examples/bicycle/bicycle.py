@@ -88,10 +88,12 @@ E2 = G.rotate('E', 2, q11)
 g3_num = Vector(N[3] - dot(E[2], N[3])*E[2]).express(E)
 g3_den = sqrt(g3_num.dict[E[1]]**2 + g3_num.dict[E[3]]**2)
 g3 = Vector({E[1]: g3_num.dict[E[1]] / g3_den, E[3]: g3_num.dict[E[3]] / g3_den})
+g1 = cross(E[2], g3)
+# sin(q9) = dot(g1, a2)
+sq9 = dot(g1, A[2]).expand()
+h2 = cross(A[3], g1).express(A).subs(N.csqrd_dict).expandv()
+print h2
 
-# Dependent coordinates
-print dot(H[1], N[2])
-print dot(D[3], B[1])
 stop
 
 q9  = asin(dot(H[1], N[2]))                       # Front wheel yaw

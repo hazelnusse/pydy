@@ -89,7 +89,7 @@ onto the plane of the front wheel, and normalizing to make it unit length:
   & = ((s_2 s_5 - c_2 s_3 c_5) \bs{e}_1 + c_2 c_3 \bs{e}_3) / \sqrt{(s_2 s_5 -
   c_2 s_3 c_5)^2 + (c_2 c_3)^2}
 \end{align*}
-The vector aligned with the front wheel track is:
+The vector aligned with the front wheel path is:
 \begin{align*}
   \bs{g}_1 & = \bs{e}_2 \times \bs{g}_3 \\
   & = \left(c_2 c_3 \bs{e}_1 + (c_2 s_3 c_5 - s_2 s_5) \bs{e}_3\right) / \sqrt{(s_2 s_5 -
@@ -97,26 +97,34 @@ The vector aligned with the front wheel track is:
   & = \left((c_2 c_5 - s_2 s_3 s_5) \bs{a}_1 + c_3 s_5 \bs{a}_2\right) / \sqrt{(s_2 s_5 -
   c_2 s_3 c_5)^2 + (c_2 c_3)^2}
 \end{align*}
+The vector perpendicular to the front wheel path is:
+\begin{align*}
+  \bs{h}_2 & = \bs{n}_3 \times \bs{g}_1 \\
+  & = \left(-c_3 s_5 \bs{a}_1 + (c_2 s_5 - s_2 s_3 s_5) \bs{a}_2\right) / \sqrt{(s_2 s_5 -
+  c_2 s_3 c_5)^2 + (c_2 c_3)^2}
+\end{align*}
 
 Given rear frame lean $q_2$, rear frame pitch $q_3$, and the steer angle
 $q_5$, the above vectors can be used to furnish the remaining holonomic
 constraints:
 \begin{align*}
-  q_9 & = \arcsin(\bs{g}_1 \cdot \bs{a}_2) = \arcsin(c_3 s_5) \\
-  q_{10} & = \arcsin(\bs{e}_2 \cdot \bs{n}_3) = \arcsin(s_2 c_5 + c_2 s_3 s_5)
-  q_{11} & = \arcsin(\bs{e}_3 \cdot \bs{g}_1) = \arcsin(c_2 s_3 c_5 - s_2 s_5)
+  q_9 & = \arcsin(\bs{g}_1 \cdot \bs{a}_2) = \arcsin\left(c_3 s_5 / \sqrt{(s_2 s_5 -
+  c_2 s_3 c_5)^2 + (c_2 c_3)^2}\right) \\
+  q_{10} & = \arcsin(\bs{e}_2 \cdot \bs{n}_3) = \arcsin\left(s_2 c_5 + c_2 s_3
+  s_5\right)
+  \\
+  q_{11} & = \arcsin(\bs{e}_3 \cdot \bs{g}_1) = \arcsin \left( (c_2 s_3 c_5 - s_2
+    s_5) /\sqrt{(s_2 s_5 - c_2 s_3 c_5)^2 + (c_2 c_3)^2}\right)
 \end{align*}
 
 For purpose of determining ground reaction forces, the unit vectors parallel to
 the the ground plane that are aligned with, and perpendicular to, the front and
-rear wheel 
+rear wheel
 
 \begin{tabular}{rcc}
   & Rear wheel & Front wheel \\
-  Tangent to path: & $\bs{a}_1$ & $\left( (c_2 c_5 - s_2 s_3 s_5)\bs{a}_1
-  + c_3 s_5 \bs{a}_2 \right) /\sqrt{(s_2 s_5 - c_2 s_3 c_5)^2 + (c_2 c_3)^2}$ \\
-  Normal to path: & $\bs{a}_2$ & $\left( - c_3 s_5 \bs{a}_1
-  + (c_2 c_5 - s_2 s_3 s_5) \bs{a}_2 \right) /\sqrt{(s_2 s_5 - c_2 s_3 c_5)^2 + (c_2 c_3)^2}$
+  Tangent to path: & $\bs{a}_1$ & $\bs{g}_1$\\
+  Normal to path: & $\bs{a}_2$ & $\bs{h}_2$
 \end{tabular}
 
 
