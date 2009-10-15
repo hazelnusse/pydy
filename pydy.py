@@ -1714,7 +1714,7 @@ class NewtonianReferenceFrame(ReferenceFrame):
 
         return T_con_dict, T_con_dt_dict
 
-    def frstar(self):
+    def frstar(self, subs_dict=None):
         """Computes the generalized inertia forces of the system.
         """
         n = len(self.u_list)
@@ -1733,10 +1733,10 @@ class NewtonianReferenceFrame(ReferenceFrame):
             self.mass_matrix_i = zeros((p, p))
             self.mass_matrix_d = zeros((p, m))
 
-        self.recursive_frstar(self.O)
-        self.recursive_frstar(self)
+        self.recursive_frstar(self.O, subs_dict=subs_dict)
+        self.recursive_frstar(self, subs_dict=subs_dict)
 
-    def recursive_frstar(self, PorF):
+    def recursive_frstar(self, PorF, subs_dict=None):
         """Recursively computes generalized inertia forces for each particle
         and rigid body in the system.
 
@@ -1780,6 +1780,10 @@ class NewtonianReferenceFrame(ReferenceFrame):
                 #inertia_force = (-alph.dot(I)-w.cross(I.rdot(w))).expandv()
                 inertia_force = (-dot(I, alph) - cross(w, dot(I, w))).expandv()
 
+            # If subs_dict was passed to form_kanes_equations, substitute it
+            # here:
+            if subs_dict:
+                inertia_force = inertia_force.subs(subs_dict)
             # List of coefficients of all linear terms
             coef_list = inertia_force.partials(udgyro_list)
             # Loop through all partial velocities / partial angular velocites
@@ -1825,7 +1829,7 @@ class NewtonianReferenceFrame(ReferenceFrame):
             return
         else:
             for child in PorF.children:
-                self.recursive_frstar(child)
+                self.recursive_frstar(child, subs_dict=subs_dict)
 
     def fr(self):
         """Computes the generalized active forces of the system.
@@ -1881,7 +1885,7 @@ class NewtonianReferenceFrame(ReferenceFrame):
             for child in Point.children:
                 self.recursive_gravity(child, v)
 
-    def form_kanes_equations(self):
+    def form_kanes_equations(self, subs_dict=None):
         """Forms Kanes equations in a slightly modified form.
 
         Rather than returning:
@@ -1897,7 +1901,7 @@ class NewtonianReferenceFrame(ReferenceFrame):
         # Compute the generalized active forces
         self.fr()
         # Compute the generalized inertia forces
-        self.frstar()
+        self.frstar(subs_dict=subs_dict)
         p = len(self.u_independent)
         self.kanes_equations = []
         self.ke_lhs = [0] * p
@@ -1913,28 +1917,18 @@ class NewtonianReferenceFrame(ReferenceFrame):
             for j, ud in enumerate(self.udot_independent):
                 c_ud = self.mass_matrix[i, j]
                 if c_ud != 0:
-                    #if c_ud.could_extract_minus_sign():
-                    #    s -= -c_ud * ud
-                    #else:
                     s += c_ud * ud
             self.ke_lhs[i] = s
             s = S(0)
             for uu in self.crossterms:
                 c_uu = self.ke_rhs_if[i].coeff(uu)
                 if c_uu is not None:
-                    #if c_uu.could_extract_minus_sign():
-                    #    s -= -c_uu * uu
-                    #else:
                     s += c_uu * uu
             self.ke_rhs_if[i] = s
             af = factor(self.ke_rhs_af[i].subs(self.trig_subs_dict).\
                     subs(self.symbol_dict)).subs(self.symbol_dict_back).\
                     subs(self.trig_subs_dict_back)
             ke.append(Eq(self.ke_lhs[i], self.ke_rhs_if[i] + af))
-        #kes = []
-        #for i in range(p):
-        #    lhs = collect(self.kanes_equations[i][0], self.udot_independent)
-        #    kes.append(Eq(lhs, self.kanes_equations[i][1]))
         self.kanes_equations = ke
         return ke
 
@@ -3060,7 +3054,7 @@ def eqn_list_to_dict(eqn_list, reverse=None):
     {a*x + b: y, c*x +d: z}
 
     Remember that dictionaries are *NOT* ordered, so if the list you pass
-    requires a special ordering, it will *NOT* be presever by converting it to
+    requires a special ordering, it will *NOT* be preseved by converting it to
     a dictionary.
 
     """
@@ -3169,7 +3163,8 @@ def dummy_matrix(mat, char):
     d = {}
     dr = {}
     for i in range(m):
-        for j in range(n):
+        if n == 1:
+            j = 0
             mij = mat[i, j]
             if mij != 0:
                 if mij == 1 or mij == -1:
@@ -3180,10 +3175,26 @@ def dummy_matrix(mat, char):
                 elif -mij in dr:
                     new_mat[i, j] = -dr[-mij]
                 else:
-                    ds = Symbol(char + '%d%d'%(i,j), dummy=True)
+                    ds = Symbol(char + '%d'%i, dummy=True)
                     d[ds] = mij
                     dr[mij] = ds
                     new_mat[i, j] = ds
+        else:
+            for j in range(n):
+                mij = mat[i, j]
+                if mij != 0:
+                    if mij == 1 or mij == -1:
+                        new_mat[i, j] = mij
+                        continue
+                    if mij in dr:
+                        new_mat[i, j] = dr[mij]
+                    elif -mij in dr:
+                        new_mat[i, j] = -dr[-mij]
+                    else:
+                        ds = Symbol(char + '%d%d'%(i,j), dummy=True)
+                        d[ds] = mij
+                        dr[mij] = ds
+                        new_mat[i, j] = ds
     return new_mat, d
 
 if __name__ == "__main__":
