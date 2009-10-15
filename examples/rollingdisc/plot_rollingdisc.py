@@ -95,8 +95,8 @@ def animate_motion(x, k):
     body1 = cone(pos=CO[0], axis=B2[0], radius=r, color=blue)
     body2 = cone(pos=CO[0], axis=-B2[0], radius=r, color=blue)
     # Body fixed coordinates in plane of disc, can't really be seen through cones
-    c1c3 = [arrow(pos=CO[0],axis=C1[0],length=r,color=red),\
-            arrow(pos=CO[0],axis=C3[0],length=r,color=green)]
+    c1 = arrow(pos=CO[0],axis=C1[0],length=r,color=red)
+    c3 = arrow(pos=CO[0],axis=C3[0],length=r,color=green)
     trail = curve()
     trail.append(pos=CN[0], color=black)
     i = 1
@@ -106,10 +106,12 @@ def animate_motion(x, k):
         body1.axis = B2[i]
         body2.pos = CO[i]
         body2.axis = -B2[i]
-        c1c3[0].pos = body1.pos
-        c1c3[1].pos = body1.pos
-        c1c3[0].axis = C1[i]
-        c1c3[1].axis = C3[i]
+        c1.pos = body1.pos
+        c3.pos = body1.pos
+        c1.axis = C1[i]
+        c3.axis = C3[i]
+        c1.up = C3[i]
+        c3.up = C1[i]
         trail.append(pos=CN[i])
         i += 1
 
