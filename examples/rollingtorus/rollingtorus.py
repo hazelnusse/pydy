@@ -82,19 +82,18 @@ CO.abs_vel = C.abs_ang_vel.cross(CO.rel(N.O))
 
 # Set accelerations and angular accelerations
 C.abs_ang_acc = dt(C.abs_ang_vel, N)
-CO.abs_acc = dt(CO.abs_vel, N).express(B)
+CO.abs_acc = dt(CO.abs_vel, N)
 
 # Apply gravity
 N.gravity(g*A[3])
 
 # Form Kane's equations and solve them for the udots
 kanes_eqns = N.form_kanes_equations()
-N.mass_matrix[0,0] = N.mass_matrix[0,0].expand().subs(N.csqrd_dict).expand()
-print kanes_eqns[0].rhs
-print kanes_eqns[1].rhs
-print kanes_eqns[2].rhs
+#print kanes_eqns[0].rhs
+#print kanes_eqns[1].rhs
+#print kanes_eqns[2].rhs
 
-print N.mass_matrix
+print N.mass_matrix.expand()
 stop
 
 dyndiffs = N.solve_kanes_equations()

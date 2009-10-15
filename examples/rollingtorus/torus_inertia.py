@@ -8,18 +8,18 @@ a, b, c, r1, r2, rho, m = symbols('a b c r1 r2 rho m')
 V = 2*pi**2*r1*r2**2
 
 # A is the frame fixed in the torus, think of these as the global coordinates
-# A[1] and A[2] lie in the plane of symmetry, A[3] = A[1] x A[2]
+# A[1] and A[3] lie in the plane of symmetry, A[3] = A[1] x A[2]
 A = NewtonianReferenceFrame('A')
 # B is a frame that rotates about the A[3] axis by an angle a
-B = A.rotate('B', 3, a)
+B = A.rotate('B', 2, a)
 # C rotates about an axis along the tangent to the center of the circular cross
 # section by an angle b
-C = B.rotate('C', 1, b)
+C = B.rotate('C', 3, b)
 
 # Locate an arbitrary point on the torus
-p = Vector(r1*B[2] + c*C[2])
+p = Vector(r1*B[1] + c*C[2])
 
-# Express it in A reference frame
+# Express it in the A reference frame
 x = dot(p, A[1])
 y = dot(p, A[2])
 z = dot(p, A[3])

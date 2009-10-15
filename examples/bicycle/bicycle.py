@@ -77,9 +77,9 @@ E = D.rotate('E', 3, q5, I=(IEF11, IEF22, IEF33, 0, 0, IEF13))
 # Front wheel
 F = E.rotate('F', 2, q6, I=(0, IF22, 0, 0, 0, 0), I_frame=E)
 # Front assembly yaw frame
-H = N.rotate('H', 3, q9)
+H = A.rotate('H', 3, q9)
 # Front assembly lean frame
-G = A.rotate('G', 1, q10)
+G = H.rotate('G', 1, q10)
 # Front assembly pitch (Same as E frame obtained by (q1,q2,q3,q5) Euler
 # (3-1-2-3) angles
 E2 = G.rotate('E', 2, q11)
@@ -91,6 +91,7 @@ g3 = Vector({E[1]: g3_num.dict[E[1]] / g3_den, E[3]: g3_num.dict[E[3]] / g3_den}
 
 # Dependent coordinates
 print dot(H[1], N[2])
+print dot(D[3], B[1])
 stop
 
 q9  = asin(dot(H[1], N[2]))                       # Front wheel yaw
