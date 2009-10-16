@@ -82,10 +82,7 @@ def animate_motion(x, k):
     blue = (0, 0, 1)
     white = (1, 1, 1)
     NO = (0,0,0)
-    #scene = display(title='Rolling disc @ %0.2f realtime'%k, up=(0,0,-1),\
-    #        uniform=1, background=black, forward=(1,0,0), exit=0)
-
-    scene = display(title='Rigid body animation @ %0.2f realtime'%k, width=800,
+    scene = display(title='Rolling disc @ %0.2f realtime'%k, width=800,
             height=800, up=(0,0,-1), uniform=1, background=white, forward=(1,0,0))
     # Inertial reference frame arrows
     N = [arrow(pos=NO,axis=(.001,0,0),color=red),

@@ -5,15 +5,15 @@ from pydy import *
 N = NewtonianReferenceFrame('N')
 
 # Declare parameters
-params = N.declare_parameters('rr rf lr ls lf l1 l2 l3 l4 mcd mef IC22 ICD11\
-        ICD13 ICD33 ICD22 IEF11 IEF13 IEF33 IEF22 IF22 g')
+params = N.declare_parameters('rr rrt rf rft lr ls lf l1 l2 l3 l4 mcd mef IC22\
+        ICD11 ICD13 ICD33 ICD22 IEF11 IEF13 IEF33 IEF22 IF22 g')
 # Declare coordinates and their time derivatives
 q, qd = N.declare_coords('q', 11)
 # Declare speeds and their time derivatives
 u, ud = N.declare_speeds('u', 6)
 # Unpack the lists
-rr, rf, lr, ls, lf, l1, l2, l3, l4, mcd, mef, IC22, ICD11, ICD13, ICD33,\
-        ICD22, IEF11, IEF13, IEF33, IEF22, IF22, g = params
+rr, rrt, rf, rft, lr, ls, lf, l1, l2, l3, l4, mcd, mef, IC22, ICD11, ICD13,\
+        ICD33, ICD22, IEF11, IEF13, IEF33, IEF22, IF22, g = params
 q1, q2, q3, q4, q5, q6, q7, q8, q9, q10, q11 = q
 q1d, q2d, q3d, q4d, q5d, q6d, q7d, q8d, q9d, q10d, q11d = qd
 u1, u2, u3, u4, u5, u6 = u
@@ -92,24 +92,10 @@ g1 = cross(E[2], g3)
 # sin(q9) = dot(g1, a2)
 sq9 = dot(g1, A[2]).expand()
 h2 = cross(A[3], g1).express(A).subs(N.csqrd_dict).expandv()
-print h2
 
-stop
-
-q9  = asin(dot(H[1], N[2]))                       # Front wheel yaw
+q9  = asin(dot(H[1], A[2]))  # Front wheel yaw relative to rear wheel yaw
 q10 = asin(dot(E[2], N[3]))  # Front assembly lean
 front_pitch = asin(-dot(E[1], g3))   # Front assembly pitch
-
-# Unit vector tangent to front wheel path
-g1 = cross(E[2], g3_num).express(A)
-h2 = cross(A[3], g1)
-g1.dict[A[1]] /= g3_den
-g1.dict[A[2]] /= g3_den
-
-h2.dict[A[1]] /= g3_den
-h2.dict[A[2]] /= g3_den
-print h2
-stop
 
 # Expressions for E[1] and E[3] measure numbers of g3
 g31_expr = rf*dot(g3, E[1])
@@ -126,7 +112,7 @@ fo_fn = Vector({E[1]: g31, E[3]: g33})
 
 # Locate rear wheel center relative to point fixed in N, coincident with rear
 # wheel contact
-CO = N.O.locate('CO', -rr*B[3], C)
+CO = N.O.locate('CO', -rrt*N[3] -rr*B[3], C)
 # Locate mass center of ricycle with rigidly attached rider
 CDO = CO.locate('CDO', l1*D[1] + l2*D[3], D, mass=mcd)
 # Locate top of steer axis

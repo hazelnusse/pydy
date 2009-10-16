@@ -36,8 +36,8 @@ CO = N.O.locate('CO', -r2*A[3] - r1*B[3], frame=C, mass=m)
 # Fixed inertial reference point
 N1 = CO.locate('N1', r1*B[3] + r2*A[3] - q4*N[1] - q5*N[2])
 
-# Define the generalized speeds to be the B frame measure numbers of the angular
-# Must be of the form:  A*q' == u
+# Define the generalized speeds to be the B frame measure numbers of the
+# angular Must be of the form:  A*q' == u
 u_rhs = [dot(C.ang_vel(), B[i]) for i in (1, 2, 3)]
 
 # Form the list of equations mapping qdots to generalized speeds
@@ -71,7 +71,6 @@ eq2 = dot(vcon1 - vcon2, N[2])
 # the matrix of coefficients here.
 T = coefficient_matrix([eq1, eq2], qd)
 Td_inv, Ti = transform_matrix(T, qd, qd[3:])
-
 contact_rates = Td_inv*Ti*Matrix(qd[:3])
 
 # Append the contact point kinematic differential equations to the list,
@@ -94,13 +93,17 @@ N.gravity(g*A[3])
 
 # Form Kane's equations and solve them for the udots
 kanes_eqns = N.form_kanes_equations(subs_dict=kd_dict)
-N.mass_matrix = N.mass_matrix.expand()
+N.mass_matrix = (N.mass_matrix/m).expand()
+kanes_eqns = [Eq((kanes_eqns[i].lhs/m).expand(),
+    (kanes_eqns[i].rhs/m).expand()) for i in (0, 1, 2)]
+N.set_kanes_equations(kanes_eqns)
 
 # Solve for the du/dt terms
 dyndiffs, dyn_dict = N.solve_kanes_equations(dummy_vars=True)
 
 # Energy calculations
-ke = ((m*CO.abs_vel.mag_sqr + dot(C.abs_ang_vel, dot(C.inertia, C.abs_ang_vel)))).expand()/2.
+ke = ((m*CO.abs_vel.mag_sqr + dot(C.abs_ang_vel, dot(C.inertia,
+    C.abs_ang_vel)))).expand()/2.
 # Take zero potential to be when the disc is upright
 pe = -m*g*CO.rel(N.O).dot(N[3]) - m*g*(r1+r2)
 energy_eqs= [Eq(Symbol('ke'), ke),
@@ -173,7 +176,8 @@ Kinetic and Potential Energy of rolling torus.
 
     Returns a list/array of kinetic energy and potential energy, respectively.
 """
-output_string += generate_function("energy", energy_eqs, q+u, params, docstring=ds)
+output_string += generate_function("energy", energy_eqs, q+u, params,\
+        docstring=ds)
 
 file = open('rollingtorus_lib.py', 'w')
 file.write(output_string)

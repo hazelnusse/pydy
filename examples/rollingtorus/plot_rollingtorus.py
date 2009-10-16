@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import rollingtorus_lib as rt
 from scipy.integrate import odeint
-from numpy import array, arange, zeros, roots
+from numpy import array, arange, zeros, roots, pi
 import matplotlib.pyplot as plt
 
 # Dimensions of a penny
@@ -45,34 +45,34 @@ def plot_energy(t, x):
 # Gravity is in the positive N[3] direction
 
 # Specify the initial conditions of the coordinates and the generalized speeds
-qi = [0., -0.3, 0.0, .001, 0.001]
+qi = [pi/4., 0.0, 0.0, 1, 1]
 
-# Alternatively, specify any other intial generalized speeds
-ui = [-.25,2.0,1.0]
+# Specify intial generalized speeds
+ui = [.75,9.0,0.0]
 
 # Inital states
 xi = qi + ui
 
 # Integration time
 ti = 0.0
-ts = 0.01
-tf = 40.0
+ts = 0.001
+tf = 10.0
 t = arange(ti, tf+ts, ts)
 n = len(t)
 # Integrate the differential equations
-x = odeint(rt.eoms, xi, t, args = (params,))
+x = odeint(rt.eoms, xi, t, args=(params,), atol=1e-12, rtol=1e-12)
 
 # Plot energy
 plot_energy(t, x)
 
 # Animate using Visual-Python
-CO = zeros((n,3))
-B2 = zeros((n,3))
+CO = zeros((n, 3))
+B2 = zeros((n, 3))
 C1 = zeros((n, 3))
 C3 = zeros((n, 3))
 
 # Animation playback speed multiplier (1 == realtime)
-k = 0.5
+k = 1.0
 
 for i, state in enumerate(x[:,:5]):
     CO[i], B2[i], C1[i], C3[i] = rt.anim(state, params)
@@ -93,8 +93,8 @@ N1 = (1, 0, 0)
 N2 = (0, 1, 0)
 N3 = (0, 0, 1)
 
-scene = display(title='Rolling torus @ %0.2f realtime'%k, up=(0,0,-1),\
-        uniform=1, background=black, forward=N1)
+scene = display(title='Rolling torus @ %0.2f realtime'%k, width=800,
+        height=800, up=(0,0,-1), uniform=1, background=black, forward=(1,0,0))
 
 # Inertial reference frame arrows
 N = [arrow(pos=NO,axis=N1,color=red),
