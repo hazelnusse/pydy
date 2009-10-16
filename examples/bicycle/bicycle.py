@@ -22,8 +22,9 @@ u1d, u2d, u3d, u4d, u5d, u6d = ud
 tan_lean = {sin(q2)/cos(q2): tan(q2)}
 # Create variables for to act as place holders in the vector from FO to FN
 g31 = Function('g31')(t)
-g33 = Function('g31')(t)
+g33 = Function('g33')(t)
 g31_s, g33_s = symbols('g31 g33')
+g31d, g33d = symbols('g31d g33d')
 
 # Some simplifying symbols / trig expressions
 s1, s2, s3, s4, s5, s6, c1, c2, c3, c4, c5, c6, t2 = symbols('s1 \
@@ -85,10 +86,15 @@ G = H.rotate('G', 1, q10)
 E2 = G.rotate('E', 2, q11)
 
 # Front fork kinematic analysis
+# g3 is the projection of n3 onto the front wheel plane.
+# g3_num lies in the front wheel plane but is not unit length
 g3_num = Vector(N[3] - dot(E[2], N[3])*E[2]).express(E)
+# g3_den is what we divide g3_num by in order to make it unit length
 g3_den = sqrt(g3_num.dict[E[1]]**2 + g3_num.dict[E[3]]**2)
 g3 = Vector({E[1]: g3_num.dict[E[1]] / g3_den, E[3]: g3_num.dict[E[3]] / g3_den})
 g1 = cross(E[2], g3)
+
+"""
 # sin(q9) = dot(g1, a2)
 sq9 = dot(g1, A[2]).expand()
 h2 = cross(A[3], g1).express(A).subs(N.csqrd_dict).expandv()
@@ -96,6 +102,8 @@ h2 = cross(A[3], g1).express(A).subs(N.csqrd_dict).expandv()
 q9  = asin(dot(H[1], A[2]))  # Front wheel yaw relative to rear wheel yaw
 q10 = asin(dot(E[2], N[3]))  # Front assembly lean
 front_pitch = asin(-dot(E[1], g3))   # Front assembly pitch
+
+"""
 
 # Expressions for E[1] and E[3] measure numbers of g3
 g31_expr = rf*dot(g3, E[1])
@@ -107,8 +115,11 @@ den = g3_den
 g31_expr_dt = (num1.diff(t)*den - num1*den.diff(t))/den**2
 g33_expr_dt = (num2.diff(t)*den - num2*den.diff(t))/den**2
 g3_dict = {g31: g31_expr, g33: g33_expr, g31.diff(t): g31_expr_dt,
-        g33.diff(t): g33_expr_dt}
-fo_fn = Vector({E[1]: g31, E[3]: g33})
+            g33.diff(t): g33_expr_dt}
+
+# Position vector from front wheel center to front wheel contact point
+# g31 and g33 are Sympy Functions which are 'unknown' functions of time.
+fo_fn = Vector({E[1]: g31, E[3]: g33, N[3]: -rft})
 
 # Locate rear wheel center relative to point fixed in N, coincident with rear
 # wheel contact
@@ -124,7 +135,7 @@ EFO = FO.locate('EFO', l3*E[1] + l4*E[3], E, mass=mef)
 # Locate front wheel contact point (fixed in the front wheel)
 FN = FO.locate('FN', fo_fn, F)
 # Locate another point fixed in N
-N1 = CO.locate('N1', rr*B[3] - q7*N[1] - q8*N[2])
+N1 = CO.locate('N1', rr*B[3] + rrt*N[3] - q7*N[1] - q8*N[2])
 ###############################################################################
 
 
@@ -141,7 +152,7 @@ u_rhs = [dot(D.ang_vel(N), D[1]),   # := u1
          dot(E.ang_vel(N), D[3]),   # := u5
          dot(F.ang_vel(N), E[2])]   # := u6
 
-qd_to_u = coefficient_matrix(u_rhs, qd[:-2])
+qd_to_u = coefficient_matrix(u_rhs, qd[:6])
 
 # Steady turning conditions: q2d = q3d = q5d = 0 rad / sec
 u_steady = qd_to_u * Matrix([q1d, 0, 0, q4d, 0, q6d])
@@ -202,6 +213,7 @@ EFO.abs_vel = express(cross(F.ang_vel(), FO.rel(FN)) + \
                       cross(E.ang_vel(), EFO.rel(FO)), E)
 ###############################################################################
 
+
 ###############################################################################
 # Motion constraints
 # We have introduced 6 generalized speeds to describe the angular velocity of
@@ -217,7 +229,6 @@ EFO.abs_vel = express(cross(F.ang_vel(), FO.rel(FN)) + \
 # Method 1:
 vden1 = cross(C.ang_vel(), CO.rel(N.O)) + \
         cross(D.ang_vel(), DE.rel(CO))
-#print vden1.express(D)
 
 # Method 2:
 vden2 = cross(F.ang_vel(), FO.rel(FN)) + \
@@ -248,6 +259,7 @@ u_dep = [u2, u3, u5]
 # ud = -inv(Bd)*Bi*ui
 # Form inv(Bd), Bi, and a substitution dictionary
 Bd_inv, Bi, B_dict = transform_matrix(B_con, u, u_dep, subs_dict=True)
+
 stop
 B_subs_dict_time = {}
 B_subs_dict_time_rev = {}

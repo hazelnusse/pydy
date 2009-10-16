@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import rollingtorus_lib as rt
 from scipy.integrate import odeint
-from numpy import array, arange, zeros, roots, pi
+from numpy import array, arange, zeros, roots, pi, mean, var, std
 import matplotlib.pyplot as plt
 
 # Dimensions of a penny
@@ -15,9 +15,9 @@ params = [m, g, r1, r2, I, J]
 
 def plot_energy(t, x):
     # Plot the kinetic energy, potential energy, and total energy
-    ke = zeros((n,1))
-    pe = zeros((n,1))
-    te = zeros((n,1))
+    ke = zeros(n)
+    pe = zeros(n)
+    te = zeros(n)
     for i in range(n):
         ke[i], pe[i] = rt.energy(x[i,:], params)
         te[i] = ke[i] + pe[i]
@@ -31,6 +31,10 @@ def plot_energy(t, x):
               'r2 = %0.2f, I = %0.2f, J = %0.2f')%(m, g, r1, r2, I, J))
     plt.xlabel('Time [s]')
     plt.ylabel('Energy [kg * m ** 2 / s**2]')
+    print 'Initial total energy', te[0]
+    print 'Mean total energy', mean(te)
+    print 'Variance total energy', var(te)
+    print 'Standard deviation total energy', std(te)
     plt.show()
     ############################
 
@@ -48,7 +52,7 @@ def plot_energy(t, x):
 qi = [pi/4., 0.0, 0.0, 1, 1]
 
 # Specify intial generalized speeds
-ui = [.75,9.0,0.0]
+ui = [-.75,9.0,0.0]
 
 # Inital states
 xi = qi + ui
@@ -60,10 +64,12 @@ tf = 10.0
 t = arange(ti, tf+ts, ts)
 n = len(t)
 # Integrate the differential equations
-x = odeint(rt.eoms, xi, t, args=(params,), atol=1e-12, rtol=1e-12)
+x = odeint(rt.eoms, xi, t, args=(params,), atol=1e-13, rtol=1e-13)
 
 # Plot energy
 plot_energy(t, x)
+stop
+
 
 # Animate using Visual-Python
 CO = zeros((n, 3))
