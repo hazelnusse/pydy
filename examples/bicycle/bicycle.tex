@@ -1,5 +1,6 @@
 \documentclass[letterpaper,11pt]{article}
 \usepackage[margin=1in,centering]{geometry}
+\usepackage{verbatim}
 \usepackage{fancyhdr}
 \usepackage{amsmath}
 \usepackage{amssymb}
@@ -119,14 +120,12 @@ constraints:
 
 For purpose of determining ground reaction forces, the unit vectors parallel to
 the the ground plane that are aligned with, and perpendicular to, the front and
-rear wheel
-
+rear wheel lean frames are:
 \begin{tabular}{rcc}
   & Rear wheel & Front wheel \\
   Tangent to path: & $\bs{a}_1$ & $\bs{g}_1$\\
   Normal to path: & $\bs{a}_2$ & $\bs{h}_2$
 \end{tabular}
-
 
 \section*{Motion constraints}
 Define six generalized speeds:
@@ -153,67 +152,43 @@ respect to the inertial frame) of each of the four rigid bodies are:
                     + u_5 \bs{e}_3
 \end{align*}
 
-
-The nonholonomic constraints may be written by formulating the velocity of the
-top of the steer axis $DE$ in two equivalent ways.  The first approach makes
-use of the rear wheel and rear frame, while the second approach makes use of
-the front wheel and frame; the constraints arise by equating these two
-expressions for the velocity of $DE$.
+The nonholonomic constraints are formed by requiring that the
+points on the front and rear tires which are instantaneously in contact with
+the ground have zero velocity:
 \begin{align*}
-  \bs{v}^{DE}_r & = \bs{\omega}^C \times \bs{r}^{C^* / CN} + \bs{\omega}^D
-      \times \bs{r}^{DE / C^*} \\
-      & = -r_r c_3 u_4 \bs{d}_1 + (l_r u_3 + r_r c_3 u_1 + r_r s_3 u_3)\bs{d}_2
-      - (l_r u_2 + r_r s_3 u_4)\bs{d}_3 \\
-    \bs{v}^{DE}_f & = \bs{\omega}^F \times \bs{r}^{F^* / FN} + \bs{\omega}^E
-      \times \bs{r}^{DE / F^*} \\
-      & = (-l_s (c_5 u_2 - s_5 u_1) - g_{31} u_6) \bs{e}_1 +
-      (l_s (c_5 u_1 + s_5 u_2) + (c_5 u_1 + s_5 u_2) g_{31} - l_f u_5 -
-        g_{31} u_5) \bs{e}_2 \\
-        & \quad + (l_f (c_5 u_2 - s_5 u_1) + g_{31} u_6) \bs{e}_3
-\end{align*}
-Equating these two expressions and resolving into components ($\bs{d}_i \cdot
-(\bs{v}^{DE}_r - \bs{v}^{DE}_f) = 0$) allows for the constraints to be written
-in matrix form as:
-\begin{align*}
-  \left[
-  \begin{array}{cccccc}
-    c_5 g_{31} s_5 & l_s + s_5^2 g_{31} & 0 & -r_r c_3 & -l_f s_5 - g_{31} s_5
-    & c_5 g_{31} \\
-    -l_s + r_r c_3 - c_5^2 g_{31} & -c_5 g_{31} s_5 & l_r + r_r s_3 & 0 & l_f
-    c_5 + c_5 g_{31} & g_{31} s_5 \\
-    l_f s_5 & -l_r - l_f c_5 & 0 & -r_r s_3 & 0 & -g_{31}
-  \end{array}
-  \right]
-  \left[
-    \begin{array}{c}
-      u_1 \\ u_2 \\ u_3 \\ u_4 \\ u_5 \\ u_6
-    \end{array}
-    \right]
-  & =
-  \left[
-    \begin{array}{c}
-      0 \\ 0 \\ 0
-    \end{array}
-    \right]
+  \bs{\omega}^C \times \bs{r}^{CO/CN} + \bs{\omega}^D \times \bs{r}^{DE/CO} +
+  \bs{\omega}^E \times \bs{r}^{FO/DE} + \bs{\omega}^F \times \bs{r}^{FN/FO} & =
+  \bs{0}
 \end{align*}
 
-By choosing three of the six generalized speeds as independent, the constraint
-equations can be rewritten and solved for the dependent speeds:
+This vector expression is linear in the generalized speeds, so resolving it in
+a specific frame ($\bs{d}_i$, $i = 1, 2, 3$), results in three scalar equations
+which can be written in matrix form:
 \begin{align*}
   B u & = 0 \\
   B_d u_d + B_i u_i & = 0 \\
   u_d & = -B_d^{-1} B_i u_i \\
       & = T u_i
 \end{align*}
-Where $B_d$ and $B_i$ are formed by choosing the columns of $B$ corresponding
-to the index (subscript) of the dependent and independent generalized speeds.
+$B_d$ and $B_i$ are formed by choosing the columns of $B$ corresponding
+to the subscript index of the dependent and independent generalized speeds.
+Given any three of the generalized speeds ($u_i$), the above constraints provide the
+means to determine the remaining three $u_d$.  The time derivative of the
+constraints is:
+\begin{align*}
+  \dot{u}_d & = \dot{T} u_i + T \dot{u}_i
+\end{align*}
 
-Given any three of the generalized speeds, the above constraints provide the
-means to determine the three.  The resulting kinematic differential equations
+When forming the angular accelerations of the rigid bodies and the
+accelerations of their mass centers, the above relationship must be taken into
+account so that the final dynamic equations can be formed in such a way that
+incorporates the constraints.
+
+
+The resulting kinematic differential equations
 (involving {\it{all}} generalized speeds) are shown in Table \ref{kindiffs}
 Note that expressions for $\dot{q}_7$ and $\dot{q}_8$ in Table \ref{kindiffs}
-are implicitly defined in terms of $\dot{q}_3$ and $\dot{q}_4$ for brevity.
-
+are defined implicitly for brevity.
 \begin{table}[!h]
   \begin{center}
     \begin{tabular}{rclcrcl}
@@ -222,14 +197,87 @@ are implicitly defined in terms of $\dot{q}_3$ and $\dot{q}_4$ for brevity.
         $\dot{q}_2$ & $=$ & $c_3 u_1 + s_3 u_3$ &$\quad$&
         $\dot{q}_6$ & $=$ & $s_5 u_1 - c_5 u_2 + u_6$ \\
         $\dot{q}_3$ & $=$ & $s_3 t_2 u_1 + u_2 - c_3 t_2 u_3$ &$\quad$&
-        $\dot{q}_7$ & $=$ & $-r_r c_1 (\dot{q}_3 + \dot{q}_4)$ \\
+        $\dot{q}_7$ & $=$ & $-r_r c_1 (\dot{q}_3 + \dot{q}_4) -
+        r_{rt}(s_1 \dot{q}_2 + c_1 c_2 (\dot{q}_3 + \dot{q}_4))$\\
         $\dot{q}_4$ & $=$ & $u_4 - u_2$ & $\quad$ &
-        $\dot{q}_8$ & $=$ & $-r_r s_1 (\dot{q}_3 + \dot{q}_4)$
+        $\dot{q}_8$ & $=$ & $-r_r s_1 (\dot{q}_3 + \dot{q}_4) +
+        r_{rt}(c_1 \dot{q}_2 - s_1 c_2 (\dot{q}_3 + \dot{q}_4))$
     \end{tabular}
   \end{center}
   \caption{Kinematic differential equations}
   \label{kindiffs}
 \end{table}
+
+\section{Active Forces}
+
+There are two types of active forces that arise in the model: contributing and
+non-contributing.  The non-contributing the forces are the ground reaction
+forces and the internal reaction forces between each rigid body.  The use of
+Kane's method allows for the non-contributing forces to be left out of the
+analysis entirely \cite{Kane1985}.  This aspect of Kane's method eliminates a
+great deal of algebra that must be done in other methods to eliminate non
+contributing forces.  The contributing forces arise only due to gravitational
+forces acting at the mass centers, and applied torques between the rear wheel
+and rear frame, front wheel and front front fork, and between the main frame
+and the fork.
+
+
+\appendix
+
+The entries of the nonholonomic constraint matrix are:
+
+\begin{align*}
+  B_{11} & = c_5 s_5(g_{33} r_f + c_2 c_3 r_{ft}) \\
+  B_{12} & = l_s + s_5^2(g_{33} r_f + c_2 c_3 r_{ft}) \\
+  B_{13} & = r_{rt} s_2 \\
+  B_{14} & = -c_3 (r_r + c_2 r_{rt}) \\
+  B_{15} & =   -s_2 r_{ft} - s_5 (g_{31} r_f + l_f) \\
+  B_{16} & = c_5(g_{33} r_f + c_2 c_3 r_{ft})\\
+  B_{21} & = -l_s + c_3(r_r + c_2 r_{rt}) - c_5^2(g_{33} r_f + c_2 c_3 r_{ft})\\
+  B_{22} & =  - c_5 s_5(g_{33} r_f + c_2 c_3 r_{ft}) \\
+  B_{23} & = l_r + s_3 (r_r  + c_2 r_{rt}) \\
+  B_{24} & = 0 \\
+  B_{25} & = c_5 (l_f + r_f g_{31}) + c_2 s_3 r_{ft} \\
+  B_{26} & = s_5(g_{33} r_f - c_2 c_3 r_{ft}) \\
+  B_{31} & = s_5 l_f + s_2 (r_{ft} - r_{rt}) + (c_2 s_3 c_5 s_5 - s_2 s_5^2) r_{ft}\\
+  B_{32} & =  -l_r - c_5 l_f + s_5 (s_2 c_5 + c_2 s_3 s_5) r_{ft} \\
+  B_{33} & =  0 \\
+  B_{34} & =  -s_3 (r_r + c_2 r_{rt}) \\
+  B_{35} & =  0 \\
+  B_{36} & =  -g_{31} r_f + (c_2 s_3 c_5 - s_2 s_5) r_{ft}
+\end{align*}
+
+
+\begin{comment}
+Here is the B matrix, but it is too wide to fit in portrait mode.
+\begin{align*}
+  \left[
+  \begin{array}{cccccc}
+    c_5 s_5(g_{33} r_f + c_2 c_3 r_{ft}) &
+    l_s + s_5^2(g_{33} r_f + c_2 c_3 r_{ft}) &
+    r_{rt} s_2 &
+    -c_3 (r_r + c_2 r_{rt}) &
+    -s_2 r_{ft} - s_5 (g_{31} r_f + l_f) &
+    c_5(g_{33} r_f + c_2 c_3 r_{ft})
+    \\
+    -l_s + c_3(r_r + c_2 r_{rt}) - c_5^2(g_{33} r_f + c_2 c_3 r_{ft}) &
+    - c_5 s_5(g_{33} r_f + c_2 c_3 r_{ft}) &
+    l_r + s_3 (r_r  + c_2 r_{rt}) &
+    0 &
+    c_5 (l_f + r_f g_{31}) + c_2 s_3 r_{ft} &
+    s_5(g_{33} r_f - c_2 c_3 r_{ft})
+    \\
+    s_5 l_f + s_2 (r_{ft} - r_{rt}) + (c_2 s_3 c_5 s_5 - s_2 s_5^2) r_{ft} &
+    -l_r - c_5 l_f + s_5 (s_2 c_5 + c_2 s_3 s_5) r_{ft} &
+    0 &
+    -s_3 (r_r + c_2 r_{rt}) &
+    0 &
+    -g_{31} r_f + (c_2 s_3 c_5 - s_2 s_5) r_{ft}
+  \end{array}
+  \right]
+\end{align*}
+\end{comment}
+
 
 \bibliographystyle{plain}
 \bibliography{../../../../../Documents/references}

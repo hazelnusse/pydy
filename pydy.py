@@ -1611,9 +1611,9 @@ class NewtonianReferenceFrame(ReferenceFrame):
         cos_q_list = [cos(qs) for qs in self.q_list]
         tan_q_list = [tan(qs) for qs in self.q_list]
         trig_q_list = sin_q_list + cos_q_list + tan_q_list
-        sin_q_list_s = [Symbol('s'+str(qs)) for qs in self.q_list_s]
-        cos_q_list_s = [Symbol('c'+str(qs)) for qs in self.q_list_s]
-        tan_q_list_s = [Symbol('t'+str(qs)) for qs in self.q_list_s]
+        sin_q_list_s = [Symbol('s'+str(qs)[1:]) for qs in self.q_list_s]
+        cos_q_list_s = [Symbol('c'+str(qs)[1:]) for qs in self.q_list_s]
+        tan_q_list_s = [Symbol('t'+str(qs)[1:]) for qs in self.q_list_s]
         trig_q_list_s = sin_q_list_s + cos_q_list_s + tan_q_list_s
         self.qdot_list_s = [Symbol(str(q.func)+'d') for q in q_list]
         self.q_list_dict = dict(zip(q_list, self.q_list_s))

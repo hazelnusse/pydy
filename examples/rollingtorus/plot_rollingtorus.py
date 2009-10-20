@@ -52,7 +52,7 @@ def plot_energy(t, x):
 qi = [pi/4., 0.0, 0.0, 1, 1]
 
 # Specify intial generalized speeds
-ui = [-.75,9.0,0.0]
+ui = [-1.75,9.0,0.0]
 
 # Inital states
 xi = qi + ui

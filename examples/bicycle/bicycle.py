@@ -6,14 +6,14 @@ N = NewtonianReferenceFrame('N')
 
 # Declare parameters
 params = N.declare_parameters('rr rrt rf rft lr ls lf l1 l2 l3 l4 mcd mef IC22\
-        ICD11 ICD13 ICD33 ICD22 IEF11 IEF13 IEF33 IEF22 IF22 g')
+        ICD11 ICD22 ICD33 ICD13 IEF11 IEF22 IEF33 IEF13 IF22 g')
 # Declare coordinates and their time derivatives
 q, qd = N.declare_coords('q', 11)
 # Declare speeds and their time derivatives
 u, ud = N.declare_speeds('u', 6)
 # Unpack the lists
-rr, rrt, rf, rft, lr, ls, lf, l1, l2, l3, l4, mcd, mef, IC22, ICD11, ICD13,\
-        ICD33, ICD22, IEF11, IEF13, IEF33, IEF22, IF22, g = params
+rr, rrt, rf, rft, lr, ls, lf, l1, l2, l3, l4, mcd, mef, IC22, ICD11, ICD22,\
+        ICD33, ICD13, IEF11, IEF22, IEF33, IEF13, IF22, g = params
 q1, q2, q3, q4, q5, q6, q7, q8, q9, q10, q11 = q
 q1d, q2d, q3d, q4d, q5d, q6d, q7d, q8d, q9d, q10d, q11d = qd
 u1, u2, u3, u4, u5, u6 = u
@@ -24,8 +24,9 @@ tan_lean = {sin(q2)/cos(q2): tan(q2)}
 g31 = Function('g31')(t)
 g33 = Function('g33')(t)
 g31_s, g33_s = symbols('g31 g33')
-g31d, g33d = symbols('g31d g33d')
+g31d_s, g33d_s = symbols('g31d g33d')
 
+"""
 # Some simplifying symbols / trig expressions
 s1, s2, s3, s4, s5, s6, c1, c2, c3, c4, c5, c6, t2 = symbols('s1 \
         s2 s3 s4 s5 s6 c1 c2 c3 c4 c5 c6 t2')
@@ -59,6 +60,7 @@ trig_subs_dict = {c1**2: 1-s1**2,
                   c4**2: 1-s4**2,
                   c5**2: 1-s5**2,
                   c6**2: 1-s6**2}
+"""
 
 ###############################################################################
 # Orientation of frames, locations of points
@@ -106,8 +108,8 @@ front_pitch = asin(-dot(E[1], g3))   # Front assembly pitch
 """
 
 # Expressions for E[1] and E[3] measure numbers of g3
-g31_expr = rf*dot(g3, E[1])
-g33_expr = rf*dot(g3, E[3])
+g31_expr = dot(g3, E[1])
+g33_expr = dot(g3, E[3])
 num1 = g3_num.dict[E[1]]
 num2 = g3_num.dict[E[3]]
 den = g3_den
@@ -116,23 +118,24 @@ g31_expr_dt = (num1.diff(t)*den - num1*den.diff(t))/den**2
 g33_expr_dt = (num2.diff(t)*den - num2*den.diff(t))/den**2
 g3_dict = {g31: g31_expr, g33: g33_expr, g31.diff(t): g31_expr_dt,
             g33.diff(t): g33_expr_dt}
+g3_symbol_dict = {g31: g31_s, g33: g33_s, g31.diff(t): g31d_s, g33.diff(t):
+        g33d_s}
 
 # Position vector from front wheel center to front wheel contact point
 # g31 and g33 are Sympy Functions which are 'unknown' functions of time.
-fo_fn = Vector({E[1]: g31, E[3]: g33, N[3]: -rft})
+fo_fn = Vector({E[1]: rf*g31, E[3]: rf*g33, N[3]: rft})
 
-# Locate rear wheel center relative to point fixed in N, coincident with rear
-# wheel contact
+# Locate rear wheel center
 CO = N.O.locate('CO', -rrt*N[3] -rr*B[3], C)
-# Locate mass center of ricycle with rigidly attached rider
+# Locate mass center of rear assembly (rear wheel, rear frame and rider)
 CDO = CO.locate('CDO', l1*D[1] + l2*D[3], D, mass=mcd)
 # Locate top of steer axis
 DE = CO.locate('DE', lr*D[1], D)
 # Locate front wheel center
 FO = DE.locate('FO', lf*E[1] + ls*E[3], E)
-# Locate mass center of fork/handlebar assembly
+# Locate mass center of front assembly (front wheel, fork, handlebar)
 EFO = FO.locate('EFO', l3*E[1] + l4*E[3], E, mass=mef)
-# Locate front wheel contact point (fixed in the front wheel)
+# Locate front wheel ground contact
 FN = FO.locate('FN', fo_fn, F)
 # Locate another point fixed in N
 N1 = CO.locate('N1', rr*B[3] + rrt*N[3] - q7*N[1] - q8*N[2])
@@ -200,17 +203,21 @@ output_string = generate_function("kindiffs", kindiff_eqns, func_params,
 # Angular velocity of rear frame with rigidly attached rider
 D.abs_ang_vel = Vector(u1*D[1] + u2*D[2] + u3*D[3])
 # Angular velocity of rear wheel
-C.abs_ang_vel = Vector(u1*D[1] + u4*D[2] + u3*D[3]).express(D)
+C.abs_ang_vel = Vector(u1*D[1] + u4*D[2] + u3*D[3])
 # Angular velocity of fork handlebar assembly
-E.abs_ang_vel = Vector(u1*D[1] + u2*D[2] + u5*D[3]).express(E)
+E.abs_ang_vel = Vector(u1*D[1] + u2*D[2] + u5*D[3])
 # Angular velocity of front wheel
-F.abs_ang_vel = E.abs_ang_vel - E.abs_ang_vel.dot(E[2])*E[2] + Vector(u6*E[2])
+F.abs_ang_vel = (E.abs_ang_vel - E.abs_ang_vel.dot(E[2])*E[2] +
+        Vector(u6*E[2])).express(E)
 
 # Mass center velocities
-CDO.abs_vel = express(cross(C.ang_vel(), CO.rel(N.O)) + \
-                      cross(D.ang_vel(), CDO.rel(CO)), D)
-EFO.abs_vel = express(cross(F.ang_vel(), FO.rel(FN)) + \
-                      cross(E.ang_vel(), EFO.rel(FO)), E)
+# Express them in the D and E frames so that when accelerations are formed, we
+# can take the derivative in D and add W^D x V^CDO and have things be
+# relatively clean, similarly for the acceleration of EFO.
+CDO.abs_vel = express(cross(C.ang_vel(N), CO.rel(N.O)) + \
+                      cross(D.ang_vel(N), CDO.rel(CO)), D)
+EFO.abs_vel = express(cross(F.ang_vel(N), FO.rel(FN)) + \
+                      cross(E.ang_vel(N), EFO.rel(FO)), E)
 ###############################################################################
 
 
@@ -223,28 +230,31 @@ EFO.abs_vel = express(cross(F.ang_vel(), FO.rel(FN)) + \
 # the bicycle.
 ###############################################################################
 
-# Motion constraints associated with point DE (top of steer axis)
-# Velocity of point DE must be identical when formulated in the following two
-# ways:
-# Method 1:
-vden1 = cross(C.ang_vel(), CO.rel(N.O)) + \
-        cross(D.ang_vel(), DE.rel(CO))
-
-# Method 2:
-vden2 = cross(F.ang_vel(), FO.rel(FN)) + \
-        cross(E.ang_vel(), DE.rel(FO))
+# Motion constraints
+vfn = cross(C.ang_vel(N), CO.rel(N.O)) +\
+      cross(D.ang_vel(N), DE.rel(CO))  +\
+      cross(E.ang_vel(N), FO.rel(DE))  +\
+      cross(F.ang_vel(N), FN.rel(FO))
 
 # Form the constraint equations:
-speed_constraint_eqs = [dot(vden1 - vden2, D[1]),\
-                        dot(vden1 - vden2, D[2]),\
-                        dot(vden1 - vden2, D[3])]
+motion_constraint_eqs = [dot(vfn, D[i]).expand().subs(N.csqrd_dict).expand() \
+        for i in (1,2,3)]
 
 # Form the constraint matrix for B*u = 0
-B_con = coefficient_matrix(speed_constraint_eqs, u)
+B_con = coefficient_matrix(motion_constraint_eqs, u)
 
 # Simplify some of the entries manually
 B_con[0, 1] = B_con[0, 1].subs({cos(q5)**2: 1-sin(q5)**2}).expand()
 B_con[1, 0] = B_con[1, 0].subs({sin(q5)**2: 1-cos(q5)**2}).expand()
+B_con[0, 4] = B_con[0, 4].subs({sin(q5)**2: 1-cos(q5)**2}).expand()
+B_con[1, 4] = B_con[1, 4].subs({sin(q5)**2: 1-cos(q5)**2}).expand()
+
+# Create B_con_s just for writing the paper and factoring things
+B_con_s = B_con.subs(N.trig_subs_dict).subs(N.symbol_dict).subs(g3_symbol_dict).expand()
+for i in range(3):
+    for j in range(6):
+        B_con_s[i,j] = factor(B_con_s[i,j])
+stop
 
 # Use: u1 = dot(W_D_N>, D[1])
 #      u4 = dot(W_E_N>, E[3])
@@ -259,8 +269,9 @@ u_dep = [u2, u3, u5]
 # ud = -inv(Bd)*Bi*ui
 # Form inv(Bd), Bi, and a substitution dictionary
 Bd_inv, Bi, B_dict = transform_matrix(B_con, u, u_dep, subs_dict=True)
-
 stop
+
+
 B_subs_dict_time = {}
 B_subs_dict_time_rev = {}
 B_subs_dict_derivs = {}
@@ -276,6 +287,10 @@ for k, v in B_subs_dict.items():
 
 # Matrix mapping inpependent speeds to dependent speeds
 T_ud = -Bd_inv*Bi
+print T_ud
+stop
+
+"""
 T_ud_dt = zeros((3,3))
 # Right hand sides of the dependent speeds
 u_dep_rhs = T_ud*Matrix(u_indep)
@@ -294,7 +309,7 @@ for i, rhs in enumerate(u_dep_rhs):
     u_dep_rhs[i] = n / d
 
 T_ud_dt = T_ud_dt.subs(B_subs_dict_derivs).subs(B_subs_dict_time_rev)
-
+"""
 dep_speed_eqns = [Eq(u_d, u_d_r) for u_d, u_d_r in zip(u_dep, u_dep_rhs)]
 
 # Parameters that the entries of matrix T_ud depend upon
