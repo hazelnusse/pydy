@@ -249,12 +249,13 @@ B_con[1, 0] = B_con[1, 0].subs({sin(q5)**2: 1-cos(q5)**2}).expand()
 B_con[0, 4] = B_con[0, 4].subs({sin(q5)**2: 1-cos(q5)**2}).expand()
 B_con[1, 4] = B_con[1, 4].subs({sin(q5)**2: 1-cos(q5)**2}).expand()
 
+"""
 # Create B_con_s just for writing the paper and factoring things
 B_con_s = B_con.subs(N.trig_subs_dict).subs(N.symbol_dict).subs(g3_symbol_dict).expand()
 for i in range(3):
     for j in range(6):
         B_con_s[i,j] = factor(B_con_s[i,j])
-stop
+"""
 
 # Use: u1 = dot(W_D_N>, D[1])
 #      u4 = dot(W_E_N>, E[3])
@@ -268,7 +269,10 @@ u_dep = [u2, u3, u5]
 # Bd * ud + Bi * ui = 0
 # ud = -inv(Bd)*Bi*ui
 # Form inv(Bd), Bi, and a substitution dictionary
-Bd_inv, Bi, B_dict = transform_matrix(B_con, u, u_dep, subs_dict=True)
+Bd_inv, Bi, B_dict = transform_matrix(B_con, u, u_dep, subs_dict=True,
+        time=True)
+T = Bd_inv*Bi
+
 stop
 
 

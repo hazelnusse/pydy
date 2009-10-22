@@ -42,5 +42,6 @@ params_lp = array(convert(params_mj))
 param_names = ['rr', 'rrt', 'rf', 'rft', 'lr', 'ls', 'lf', 'l1', 'l2', 'l3',
         'l4', 'mcd', 'mef', 'IC22', 'ICD11', 'ICD22', 'ICD33', 'ICD13',
         'IEF11', 'IEF22', 'IEF33', 'IEF13', 'IF22', 'g']
+
 for name, value in zip(param_names, params_lp):
     print name, '=', value

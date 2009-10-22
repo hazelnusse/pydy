@@ -2953,7 +2953,7 @@ def linear_transform(B, params, name, det=None, nested_terms=None, x=None,\
 
     return fs
 
-def transform_matrix(B, x, x_dependent, subs_dict=None):
+def transform_matrix(B, x, x_dependent, subs_dict=None, time=None):
     """Given an m x n coefficent matrix B, n linear terms x, and m linear terms
     xd taken to be dependent, return the transform matrix between the
     independent linear terms and the dependent ones.
@@ -2982,7 +2982,7 @@ def transform_matrix(B, x, x_dependent, subs_dict=None):
     xd = -inv(Bd)*Bi*xi
        = T*xi
 
-    Returns: -inv(Bd), Bi, dependent_index, independent_index
+    Returns: -inv(Bd), Bi, substitution_dict
 
     """
     m, n = B.shape
@@ -3003,7 +3003,10 @@ def transform_matrix(B, x, x_dependent, subs_dict=None):
               'in the declare_speeds.')
 
     # Create a matrix with dummy symbols representing non-zero entries
-    B_dummy, d = dummy_matrix(B, 'b')
+    if time:
+        B_dummy, d = dummy_matrix(B, 'b', time=True)
+    else:
+        B_dummy, d = dummy_matrix(B, 'b', time=False)
 
     # Generate the independent and dependent matrices
     Bd = zeros((m, m))
@@ -3019,7 +3022,8 @@ def transform_matrix(B, x, x_dependent, subs_dict=None):
     Bd_adj = Bd.adjugate().expand()
 
     # Form the negative of the determinant
-    Bd_det = -factor(Bd.det().expand())
+    #Bd_det = -factor(Bd.det().expand())
+    Bd_det = -simplify(Bd.berkowitz_det().expand())
     assert Bd_det != 0, "Equations are singular."
 
     # Form inv(Bd)
@@ -3028,7 +3032,9 @@ def transform_matrix(B, x, x_dependent, subs_dict=None):
     for i in range(m):
         for j in range(m):
             if Bd_adj[i,j] != 0:
-                Bd_inv[i,j] = factor(Bd_adj[i,j]) / Bd_det
+                #Bd_inv[i,j] = factor(Bd_adj[i,j]) / Bd_det
+                #Bd_inv[i,j] = Bd_adj[i,j] / Bd_det
+                Bd_inv[i,j] = simplify(Bd_adj[i,j]) / Bd_det
     if subs_dict==None:
         Bd_inv = Bd_inv.subs(d)
         Bi = Bi.subs(d)
@@ -3149,7 +3155,7 @@ def inertia_of_point_mass(m, p, F):
     I13 = m*dot(cross(p, F[1]), cross(p, F[3]))
     return Inertia(F, [I11, I22, I33, I12, I23, I13])
 
-def dummy_matrix(mat, char):
+def dummy_matrix(mat, char, time=None):
     """Returns a matrix of dummy symbols for non-zero and non-unity entries.
 
     char specifies the string to use in the beginning of the names of the dummy
@@ -3175,7 +3181,10 @@ def dummy_matrix(mat, char):
                 elif -mij in dr:
                     new_mat[i, j] = -dr[-mij]
                 else:
-                    ds = Symbol(char + '%d'%i, dummy=True)
+                    if time:
+                        ds = Symbol(char + '%d'%i, dummy=True)(t)
+                    else:
+                        ds = Symbol(char + '%d'%i, dummy=True)
                     d[ds] = mij
                     dr[mij] = ds
                     new_mat[i, j] = ds
@@ -3191,7 +3200,10 @@ def dummy_matrix(mat, char):
                     elif -mij in dr:
                         new_mat[i, j] = -dr[-mij]
                     else:
-                        ds = Symbol(char + '%d%d'%(i,j), dummy=True)
+                        if time:
+                            ds = Symbol(char + '%d%d'%(i,j), dummy=True)(t)
+                        else:
+                            ds = Symbol(char + '%d%d'%(i,j), dummy=True)
                         d[ds] = mij
                         dr[mij] = ds
                         new_mat[i, j] = ds

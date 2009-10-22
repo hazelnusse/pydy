@@ -80,17 +80,19 @@ The relationships between the three other dependent configuration coordinates
 $q_9$, $q_{10}$, and $q_{11}$ can now be expressed conveniently in terms of
 $q_2$, $q_3$, and $q_5$.  The
 
-The unit vector lying in the plane of the front wheel that
-can be thought of as pointing from the front wheel center torwards the front
-contact point is formed by taking the projection of the $\bs{n}_3$ unit vector
-onto the plane of the front wheel, and normalizing to make it unit length:
+The unit vector in the plane of the front wheel that can be thought of as
+pointing from the front wheel center to the center of the tire casing directly
+above the contact point is formed by taking the projection of the $\bs{n}_3$
+unit vector onto the plane of the front wheel, and normalizing to make it unit
+length:
 \begin{align*}
   \bs{g}_3 & = (\bs{n}_3 - (\bs{n}_3 \cdot \bs{e}_2) \bs{e}_2) / |(\bs{n}_3 -
   (\bs{n}_3 \cdot \bs{e}_2) \bs{e}_2)| \\
   & = ((s_2 s_5 - c_2 s_3 c_5) \bs{e}_1 + c_2 c_3 \bs{e}_3) / \sqrt{(s_2 s_5 -
   c_2 s_3 c_5)^2 + (c_2 c_3)^2}
 \end{align*}
-The vector aligned with the front wheel path is:
+The unit vector parallel to the intersection of the front wheel plane and the
+ground plane:
 \begin{align*}
   \bs{g}_1 & = \bs{e}_2 \times \bs{g}_3 \\
   & = \left(c_2 c_3 \bs{e}_1 + (c_2 s_3 c_5 - s_2 s_5) \bs{e}_3\right) / \sqrt{(s_2 s_5 -
@@ -98,12 +100,15 @@ The vector aligned with the front wheel path is:
   & = \left((c_2 c_5 - s_2 s_3 s_5) \bs{a}_1 + c_3 s_5 \bs{a}_2\right) / \sqrt{(s_2 s_5 -
   c_2 s_3 c_5)^2 + (c_2 c_3)^2}
 \end{align*}
-The vector perpendicular to the front wheel path is:
+The unit vector perpendicular to the intersection of the front wheel plane and
+the ground plane is:
 \begin{align*}
   \bs{h}_2 & = \bs{n}_3 \times \bs{g}_1 \\
   & = \left(-c_3 s_5 \bs{a}_1 + (c_2 s_5 - s_2 s_3 s_5) \bs{a}_2\right) / \sqrt{(s_2 s_5 -
   c_2 s_3 c_5)^2 + (c_2 c_3)^2}
 \end{align*}
+When the bicycle is travelling forward, $\bs{g}_1$ points forward and $\bs{h}_2$ points to
+the rider's right.
 
 Given rear frame lean $q_2$, rear frame pitch $q_3$, and the steer angle
 $q_5$, the above vectors can be used to furnish the remaining holonomic
@@ -137,7 +142,7 @@ Define six generalized speeds:
 \end{align*}
 
 These generalized speed definitions follow the guidelines of \cite{Mitiguy1996}
-for generating `efficient' equations of motion.  As it turns out, they also
+for generating efficient equations of motion.  As it turns out, they also
 simplify the formulation of the motion constraints imposed by pure rolling.  As
 will be made clear in the next section, only three of these six generalized
 speeds can be treated as independent.  The resulting angular velocities (with
@@ -151,39 +156,77 @@ respect to the inertial frame) of each of the four rigid bodies are:
   \bs{\omega}^F & = (c_5 u_1 + s_5 u_2)\bs{e}_1 + u_6 \bs{e}_2
                     + u_5 \bs{e}_3
 \end{align*}
-
-The nonholonomic constraints are formed by requiring that the
-points on the front and rear tires which are instantaneously in contact with
-the ground have zero velocity:
+The rear wheel and the rear frame together comprise a gyrostat, as do the front frame
+and front wheel; their inertia components are time independent constants
+\cite{Wittenburg1977}.  As a result, we only concern ourselves with the two
+points, the rear assembly mass center and the front assembly mass center.  The
+velocities of these two points are:
 \begin{align*}
-  \bs{\omega}^C \times \bs{r}^{CO/CN} + \bs{\omega}^D \times \bs{r}^{DE/CO} +
-  \bs{\omega}^E \times \bs{r}^{FO/DE} + \bs{\omega}^F \times \bs{r}^{FN/FO} & =
-  \bs{0}
+  \bs{v}^{CDO} & = \bs{\omega}^C \times \bs{r}^{CO/CN} + \bs{\omega}^D \times
+  \bs{r}^{CDO/CO}\\
+  & = (l_2 u_2 + r_{rt} s_2 u_3 - c_3 (r_r + c_2 r_{rt}) u_4) \bs{d}_1 \\
+  & \quad +
+  ( (c_3 (r_r + c_2 r_{rt}) - l_2) u_1 + (l_1 + s_3 (r_r + c_2 r_{rt})) u_3) \bs{d}_2 \\
+  & \quad -
+  (s_2 r_{rt} u_1 + l_1 u_2 + s_3 (r_r + c_2 r_{rt}) u_4) \bs{d}_3\\
+  \bs{v}^{EFO} & = \bs{\omega}^F \times \bs{r}^{FO/FN} + \bs{\omega}^E \times
+  \bs{r}^{EFO/FO}\\
+  & =\\
+\end{align*}
+
+The choice to treat the rear and front assemblies as gyrostats is justified by
+the simplifications and computational gains that are described in
+\cite{Mitiguy2001}.  The conversion of the parameters described in
+\cite{Meijaard2007} to the parameters (both inertial and geometric) use here
+are described in the appendix.
+
+The nonholonomic constraints are formed by requiring that the velocity of point
+$DE$ be equal when it is formed through the rear wheel and rear frame, or the
+front wheel and frame:
+\begin{align*}
+  \underbrace{\bs{\omega}^C \times \bs{r}^{CO/CN}}_{\text{Rear wheel no-slip}}
+  +
+  \underbrace{\bs{\omega}^D \times \bs{r}^{DE/CO}}_{\text{DE is fixed in D}}
+  & =
+  \underbrace{\bs{\omega}^F \times \bs{r}^{FO/FN}}_{\text{Front wheel no-slip}}
+  +
+  \underbrace{\bs{\omega}^E \times \bs{r}^{DE/FO}}_{\text{DE is fixed in E}}
 \end{align*}
 
 This vector expression is linear in the generalized speeds, so resolving it in
-a specific frame ($\bs{d}_i$, $i = 1, 2, 3$), results in three scalar equations
-which can be written in matrix form:
+a specific frame results in three scalar equations which can be written in
+matrix form:
 \begin{align*}
   B u & = 0 \\
   B_d u_d + B_i u_i & = 0 \\
-  u_d & = -B_d^{-1} B_i u_i \\
-      & = T u_i
+  u_d & = -B_d^{-1} B_i u_i
 \end{align*}
-$B_d$ and $B_i$ are formed by choosing the columns of $B$ corresponding
-to the subscript index of the dependent and independent generalized speeds.
-Given any three of the generalized speeds ($u_i$), the above constraints provide the
-means to determine the remaining three $u_d$.  The time derivative of the
-constraints is:
+where $B \in \mathbf{R}^{3 \times 6}$, $u \in \mathbf{R}^{6 \times 1}$, $B_d, B_i \in
+\mathbf{R}^{3 \times 3}$, $u_d, u_i \in \mathbf{R}^{3 \times 1}$.
+
+$B_i$ are formed by choosing the columns of $B$ corresponding to the subscript
+index of the independent; analogously with $B_d$.  Given three independent
+generalized speeds $u_i$, the above constraints provide the means to determine
+the dependent speeds $u_d$.  Care should be taken when computing the inverse to
+ensure that $B_d$ is well conditioned.
+
+When velocities are differentiated in the inertial frame to obtain
+accelerations, the time derivatives of the generalized speeds (both dependent
+and independent) appear linearly.  To form the minimal set of ODE's required to obtain
+the complete motion of the system, our goal is to determine the time
+derivatives of the independent generalized speeds.  To this end, we
+differentiate the constraint equations with respect to time:
 \begin{align*}
-  \dot{u}_d & = \dot{T} u_i + T \dot{u}_i
+  \frac{d}{dt}\left(B u\right) & = 0 \\
+  \dot{B} u + B \dot{u} & = 0 \\
+  B_d \dot{u}_d + B_i \dot{u}_i & = -\dot{B} u \\
+  \dot{u}_d & = -B_d^{-1} \left(\dot{B} u  + B_i \dot{u}_i \right)
 \end{align*}
 
 When forming the angular accelerations of the rigid bodies and the
-accelerations of their mass centers, the above relationship must be taken into
-account so that the final dynamic equations can be formed in such a way that
-incorporates the constraints.
-
+accelerations of their mass centers, the above relationship must be
+incorporated so that the final dynamic equations will satisfy the motion
+constraints.
 
 The resulting kinematic differential equations
 (involving {\it{all}} generalized speeds) are shown in Table \ref{kindiffs}
