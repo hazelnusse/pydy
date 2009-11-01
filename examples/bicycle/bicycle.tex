@@ -21,6 +21,7 @@
 \end{abstract}
 
 \section*{Model description}
+\label{sec:model_description}
 Consider the following four rigid bodies: a rear wheel $C$, a frame with
 rigidly attached rider $D$, a front fork/handlebar assembly $E$, and a front
 wheel $F$.
@@ -28,14 +29,13 @@ The following eleven (non-minimal) configuration coordinates are defined:
 \begin{table}[h]
   \begin{center}
     \begin{tabular}{rl}
-      $q_1:$ & Rear frame yaw \\
-      $q_2:$ & Rear frame lean \\
-      $q_3:$ & Rear frame pitch \\
-      $q_4:$ & Rear wheel angle relative to rear frame \\
-      $q_5:$ & Steer angle relative to rear frame \\
-      $q_6:$ & Front wheel angle relative to front fork \\
-      $q_7:$ & Rear wheel contact point position in $\bs{n}_1$ direction \\
-      $q_8:$ & Rear wheel contact point position in $\bs{n}_2$ direction \\
+      $q_1, q_2, q_3:$ & Rear frame/rider yaw, lean, pitch (Euler 3-1-2 angles) \\
+      $q_4:$ & Rear wheel angle relative to rear frame (rotation about $\bs{d}_2$)\\
+      $q_5:$ & Steer angle relative to rear frame (rotatation about $\bs{d}_3$) \\
+      $q_6:$ & Front wheel angle relative to front fork (rotation about
+      $\bs{e}_2$)\\
+      $q_7, q_8:$ & Rear wheel contact point position in $\bs{n}_1$ and
+      $\bs{n}_1$ directions\\
       $q_9:$ & Front frame yaw relative to rear frame \\
       $q_{10}:$ & Front frame lean \\
       $q_{11}:$ & Front frame pitch
@@ -61,7 +61,7 @@ $q_9$, $q_{10}$, and $q_{11}$ can be used.
 Explicit direction cosine matrices are provided in the
 appendix.
 
-\section*{Kinematic constraints}
+\section*{Kinematics of the bicycle}
 The use of a non-minimal set of coordinates necessitates the discussion of
 holonomic constraints associated with the extra generalized coordinates.  The
 relationship between the rear frame lean, rear frame pitch, and the steer is:
@@ -76,20 +76,22 @@ contact to the front wheel ground contact have no component out of the ground
 plane.  Given $q_2$ and $q_5$, this equation is readily solved numerically for
 the rear frame pitch $q_3$ \cite{Peterson2008a}.
 
-The relationships between the three other dependent configuration coordinates
-$q_9$, $q_{10}$, and $q_{11}$ can now be expressed conveniently in terms of
-$q_2$, $q_3$, and $q_5$.  The
-
 The unit vector in the plane of the front wheel that can be thought of as
 pointing from the front wheel center to the center of the tire casing directly
-above the contact point is formed by taking the projection of the $\bs{n}_3$
-unit vector onto the plane of the front wheel, and normalizing to make it unit
-length:
+above the contact point. This unit vector is formed by taking the projection of
+the $\bs{n}_3$ unit vector onto the plane of the front wheel, and normalizing
+to make it unit length (recall that $\bs{e}_2$ is normal the front wheel plane):
 \begin{align*}
-  \bs{g}_3 & = (\bs{n}_3 - (\bs{n}_3 \cdot \bs{e}_2) \bs{e}_2) / |(\bs{n}_3 -
-  (\bs{n}_3 \cdot \bs{e}_2) \bs{e}_2)| \\
+  \bs{g}_3 & = (\bs{n}_3 - (\bs{n}_3 \cdot \bs{e}_2) \bs{e}_2) / ||(\bs{n}_3 -
+  (\bs{n}_3 \cdot \bs{e}_2) \bs{e}_2)|| \\
   & = ((s_2 s_5 - c_2 s_3 c_5) \bs{e}_1 + c_2 c_3 \bs{e}_3) / \sqrt{(s_2 s_5 -
   c_2 s_3 c_5)^2 + (c_2 c_3)^2}
+\end{align*}
+For convenience, we define two scalar quantities that appear repeatedly
+throughout the analysis:
+\begin{align*}
+  g_{31} & \triangleq \bs{g}_3 \cdot \bs{e}_1 \\
+  g_{33} & \triangleq \bs{g}_3 \cdot \bs{e}_3
 \end{align*}
 The unit vector parallel to the intersection of the front wheel plane and the
 ground plane:
@@ -107,8 +109,6 @@ the ground plane is:
   & = \left(-c_3 s_5 \bs{a}_1 + (c_2 s_5 - s_2 s_3 s_5) \bs{a}_2\right) / \sqrt{(s_2 s_5 -
   c_2 s_3 c_5)^2 + (c_2 c_3)^2}
 \end{align*}
-When the bicycle is travelling forward, $\bs{g}_1$ points forward and $\bs{h}_2$ points to
-the rider's right.
 
 Given rear frame lean $q_2$, rear frame pitch $q_3$, and the steer angle
 $q_5$, the above vectors can be used to furnish the remaining holonomic
@@ -124,15 +124,16 @@ constraints:
 \end{align*}
 
 For purpose of determining ground reaction forces, the unit vectors parallel to
-the the ground plane that are aligned with, and perpendicular to, the front and
+the ground plane that are aligned with, and perpendicular to, the front and
 rear wheel lean frames are:
 \begin{tabular}{rcc}
-  & Rear wheel & Front wheel \\
-  Tangent to path: & $\bs{a}_1$ & $\bs{g}_1$\\
-  Normal to path: & $\bs{a}_2$ & $\bs{h}_2$
+  & Rear wheel plane & Front wheel plane \\
+  Parallel to ground plane intersection: & $\bs{a}_1$ & $\bs{g}_1$\\
+  Perpendicular to ground plane intersection: & $\bs{a}_2$ & $\bs{h}_2$
 \end{tabular}
 
 \section*{Motion constraints}
+\label{sec:motion_constraints}
 Define six generalized speeds:
 \begin{align*}
   u_i & \triangleq \bs{\omega}^D \cdot \bs{d}_i \qquad (i = 1, 2, 3)\\
@@ -144,9 +145,10 @@ Define six generalized speeds:
 These generalized speed definitions follow the guidelines of \cite{Mitiguy1996}
 for generating efficient equations of motion.  As it turns out, they also
 simplify the formulation of the motion constraints imposed by pure rolling.  As
-will be made clear in the next section, only three of these six generalized
-speeds can be treated as independent.  The resulting angular velocities (with
-respect to the inertial frame) of each of the four rigid bodies are:
+will be made clear shortly, only three of these six generalized speeds can be
+treated as independent.  The resulting angular velocities (with respect to the
+inertial frame, expressed in the body fixed $D$ and $E$ frames) of each of the
+four rigid bodies are:
 \begin{align*}
   \bs{\omega}^D & = u_1 \bs{d}_1 + u_2 \bs{d}_2 + u_3 \bs{d}_3 \\
   \bs{\omega}^C & = u_1 \bs{d}_1 + u_4 \bs{d}_2 + u_3 \bs{d}_3 \\
@@ -156,6 +158,7 @@ respect to the inertial frame) of each of the four rigid bodies are:
   \bs{\omega}^F & = (c_5 u_1 + s_5 u_2)\bs{e}_1 + u_6 \bs{e}_2
                     + u_5 \bs{e}_3
 \end{align*}
+
 The rear wheel and the rear frame together comprise a gyrostat, as do the front frame
 and front wheel; their inertia components are time independent constants
 \cite{Wittenburg1977}.  As a result, we only concern ourselves with the two
@@ -164,14 +167,18 @@ velocities of these two points are:
 \begin{align*}
   \bs{v}^{CDO} & = \bs{\omega}^C \times \bs{r}^{CO/CN} + \bs{\omega}^D \times
   \bs{r}^{CDO/CO}\\
-  & = (l_2 u_2 + r_{rt} s_2 u_3 - c_3 (r_r + c_2 r_{rt}) u_4) \bs{d}_1 \\
+  & = (l_2 u_2 + s_2 r_{rt} u_3 - c_3 (r_r + c_2 r_{rt}) u_4) \bs{d}_1 \\
   & \quad +
   ( (c_3 (r_r + c_2 r_{rt}) - l_2) u_1 + (l_1 + s_3 (r_r + c_2 r_{rt})) u_3) \bs{d}_2 \\
   & \quad -
   (s_2 r_{rt} u_1 + l_1 u_2 + s_3 (r_r + c_2 r_{rt}) u_4) \bs{d}_3\\
   \bs{v}^{EFO} & = \bs{\omega}^F \times \bs{r}^{FO/FN} + \bs{\omega}^E \times
   \bs{r}^{EFO/FO}\\
-  & =\\
+  & = (-s_4 l_4 u_1 + c_5 l_5 u_2 + (s_2 c_5 + c_2 s_3 s_5) r_{ft} u_5 -
+  (g_{33} r_f + c_2 c_3 r_{ft}) u_6) \bs{e}_1 \\
+  & \quad +
+% (rft*c5*s2 + rft*c2*s3*s5)*u5 + (-rf*g33(t) - rft*c2*c3)*u6 + l4*c5*u2 -
+% l4*s5*u1 
 \end{align*}
 
 The choice to treat the rear and front assemblies as gyrostats is justified by
@@ -207,8 +214,11 @@ where $B \in \mathbf{R}^{3 \times 6}$, $u \in \mathbf{R}^{6 \times 1}$, $B_d, B_
 $B_i$ are formed by choosing the columns of $B$ corresponding to the subscript
 index of the independent; analogously with $B_d$.  Given three independent
 generalized speeds $u_i$, the above constraints provide the means to determine
-the dependent speeds $u_d$.  Care should be taken when computing the inverse to
-ensure that $B_d$ is well conditioned.
+the dependent speeds $u_d$.  From the binomial coefficient ${6 \choose 3}$, we
+can choose 20 unique permuations of independent and dependent speeds.  It is
+worth noting here that the entries of $B$ depend only upon three generalized
+coordinates: $q_2$, $q_3$, $q_5$, and seven geometric parameters: $r_r$,
+$r_{rt}$, $r_f$, $r_{ft}$, $l_r$, $l_s$, $l_f$.
 
 When velocities are differentiated in the inertial frame to obtain
 accelerations, the time derivatives of the generalized speeds (both dependent
@@ -251,24 +261,58 @@ are defined implicitly for brevity.
   \label{kindiffs}
 \end{table}
 
-\section{Active Forces}
+\section*{Active Forces and Active Torques}
+\label{sec:active_forces}
+There are two types of active forces and torques that arise in the model:
+contributing and non-contributing.  The non-contributing forces are the ground
+reaction forces (assuming no slip) and the internal reaction forces between
+each rigid body.  The use of Kane's method allows for the non-contributing
+forces to be left out of the analysis entirely \cite{Kane1985} when the goal is
+the determination of the equations of motion.  The only contributing forces are
+gravitational forces acting at the mass centers. The only contributing torques
+are the applied torques between the rear wheel and rear frame, front wheel and
+front front fork, and between the main frame and the fork.  These contributing
+torques would typically arise from motor and/or braking torques at the wheels,
+and steering torques applied by the rider.
 
-There are two types of active forces that arise in the model: contributing and
-non-contributing.  The non-contributing the forces are the ground reaction
-forces and the internal reaction forces between each rigid body.  The use of
-Kane's method allows for the non-contributing forces to be left out of the
-analysis entirely \cite{Kane1985}.  This aspect of Kane's method eliminates a
-great deal of algebra that must be done in other methods to eliminate non
-contributing forces.  The contributing forces arise only due to gravitational
-forces acting at the mass centers, and applied torques between the rear wheel
-and rear frame, front wheel and front front fork, and between the main frame
-and the fork.
+The gravitational force acting at the mass center of the rear and front
+assemblies are:
+\begin{align*}
+  \bs{G}_{CDO} & = m_{cd} g \bs{n}_3 \\
+  \bs{G}_{EFO} & = m_{ef} g \bs{n}_3 \\
+\end{align*}
 
+The applied torques on the four rigid bodies are:
+\begin{align*}
+  \bs{T}_C & = \tau_r \bs{d}_2 \\
+  \bs{T}_D & = -\tau_r \bs{d}_2 - \tau_s \bs{d}_3 \\
+  \bs{T}_E & = \tau_s \bs{d}_3 - \tau_f \bs{e}_2 \\
+  \bs{T}_F & = \tau_f \bs{e}_2
+\end{align*}
 
+\section*{Inertia Forces and Inertia Torques}
+\label{sec:inertia_forces}
+The inertia forces of the front and rear assembly mass centers are:
+\begin{align*}
+  \bs{F}^*_{CDO} & = -m_{cd} \bs{a}^{CDO} \\
+  \bs{F}^*_{EFO} & = -m_{ef} \bs{a}^{EFO}
+\end{align*}
+The inertia torques of the four rigid bodies are:
+\begin{align*}
+  \bs{T}^*_{C} & = - (I_{C22}\bs{d}_2 \bs{d}_2) \cdot \bs{\alpha}^C - \bs{\omega}^C \times
+  (I_{C22}\bs{d}_2 \bs{d}_2) \cdot \bs{\omega}^C \\
+  \bs{T}^*_{CD} & = - \bs{I}^{CD/CDO} \cdot \bs{\alpha}^D - \bs{\omega}^D \times
+  \bs{I}^{CD/CDO} \cdot \bs{\omega}^D \\
+  \bs{T}^*_{EF} & = - \bs{I}^{EF/EFO} \cdot \bs{\alpha}^E - \bs{\omega}^F \times
+  \bs{I}^{EF/EFO} \cdot \bs{\omega}^F \\
+  \bs{T}^*_{F} & = - (I_{F22}\bs{d}_2 \bs{d}_2) \cdot \bs{\alpha}^F - \bs{\omega}^F \times
+  (I_{F22}\bs{d}_2 \bs{d}_2) \cdot \bs{\omega}^F \\
+\end{align*}
 \appendix
 
+\section{Constraint matrix}
+\label{sec:constraint_matrix}
 The entries of the nonholonomic constraint matrix are:
-
 \begin{align*}
   B_{11} & = c_5 s_5(g_{33} r_f + c_2 c_3 r_{ft}) \\
   B_{12} & = l_s + s_5^2(g_{33} r_f + c_2 c_3 r_{ft}) \\

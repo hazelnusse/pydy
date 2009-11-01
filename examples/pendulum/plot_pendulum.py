@@ -40,7 +40,6 @@ n = len(t)
 # Integrate the differential equations
 x = odeint(p.eoms, x0, t, args = (params,))
 plot_energy(t, x)
-stop
 
 # Animate using Visual-Python
 from visual import display, rate, arrow, cylinder, sphere
