@@ -68,8 +68,6 @@ x = odeint(rt.eoms, xi, t, args=(params,), atol=1e-13, rtol=1e-13)
 
 # Plot energy
 plot_energy(t, x)
-stop
-
 
 # Animate using Visual-Python
 CO = zeros((n, 3))

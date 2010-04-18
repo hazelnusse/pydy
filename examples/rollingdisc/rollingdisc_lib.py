@@ -133,9 +133,9 @@ configuration with spin rate treated as a parameter.
     g, r = _params
 
     # Calculate return values
-    ev1 = (4*g/(5*r) - 12*u2**2/5)**(1/2)
-    ev2 = 0
-    ev3 = -(4*g/(5*r) - 12*u2**2/5)**(1/2)
+    ev1 = 5**(1/2)*(4*g/r - 12*u2**2)**(1/2)/5
+    ev2 = -5**(1/2)*(4*g/r - 12*u2**2)**(1/2)/5
+    ev3 = 0
 
     # Return calculated values
     return [ev1, ev2, ev3]
@@ -152,7 +152,7 @@ def critical_speed(_x):
     g, r = _x
 
     # Calculate return values
-    cs = -3**(1/2)*g**(1/2)*(1/r)**(1/2)/3
+    cs = -3**(1/2)*(g/r)**(1/2)/3
 
     # Return calculated values
     return [cs]

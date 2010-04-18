@@ -34,14 +34,14 @@ def eoms(_x, t, _params):
     _M00 = -m1*l1**2 - m2*l1**2
     _M01 = -l1*l2*m2*c2
     _M11 = -m2*l2**2
-    _rhs00 = b1*u1 + b2*u1 - b2*u2 + g*l1*m1*s1 + g*l1*m2*s1 - l1*l2*m2*u2**2*s2
-    _rhs10 = b2*u2 - b2*u1 + g*l2*m2*c1*s2 + g*l2*m2*c2*s1 + l1*l2*m2*u1**2*s2
+    _rhs0 = b1*u1 + b2*u1 - b2*u2 + g*l1*m1*s1 + g*l1*m2*s1 - l1*l2*m2*u2**2*s2
+    _rhs1 = b2*u2 - b2*u1 + g*l2*m2*c1*s2 + g*l2*m2*c2*s1 + l1*l2*m2*u1**2*s2
 
     # Calculate return values
     q1d = u1
     q2d = -u1 + u2
-    u1d = (_M11*_rhs00 - _M01*_rhs10)/(_M00*_M11 - _M01**2)
-    u2d = (_M00*_rhs10 - _M01*_rhs00)/(_M00*_M11 - _M01**2)
+    u1d = (_M11*_rhs0 - _M01*_rhs1)/(_M00*_M11 - _M01**2)
+    u2d = (_M00*_rhs1 - _M01*_rhs0)/(_M00*_M11 - _M01**2)
 
     # Return calculated values
     return [q1d, q2d, u1d, u2d]
