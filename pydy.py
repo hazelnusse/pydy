@@ -1,7 +1,7 @@
 from sympy import (Symbol, symbols, Basic, Function, Mul, Pow, Matrix, sin,
         cos, tan, cot, S, eye, Add, trigsimp, expand, pretty, Eq, collect, sqrt,
         sympify, factor, zeros, simplify, solve_linear_system, ratsimp,
-        powsimp, block_diag, Derivative)
+        powsimp, block_diag, Derivative, Expr)
 from sympy.printing.pretty.pretty import PrettyPrinter
 from sympy.printing.str import StrPrinter
 import time
@@ -16,7 +16,7 @@ Basic.__str__ = lambda self: PyDyStrPrinter().doprint(self)
 Basic.__repr__ = lambda self: PyDyStrPrinter().doprint(self)
 Matrix.__str__ = lambda self: PyDyStrPrinter().doprint(self)
 
-class UnitVector(Basic):
+class UnitVector(Expr):
     """A standard unit vector  with a symbolic and a numeric representation.
     """
 
@@ -81,7 +81,7 @@ class UnitVector(Basic):
         if isinstance(other, Dyad):
             return NotImplemented
         else:
-            return Basic.__mul__(self, other)
+            return Expr.__mul__(self, other)
 
     def __neg__(self):
         return Vector({self: -1})
