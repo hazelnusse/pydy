@@ -15,10 +15,45 @@ matures.  Eventually, the project will have a Google code project page, either
 within the Sympy page or a stand alone, separate project page.
 
 2. Project goals
---------------------------
+----------------
 To allow for easy manipulation of three-dimensional vectors for the purpose of
 deriving equations of motion.  In particular, PyDy is designed to implement
 Kane's method for forming the equations of motion.  Numerical integration of
 the equations of motion are provided by scipy.integrate.odeint.  PyDy has builtin
 functionality that allows for easy animation of reference frames, points, rigid
 bodies and particles.
+
+3. Installation
+---------------
+
+PyDy requires sympy for its symbolic manipulation.  You can clone the sympy git repository by typing:
+
+$ git clone git://git.sympy.org/
+
+Then, install sympy by:
+
+$ python setup.py install
+
+See docs.sympy.org for more installation options.  You can also just download
+the binary files from sympy.org, these should work just fine.
+
+Next, clone the PyDy repository by:
+
+$ git clone git://github.com/hazelnusse/pydy.git
+
+System wide install:
+
+$ python setup.py install
+
+To install in your own special folder, use the --home option:
+
+$ python setup.py install --home=~/usr
+
+4.  Running Tests
+-----------------
+
+Currently, we use nose to test all of PyDy's functionality:
+
+$ nosetests
+
+This runs all the files in the ./tests folder
