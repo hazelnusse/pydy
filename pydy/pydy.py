@@ -2483,7 +2483,8 @@ class PyDyPrettyPrinter(PrettyPrinter):
                     return PrettyPrinter().doprint(e)
         return Fake()
 
-from functions import sort_UnitVector, gcs, cross, dt, dot
+from functions import (sort_UnitVector, gcs, cross, dt, dot, dummy_matrix,
+        animate, generate_function)
 
 if __name__ == "__main__":
         import doctest

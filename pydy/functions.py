@@ -1,4 +1,4 @@
-from sympy import Symbol
+from sympy import Symbol, zeros, Eq, Derivative, Function, sin, cos, tan
 
 from pydy import UnitVector, Vector, ReferenceFrame
 from common import e1, e2, e3, zero, t
@@ -185,8 +185,6 @@ def generate_function(name, Eq_list, func_args, params=None, nested_terms=None,
     fs += ret_string[:-2] + "]\n\n"
 
     return fs
-
-
 
 def linear_transform(B, params, name, det=None, nested_terms=None, x=None,\
         y=None, docstring=None):
