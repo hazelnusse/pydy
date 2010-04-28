@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-from sympy import simplify, solve, Eq, S, Symbol
 from pydy import *
 
 # Create a Newtonian reference frame

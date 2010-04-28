@@ -1,6 +1,7 @@
-from sympy import Symbol, zeros, Eq, Derivative, Function, sin, cos, tan
+from sympy import (Symbol, zeros, Eq, Derivative, Function, sin, cos, tan, S,
+        Eq, simplify)
 
-from pydy import UnitVector, Vector, ReferenceFrame
+from pydy import UnitVector, Vector, ReferenceFrame, Point, Dyad, Inertia
 from common import e1, e2, e3, zero, t
 
 def unicode_subscript(num):

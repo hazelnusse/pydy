@@ -1,4 +1,3 @@
-from sympy import *
 from pydy import *
 
 N = NewtonianReferenceFrame('N')

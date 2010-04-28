@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 from pydy import *
-from sympy import factor
 
 # Create a Newtonian reference frame
 N = NewtonianReferenceFrame('N')

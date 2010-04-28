@@ -44,8 +44,8 @@ def eoms(_x, t, _params):
     q4d = u4
     q5d = u5
     q6d = u6
-    u1d = (I22 - I33)*u2*u3/I11
-    u2d = (I33 - I11)*u1*u3/I22
+    u1d = -(I33 - I22)*u2*u3/I11
+    u2d = -(I11 - I33)*u1*u3/I22
     u3d = -(I22 - I11)*u1*u2/I33
     u4d = 0
     u5d = 0

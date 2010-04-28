@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 from pydy import *
-from sympy import solve
+from sympy import solve, Eq
 
 # Create a Newtonian reference frame
 N = NewtonianReferenceFrame('N')
