@@ -7,7 +7,7 @@ setup(
     version = "0.1",
     packages = ['pydy'],
     author = "Dale Peterson",
-    author_email = "",
+    author_email = "hazelnusse@gmail.com",
     description = "",
     license = "BSD",
 )
